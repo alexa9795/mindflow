@@ -1,0 +1,17 @@
+.env*
+node_modules/
+.direnv/
+# Go
+backend/bin/
+*.exe
+*.test
+*.out
+.gopath/
+
+# Expo
+mobile/.expo/
+mobile/dist/
+
+# General
+.DS_Store
+*.log

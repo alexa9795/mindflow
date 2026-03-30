@@ -1,0 +1,15 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: mindflow_db
+    environment:
+      POSTGRES_USER: mindflow
+      POSTGRES_PASSWORD: mindflow_secret
+      POSTGRES_DB: mindflow_dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - mindflow_pgdata:/var/lib/postgresql/data
+
+volumes:
+  mindflow_pgdata:
