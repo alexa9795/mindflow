@@ -15,6 +15,7 @@ mobile/dist/
 # General
 .DS_Store
 *.log
+logs/*.log
 backend/.env
 .idea/
 .claude/
