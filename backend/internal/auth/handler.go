@@ -1,157 +1,130 @@
 package auth
 
 import (
-	"database/sql"
 	"encoding/json"
+	"errors"
 	"log"
 	"net/http"
-	"os"
-	"time"
 
-	"github.com/alexa9795/mindflow/internal/db"
-	"github.com/golang-jwt/jwt/v5"
-	"golang.org/x/crypto/bcrypt"
+	api "github.com/alexa9795/mindflow/internal/api"
+	"github.com/alexa9795/mindflow/internal/middleware"
 )
 
-type RegisterRequest struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
-	Name     string `json:"name"`
+// Handler holds the HTTP handlers for auth endpoints.
+type Handler struct {
+	svc Service
 }
 
-type LoginRequest struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
+// NewHandler returns a Handler backed by the given Service.
+func NewHandler(svc Service) *Handler {
+	return &Handler{svc: svc}
 }
 
-type AuthResponse struct {
-	Token string `json:"token"`
-	User  struct {
-		ID    string `json:"id"`
-		Email string `json:"email"`
-		Name  string `json:"name"`
-	} `json:"user"`
-}
-
-func generateToken(userID, email string) (string, error) {
-	secret := os.Getenv("JWT_SECRET")
-	if secret == "" {
-		secret = "dev_secret_change_in_production"
-	}
-
-	claims := jwt.MapClaims{
-		"sub":   userID,
-		"email": email,
-		"exp":   time.Now().Add(7 * 24 * time.Hour).Unix(),
-		"iat":   time.Now().Unix(),
-	}
-
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString([]byte(secret))
-}
-
-func Register(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
+func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 	var req RegisterRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		api.WriteError(w, api.ErrBadRequest.WithMessage("Invalid request body"))
 		return
 	}
-
 	if req.Email == "" || req.Password == "" || req.Name == "" {
-		http.Error(w, "Email, password and name are required", http.StatusBadRequest)
+		api.WriteError(w, api.ErrBadRequest.WithMessage("Email, password and name are required"))
 		return
 	}
 
-	// Hash password
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	resp, err := h.svc.Register(r.Context(), req)
 	if err != nil {
-		log.Printf("Error hashing password: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
-
-	// Insert user
-	var userID string
-	trialEndsAt := time.Now().Add(7 * 24 * time.Hour)
-	err = db.DB.QueryRow(`
-		INSERT INTO users (email, name, password_hash, subscription_tier, trial_ends_at)
-		VALUES ($1, $2, $3, 'free', $4)
-		RETURNING id`,
-		req.Email, req.Name, string(hashedPassword), trialEndsAt,
-	).Scan(&userID)
-	if err != nil {
-		log.Printf("Error inserting user: %v", err)
-		http.Error(w, "Email already exists", http.StatusConflict)
-		return
-	}
-
-	token, err := generateToken(userID, req.Email)
-	if err != nil {
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		if errors.Is(err, ErrEmailExists) {
+			api.WriteError(w, api.ErrConflict.WithMessage("Email already exists"))
+			return
+		}
+		log.Printf("register error: %v", err)
+		api.WriteError(w, api.ErrInternalServer)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(AuthResponse{
-		Token: token,
-		User: struct {
-			ID    string `json:"id"`
-			Email string `json:"email"`
-			Name  string `json:"name"`
-		}{ID: userID, Email: req.Email, Name: req.Name},
-	})
+	_ = json.NewEncoder(w).Encode(resp)
 }
 
-func Login(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+func (h *Handler) PatchMe(w http.ResponseWriter, r *http.Request) {
+	userID := r.Context().Value(middleware.UserIDKey).(string)
+
+	var body struct {
+		Name string `json:"name"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		api.WriteError(w, api.ErrBadRequest.WithMessage("Invalid request body"))
+		return
+	}
+	if body.Name == "" {
+		api.WriteError(w, api.ErrBadRequest.WithMessage("Name is required"))
 		return
 	}
 
-	var req LoginRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
-		return
-	}
-
-	var userID, name, hashedPassword string
-	err := db.DB.QueryRow(`
-		SELECT id, name, password_hash FROM users WHERE email = $1`,
-		req.Email,
-	).Scan(&userID, &name, &hashedPassword)
-	if err == sql.ErrNoRows {
-		http.Error(w, "Invalid credentials", http.StatusUnauthorized)
-		return
-	}
+	user, err := h.svc.UpdateMe(r.Context(), userID, body.Name)
 	if err != nil {
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
-
-	if err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(req.Password)); err != nil {
-		http.Error(w, "Invalid credentials", http.StatusUnauthorized)
-		return
-	}
-
-	token, err := generateToken(userID, req.Email)
-	if err != nil {
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		if errors.Is(err, ErrUserNotFound) {
+			api.WriteError(w, api.ErrNotFound)
+			return
+		}
+		log.Printf("patch me error: %v", err)
+		api.WriteError(w, api.ErrInternalServer)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(AuthResponse{
-		Token: token,
-		User: struct {
-			ID    string `json:"id"`
-			Email string `json:"email"`
-			Name  string `json:"name"`
-		}{ID: userID, Email: req.Email, Name: name},
-	})
+	_ = json.NewEncoder(w).Encode(user)
+}
+
+func (h *Handler) DeleteMe(w http.ResponseWriter, r *http.Request) {
+	userID := r.Context().Value(middleware.UserIDKey).(string)
+
+	if err := h.svc.DeleteMe(r.Context(), userID); err != nil {
+		log.Printf("delete me error: %v", err)
+		api.WriteError(w, api.ErrInternalServer)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *Handler) Me(w http.ResponseWriter, r *http.Request) {
+	userID := r.Context().Value(middleware.UserIDKey).(string)
+
+	user, err := h.svc.GetMe(r.Context(), userID)
+	if err != nil {
+		if errors.Is(err, ErrUserNotFound) {
+			api.WriteError(w, api.ErrNotFound)
+			return
+		}
+		log.Printf("get me error: %v", err)
+		api.WriteError(w, api.ErrInternalServer)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(user)
+}
+
+func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
+	var req LoginRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		api.WriteError(w, api.ErrBadRequest.WithMessage("Invalid request body"))
+		return
+	}
+
+	resp, err := h.svc.Login(r.Context(), req)
+	if err != nil {
+		if errors.Is(err, ErrInvalidCredentials) {
+			api.WriteError(w, api.ErrUnauthorized.WithMessage("Invalid credentials"))
+			return
+		}
+		log.Printf("login error: %v", err)
+		api.WriteError(w, api.ErrInternalServer)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(resp)
 }

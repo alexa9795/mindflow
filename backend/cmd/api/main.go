@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/alexa9795/mindflow/internal/ai"
 	"github.com/alexa9795/mindflow/internal/auth"
 	"github.com/alexa9795/mindflow/internal/db"
 	"github.com/alexa9795/mindflow/internal/entry"
@@ -23,6 +24,20 @@ func main() {
 	}
 	defer db.DB.Close()
 
+	if err := db.RunMigrations(db.DB); err != nil {
+		log.Fatalf("Migrations failed: %v", err)
+	}
+
+	// Wire up dependencies: repo → service → handler.
+	authRepo := auth.NewRepository(db.DB)
+	authSvc := auth.NewService(authRepo)
+	authHandler := auth.NewHandler(authSvc)
+
+	aiSvc := ai.NewService()
+	entryRepo := entry.NewRepository(db.DB)
+	entrySvc := entry.NewService(entryRepo, aiSvc)
+	entryHandler := entry.NewHandler(entrySvc)
+
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
@@ -35,18 +50,22 @@ func main() {
 		fmt.Fprintf(w, `{"status":"ok","service":"mindflow-api"}`)
 	})
 
-	// Auth routes
-	mux.HandleFunc("/api/auth/register", auth.Register)
-	mux.HandleFunc("/api/auth/login", auth.Login)
+	// Auth routes.
+	mux.HandleFunc("POST /api/auth/register", authHandler.Register)
+	mux.HandleFunc("POST /api/auth/login", authHandler.Login)
+	mux.HandleFunc("GET /api/auth/me", middleware.Auth(authHandler.Me))
+	mux.HandleFunc("PATCH /api/auth/me", middleware.Auth(authHandler.PatchMe))
+	mux.HandleFunc("DELETE /api/auth/me", middleware.Auth(authHandler.DeleteMe))
 
-	// Entry routes (require auth)
-	mux.HandleFunc("POST /api/entries", middleware.Auth(entry.Create))
-	mux.HandleFunc("GET /api/entries", middleware.Auth(entry.List))
-	mux.HandleFunc("GET /api/entries/{id}", middleware.Auth(entry.Get))
-	mux.HandleFunc("POST /api/entries/{id}/respond", middleware.Auth(entry.Respond))
-	mux.HandleFunc("POST /api/entries/{id}/messages", middleware.Auth(entry.AddMessage))
+	// Entry routes (require auth).
+	mux.HandleFunc("POST /api/entries", middleware.Auth(entryHandler.Create))
+	mux.HandleFunc("GET /api/entries", middleware.Auth(entryHandler.List))
+	mux.HandleFunc("DELETE /api/entries", middleware.Auth(entryHandler.DeleteAll))
+	mux.HandleFunc("GET /api/entries/{id}", middleware.Auth(entryHandler.Get))
+	mux.HandleFunc("POST /api/entries/{id}/respond", middleware.Auth(entryHandler.Respond))
+	mux.HandleFunc("POST /api/entries/{id}/messages", middleware.Auth(entryHandler.AddMessage))
 
-	log.Printf("MindFlow API starting on port %s", port)
+	log.Printf("MindFlow API starting on port %s (routes: GET/PATCH/DELETE /api/auth/me, CRUD /api/entries)", port)
 	if err := http.ListenAndServe(":"+port, mux); err != nil {
 		log.Fatalf("Server failed to start: %v", err)
 	}

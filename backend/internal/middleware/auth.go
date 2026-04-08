@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/alexa9795/mindflow/internal/api"
 	"github.com/golang-jwt/jwt/v5"
 )
 
@@ -17,7 +18,7 @@ func Auth(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		authHeader := r.Header.Get("Authorization")
 		if !strings.HasPrefix(authHeader, "Bearer ") {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			api.WriteError(w, api.ErrUnauthorized)
 			return
 		}
 
@@ -34,19 +35,19 @@ func Auth(next http.HandlerFunc) http.HandlerFunc {
 			return []byte(secret), nil
 		})
 		if err != nil || !token.Valid {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			api.WriteError(w, api.ErrUnauthorized)
 			return
 		}
 
 		claims, ok := token.Claims.(jwt.MapClaims)
 		if !ok {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			api.WriteError(w, api.ErrUnauthorized)
 			return
 		}
 
 		userID, ok := claims["sub"].(string)
 		if !ok || userID == "" {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			api.WriteError(w, api.ErrUnauthorized)
 			return
 		}
 

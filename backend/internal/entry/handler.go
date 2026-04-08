@@ -1,51 +1,57 @@
 package entry
 
 import (
-	"database/sql"
 	"encoding/json"
+	"errors"
+	"log"
 	"net/http"
 	"strconv"
 
-	"github.com/alexa9795/mindflow/internal/db"
+	api "github.com/alexa9795/mindflow/internal/api"
 	"github.com/alexa9795/mindflow/internal/middleware"
 )
+
+// Handler holds the HTTP handlers for entry endpoints.
+type Handler struct {
+	svc Service
+}
+
+// NewHandler returns a Handler backed by the given Service.
+func NewHandler(svc Service) *Handler {
+	return &Handler{svc: svc}
+}
 
 type createRequest struct {
 	Content   string `json:"content"`
 	MoodScore *int   `json:"mood_score"`
 }
 
-func Create(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	userID := r.Context().Value(middleware.UserIDKey).(string)
 
 	var req createRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		api.WriteError(w, api.ErrBadRequest.WithMessage("Invalid request body"))
 		return
 	}
 	if req.Content == "" {
-		http.Error(w, "Content is required", http.StatusBadRequest)
+		api.WriteError(w, api.ErrBadRequest.WithMessage("Content is required"))
 		return
 	}
 
-	var e Entry
-	err := db.DB.QueryRow(`
-		INSERT INTO entries (user_id, content, mood_score)
-		VALUES ($1, $2, $3)
-		RETURNING id, user_id, content, mood_score, created_at`,
-		userID, req.Content, req.MoodScore,
-	).Scan(&e.ID, &e.UserID, &e.Content, &e.MoodScore, &e.CreatedAt)
+	e, err := h.svc.Create(r.Context(), userID, req.Content, req.MoodScore)
 	if err != nil {
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		log.Printf("create entry error: %v", err)
+		api.WriteError(w, api.ErrInternalServer)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(e)
+	_ = json.NewEncoder(w).Encode(e)
 }
 
-func List(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	userID := r.Context().Value(middleware.UserIDKey).(string)
 
 	page, limit := 1, 20
@@ -59,95 +65,104 @@ func List(w http.ResponseWriter, r *http.Request) {
 			limit = v
 		}
 	}
-	offset := (page - 1) * limit
 
-	rows, err := db.DB.Query(`
-		SELECT id, user_id, content, mood_score, created_at
-		FROM entries
-		WHERE user_id = $1
-		ORDER BY created_at DESC
-		LIMIT $2 OFFSET $3`,
-		userID, limit, offset,
-	)
+	entries, err := h.svc.List(r.Context(), userID, page, limit)
 	if err != nil {
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
-	defer rows.Close()
-
-	entries := []Entry{}
-	for rows.Next() {
-		var e Entry
-		if err := rows.Scan(&e.ID, &e.UserID, &e.Content, &e.MoodScore, &e.CreatedAt); err != nil {
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
-			return
-		}
-		entries = append(entries, e)
-	}
-	if err := rows.Err(); err != nil {
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		log.Printf("list entries error: %v", err)
+		api.WriteError(w, api.ErrInternalServer)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"entries": entries,
 		"page":    page,
 		"limit":   limit,
 	})
 }
 
-func Get(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 	userID := r.Context().Value(middleware.UserIDKey).(string)
 	entryID := r.PathValue("id")
 
-	var e Entry
-	err := db.DB.QueryRow(`
-		SELECT id, user_id, content, mood_score, created_at
-		FROM entries
-		WHERE id = $1 AND user_id = $2`,
-		entryID, userID,
-	).Scan(&e.ID, &e.UserID, &e.Content, &e.MoodScore, &e.CreatedAt)
-	if err == sql.ErrNoRows {
-		http.Error(w, "Not found", http.StatusNotFound)
-		return
-	}
+	e, err := h.svc.Get(r.Context(), entryID, userID)
 	if err != nil {
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		if errors.Is(err, ErrNotFound) {
+			api.WriteError(w, api.ErrNotFound)
+			return
+		}
+		log.Printf("get entry error: %v", err)
+		api.WriteError(w, api.ErrInternalServer)
 		return
 	}
-
-	messages, err := loadMessages(entryID)
-	if err != nil {
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
-	e.Messages = messages
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(e)
+	_ = json.NewEncoder(w).Encode(e)
 }
 
-func loadMessages(entryID string) ([]Message, error) {
-	rows, err := db.DB.Query(`
-		SELECT id, entry_id, role, content, created_at
-		FROM messages
-		WHERE entry_id = $1
-		ORDER BY created_at ASC`,
-		entryID,
-	)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
+func (h *Handler) Respond(w http.ResponseWriter, r *http.Request) {
+	userID := r.Context().Value(middleware.UserIDKey).(string)
+	entryID := r.PathValue("id")
 
-	messages := []Message{}
-	for rows.Next() {
-		var m Message
-		if err := rows.Scan(&m.ID, &m.EntryID, &m.Role, &m.Content, &m.CreatedAt); err != nil {
-			return nil, err
+	msg, err := h.svc.Respond(r.Context(), entryID, userID)
+	if err != nil {
+		if errors.Is(err, ErrNotFound) {
+			api.WriteError(w, api.ErrNotFound)
+			return
 		}
-		messages = append(messages, m)
+		log.Printf("respond error: %v", err)
+		api.WriteError(w, api.ErrInternalServer.WithMessage("Failed to generate AI response"))
+		return
 	}
-	return messages, rows.Err()
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	_ = json.NewEncoder(w).Encode(msg)
+}
+
+func (h *Handler) AddMessage(w http.ResponseWriter, r *http.Request) {
+	userID := r.Context().Value(middleware.UserIDKey).(string)
+	entryID := r.PathValue("id")
+
+	var req struct {
+		Content string `json:"content"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		api.WriteError(w, api.ErrBadRequest.WithMessage("Invalid request body"))
+		return
+	}
+	if req.Content == "" {
+		api.WriteError(w, api.ErrBadRequest.WithMessage("Content is required"))
+		return
+	}
+
+	userMsg, aiMsg, err := h.svc.AddMessage(r.Context(), entryID, userID, req.Content)
+	if err != nil {
+		if errors.Is(err, ErrNotFound) {
+			api.WriteError(w, api.ErrNotFound)
+			return
+		}
+		log.Printf("add message error: %v", err)
+		api.WriteError(w, api.ErrInternalServer.WithMessage("Failed to generate AI response"))
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
+		"user_message":      userMsg,
+		"assistant_message": aiMsg,
+	})
+}
+
+func (h *Handler) DeleteAll(w http.ResponseWriter, r *http.Request) {
+	userID := r.Context().Value(middleware.UserIDKey).(string)
+
+	if err := h.svc.DeleteAll(r.Context(), userID); err != nil {
+		log.Printf("delete all entries error: %v", err)
+		api.WriteError(w, api.ErrInternalServer)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 }

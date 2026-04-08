@@ -19,3 +19,5 @@ logs/*.log
 backend/.env
 .idea/
 .claude/
+memory/
+memory/
