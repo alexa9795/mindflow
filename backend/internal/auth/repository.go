@@ -28,8 +28,8 @@ func NewRepository(db *sql.DB) Repository {
 func (r *repository) CreateUser(ctx context.Context, email, name, passwordHash string, trialEndsAt time.Time) (string, error) {
 	var id string
 	err := r.db.QueryRowContext(ctx, `
-		INSERT INTO users (email, name, password_hash, subscription_tier, trial_ends_at)
-		VALUES ($1, $2, $3, 'free', $4)
+		INSERT INTO users (email, name, password_hash, subscription_type, trial_ends_at)
+		VALUES ($1, $2, $3, 'trial', $4)
 		RETURNING id`,
 		email, name, passwordHash, trialEndsAt,
 	).Scan(&id)

@@ -3,6 +3,7 @@ package ai
 import (
 	"context"
 	"fmt"
+	"log"
 	"os"
 
 	"github.com/anthropics/anthropic-sdk-go"
@@ -78,11 +79,19 @@ type Service interface {
 	CallClaude(ctx context.Context, messages []Message, userID string) (string, error)
 }
 
-type service struct{}
+type service struct {
+	client anthropic.Client
+}
 
 // NewService returns an AI service backed by the Anthropic API.
 func NewService() Service {
-	return &service{}
+	apiKey := os.Getenv("ANTHROPIC_API_KEY")
+	if apiKey == "" {
+		log.Fatal("ANTHROPIC_API_KEY not set — cannot start AI service")
+	}
+	return &service{
+		client: anthropic.NewClient(option.WithAPIKey(apiKey)),
+	}
 }
 
 func (s *service) CallClaude(ctx context.Context, messages []Message, userID string) (string, error) {
@@ -94,13 +103,6 @@ func (s *service) CallClaude(ctx context.Context, messages []Message, userID str
 		}
 	}
 
-	apiKey := os.Getenv("ANTHROPIC_API_KEY")
-	if apiKey == "" {
-		return "", fmt.Errorf("ANTHROPIC_API_KEY not set")
-	}
-
-	client := anthropic.NewClient(option.WithAPIKey(apiKey))
-
 	apiMessages := make([]anthropic.MessageParam, 0, len(messages))
 	for _, m := range messages {
 		block := anthropic.NewTextBlock(m.Content)
@@ -111,7 +113,7 @@ func (s *service) CallClaude(ctx context.Context, messages []Message, userID str
 		}
 	}
 
-	resp, err := client.Messages.New(ctx, anthropic.MessageNewParams{
+	resp, err := s.client.Messages.New(ctx, anthropic.MessageNewParams{
 		Model:     anthropic.ModelClaudeSonnet4_6,
 		MaxTokens: 500,
 		System: []anthropic.TextBlockParam{

@@ -48,7 +48,11 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) PatchMe(w http.ResponseWriter, r *http.Request) {
-	userID := r.Context().Value(middleware.UserIDKey).(string)
+	userID, ok := r.Context().Value(middleware.UserIDKey).(string)
+	if !ok || userID == "" {
+		api.WriteError(w, api.ErrUnauthorized)
+		return
+	}
 
 	var body struct {
 		Name string `json:"name"`
@@ -78,7 +82,11 @@ func (h *Handler) PatchMe(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) DeleteMe(w http.ResponseWriter, r *http.Request) {
-	userID := r.Context().Value(middleware.UserIDKey).(string)
+	userID, ok := r.Context().Value(middleware.UserIDKey).(string)
+	if !ok || userID == "" {
+		api.WriteError(w, api.ErrUnauthorized)
+		return
+	}
 
 	if err := h.svc.DeleteMe(r.Context(), userID); err != nil {
 		log.Printf("delete me error: %v", err)
@@ -90,7 +98,11 @@ func (h *Handler) DeleteMe(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) Me(w http.ResponseWriter, r *http.Request) {
-	userID := r.Context().Value(middleware.UserIDKey).(string)
+	userID, ok := r.Context().Value(middleware.UserIDKey).(string)
+	if !ok || userID == "" {
+		api.WriteError(w, api.ErrUnauthorized)
+		return
+	}
 
 	user, err := h.svc.GetMe(r.Context(), userID)
 	if err != nil {

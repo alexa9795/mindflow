@@ -27,7 +27,11 @@ type createRequest struct {
 }
 
 func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
-	userID := r.Context().Value(middleware.UserIDKey).(string)
+	userID, ok := r.Context().Value(middleware.UserIDKey).(string)
+	if !ok || userID == "" {
+		api.WriteError(w, api.ErrUnauthorized)
+		return
+	}
 
 	var req createRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -36,6 +40,11 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.Content == "" {
 		api.WriteError(w, api.ErrBadRequest.WithMessage("Content is required"))
+		return
+	}
+	const maxEntryLength = 10000
+	if len(req.Content) > maxEntryLength {
+		api.WriteError(w, api.ErrBadRequest.WithMessage("Entry is too long (max 10,000 characters)"))
 		return
 	}
 
@@ -52,7 +61,11 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
-	userID := r.Context().Value(middleware.UserIDKey).(string)
+	userID, ok := r.Context().Value(middleware.UserIDKey).(string)
+	if !ok || userID == "" {
+		api.WriteError(w, api.ErrUnauthorized)
+		return
+	}
 
 	page, limit := 1, 20
 	if p := r.URL.Query().Get("page"); p != "" {
@@ -82,7 +95,11 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
-	userID := r.Context().Value(middleware.UserIDKey).(string)
+	userID, ok := r.Context().Value(middleware.UserIDKey).(string)
+	if !ok || userID == "" {
+		api.WriteError(w, api.ErrUnauthorized)
+		return
+	}
 	entryID := r.PathValue("id")
 
 	e, err := h.svc.Get(r.Context(), entryID, userID)
@@ -101,7 +118,11 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) Respond(w http.ResponseWriter, r *http.Request) {
-	userID := r.Context().Value(middleware.UserIDKey).(string)
+	userID, ok := r.Context().Value(middleware.UserIDKey).(string)
+	if !ok || userID == "" {
+		api.WriteError(w, api.ErrUnauthorized)
+		return
+	}
 	entryID := r.PathValue("id")
 
 	msg, err := h.svc.Respond(r.Context(), entryID, userID)
@@ -121,7 +142,11 @@ func (h *Handler) Respond(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) AddMessage(w http.ResponseWriter, r *http.Request) {
-	userID := r.Context().Value(middleware.UserIDKey).(string)
+	userID, ok := r.Context().Value(middleware.UserIDKey).(string)
+	if !ok || userID == "" {
+		api.WriteError(w, api.ErrUnauthorized)
+		return
+	}
 	entryID := r.PathValue("id")
 
 	var req struct {
@@ -156,7 +181,11 @@ func (h *Handler) AddMessage(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) DeleteAll(w http.ResponseWriter, r *http.Request) {
-	userID := r.Context().Value(middleware.UserIDKey).(string)
+	userID, ok := r.Context().Value(middleware.UserIDKey).(string)
+	if !ok || userID == "" {
+		api.WriteError(w, api.ErrUnauthorized)
+		return
+	}
 
 	if err := h.svc.DeleteAll(r.Context(), userID); err != nil {
 		log.Printf("delete all entries error: %v", err)

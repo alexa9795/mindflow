@@ -20,24 +20,25 @@ import { ApiError, NetworkError } from '../../services/api';
 
 const { height: SCREEN_H } = Dimensions.get('window');
 
-export default function LoginScreen() {
+export default function RegisterWaterfallScreen() {
   const router = useRouter();
-  const { login } = useAuth();
+  const { register } = useAuth();
 
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function submit() {
-    if (!email.trim() || !password) {
+    if (!name.trim() || !email.trim() || !password) {
       setError('Please fill in all fields');
       return;
     }
     setLoading(true);
     setError(null);
     try {
-      await login(email.trim(), password);
+      await register(email.trim(), password, name.trim());
     } catch (e: unknown) {
       if (e instanceof NetworkError) {
         setError("You're offline or the server is unreachable");
@@ -83,6 +84,15 @@ export default function LoginScreen() {
               )}
               <TextInput
                 style={styles.input}
+                placeholder="Name"
+                placeholderTextColor="rgba(255,255,255,0.45)"
+                value={name}
+                onChangeText={setName}
+                autoCapitalize="words"
+                autoComplete="name"
+              />
+              <TextInput
+                style={styles.input}
                 placeholder="Email"
                 placeholderTextColor="rgba(255,255,255,0.45)"
                 value={email}
@@ -98,7 +108,7 @@ export default function LoginScreen() {
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry
-                autoComplete="current-password"
+                autoComplete="new-password"
               />
               <Pressable
                 style={[styles.btn, loading && styles.btnDisabled]}
@@ -108,15 +118,15 @@ export default function LoginScreen() {
                 {loading ? (
                   <ActivityIndicator color="#141414" />
                 ) : (
-                  <Text style={styles.btnText}>Sign in</Text>
+                  <Text style={styles.btnText}>Create account</Text>
                 )}
               </Pressable>
             </View>
 
-            <Pressable onPress={() => router.replace('/(auth)/register')}>
+            <Pressable onPress={() => router.push('/(auth)/login-waterfall')}>
               <Text style={styles.toggleLink}>
-                Don't have an account?{' '}
-                <Text style={styles.toggleLinkBold}>Register</Text>
+                Already have an account?{' '}
+                <Text style={styles.toggleLinkBold}>Login</Text>
               </Text>
             </Pressable>
           </ScrollView>
@@ -155,7 +165,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   formGap: { height: 32 },
-  form: { width: '100%', marginBottom: 0 },
+  form: { width: '100%' },
   errorText: {
     fontFamily: FONTS.modern,
     fontSize: 14,

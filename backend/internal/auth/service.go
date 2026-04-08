@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/lib/pq"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -39,9 +40,11 @@ func (s *service) Register(ctx context.Context, req RegisterRequest) (*AuthRespo
 	trialEndsAt := time.Now().Add(7 * 24 * time.Hour)
 	userID, err := s.repo.CreateUser(ctx, req.Email, req.Name, string(hashed), trialEndsAt)
 	if err != nil {
-		// Any DB error on insert is treated as a duplicate-email conflict; the
-		// unique constraint is the only expected failure path here.
-		return nil, ErrEmailExists
+		var pgErr *pq.Error
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			return nil, ErrEmailExists
+		}
+		return nil, fmt.Errorf("create user: %w", err)
 	}
 
 	token, err := generateToken(userID, req.Email)

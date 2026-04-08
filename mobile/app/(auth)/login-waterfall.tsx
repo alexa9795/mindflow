@@ -20,7 +20,7 @@ import { ApiError, NetworkError } from '../../services/api';
 
 const { height: SCREEN_H } = Dimensions.get('window');
 
-export default function LoginScreen() {
+export default function LoginWaterfallScreen() {
   const router = useRouter();
   const { login } = useAuth();
 
@@ -113,7 +113,7 @@ export default function LoginScreen() {
               </Pressable>
             </View>
 
-            <Pressable onPress={() => router.replace('/(auth)/register')}>
+            <Pressable onPress={() => router.push('/(auth)/register-waterfall')}>
               <Text style={styles.toggleLink}>
                 Don't have an account?{' '}
                 <Text style={styles.toggleLinkBold}>Register</Text>
@@ -155,7 +155,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   formGap: { height: 32 },
-  form: { width: '100%', marginBottom: 0 },
+  form: { width: '100%' },
   errorText: {
     fontFamily: FONTS.modern,
     fontSize: 14,
