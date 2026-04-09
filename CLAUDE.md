@@ -1,7 +1,7 @@
 # MindFlow
 
 ## Stack
-- Backend: Go 1.22 (REST API)
+- Backend: Go 1.22+ (REST API) — golang.org/x/crypto pinned to v0.31.0 for Go 1.22 compatibility
 - Mobile: React Native (Expo 55)
 - Database: PostgreSQL (Supabase)
 - AI: Claude API (claude-sonnet-4-6)

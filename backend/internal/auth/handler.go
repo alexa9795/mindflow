@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"strings"
 
 	api "github.com/alexa9795/mindflow/internal/api"
 	"github.com/alexa9795/mindflow/internal/middleware"
@@ -28,6 +29,14 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.Email == "" || req.Password == "" || req.Name == "" {
 		api.WriteError(w, api.ErrBadRequest.WithMessage("Email, password and name are required"))
+		return
+	}
+	if !isValidEmail(req.Email) {
+		api.WriteError(w, api.ErrBadRequest.WithMessage("Invalid email address"))
+		return
+	}
+	if len(req.Password) < 8 {
+		api.WriteError(w, api.ErrBadRequest.WithMessage("Password must be at least 8 characters"))
 		return
 	}
 
@@ -125,6 +134,10 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		api.WriteError(w, api.ErrBadRequest.WithMessage("Invalid request body"))
 		return
 	}
+	if !isValidEmail(req.Email) {
+		api.WriteError(w, api.ErrBadRequest.WithMessage("Invalid email address"))
+		return
+	}
 
 	resp, err := h.svc.Login(r.Context(), req)
 	if err != nil {
@@ -139,4 +152,13 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(resp)
+}
+
+func isValidEmail(email string) bool {
+	at := strings.Index(email, "@")
+	if at < 1 {
+		return false
+	}
+	dot := strings.LastIndex(email[at:], ".")
+	return dot > 1 && dot < len(email[at:])-1
 }

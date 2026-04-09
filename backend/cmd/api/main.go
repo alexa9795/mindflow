@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/alexa9795/mindflow/internal/ai"
 	"github.com/alexa9795/mindflow/internal/auth"
@@ -51,22 +52,31 @@ func main() {
 	})
 
 	// Auth routes.
-	mux.HandleFunc("POST /api/auth/register", authHandler.Register)
-	mux.HandleFunc("POST /api/auth/login", authHandler.Login)
+	mux.HandleFunc("POST /api/auth/register", middleware.MaxBodySize(authHandler.Register))
+	mux.HandleFunc("POST /api/auth/login", middleware.MaxBodySize(authHandler.Login))
 	mux.HandleFunc("GET /api/auth/me", middleware.Auth(authHandler.Me))
-	mux.HandleFunc("PATCH /api/auth/me", middleware.Auth(authHandler.PatchMe))
+	mux.HandleFunc("PATCH /api/auth/me", middleware.Auth(middleware.MaxBodySize(authHandler.PatchMe)))
 	mux.HandleFunc("DELETE /api/auth/me", middleware.Auth(authHandler.DeleteMe))
 
 	// Entry routes (require auth).
-	mux.HandleFunc("POST /api/entries", middleware.Auth(entryHandler.Create))
+	mux.HandleFunc("POST /api/entries", middleware.Auth(middleware.MaxBodySize(entryHandler.Create)))
 	mux.HandleFunc("GET /api/entries", middleware.Auth(entryHandler.List))
 	mux.HandleFunc("DELETE /api/entries", middleware.Auth(entryHandler.DeleteAll))
 	mux.HandleFunc("GET /api/entries/{id}", middleware.Auth(entryHandler.Get))
-	mux.HandleFunc("POST /api/entries/{id}/respond", middleware.Auth(entryHandler.Respond))
-	mux.HandleFunc("POST /api/entries/{id}/messages", middleware.Auth(entryHandler.AddMessage))
+	mux.HandleFunc("POST /api/entries/{id}/respond", middleware.Auth(middleware.MaxBodySize(entryHandler.Respond)))
+	mux.HandleFunc("POST /api/entries/{id}/messages", middleware.Auth(middleware.MaxBodySize(entryHandler.AddMessage)))
 
-	log.Printf("MindFlow API starting on port %s (routes: GET/PATCH/DELETE /api/auth/me, CRUD /api/entries)", port)
-	if err := http.ListenAndServe(":"+port, mux); err != nil {
-		log.Fatalf("Server failed to start: %v", err)
+	log.Printf("MindFlow API starting on port %s", port)
+	srv := &http.Server{
+		Addr:         ":" + port,
+		Handler:      mux,
+		ReadTimeout:  10 * time.Second,
+		WriteTimeout: 60 * time.Second,
+		IdleTimeout:  120 * time.Second,
+	}
+	// TODO: restrict Access-Control-Allow-Origin before launch
+	srv.Handler = middleware.CORS(mux)
+	if err := srv.ListenAndServe(); err != nil {
+		log.Fatalf("Server failed: %v", err)
 	}
 }

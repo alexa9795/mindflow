@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
-  Dimensions,
   ImageBackground,
   KeyboardAvoidingView,
   Platform,
   Pressable,
+  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
@@ -13,12 +13,12 @@ import {
   View,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../hooks/useAuth';
 import { FONTS } from '../../constants/fonts';
 import { ApiError, NetworkError } from '../../services/api';
-
-const { height: SCREEN_H } = Dimensions.get('window');
+import EchoLogo from '../../components/EchoLogo';
 
 export default function RegisterScreen() {
   const router = useRouter();
@@ -53,161 +53,181 @@ export default function RegisterScreen() {
   }
 
   return (
-    <ImageBackground
-      source={require('../../assets/login-waterfall.jpeg')}
-      resizeMode="cover"
-      style={styles.bg}
+    <KeyboardAvoidingView
+      style={styles.root}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <StatusBar style="light" />
-      <View style={styles.overlay}>
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          style={styles.kav}
-        >
-          <ScrollView
-            contentContainerStyle={styles.scroll}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
-          >
-            <View style={styles.topSpacer} />
 
-            <View style={styles.logoArea}>
-              <Text style={styles.appName}>Echo</Text>
-              <Text style={styles.tagline}>your private space to think</Text>
-            </View>
-
-            <View style={styles.formGap} />
-
-            <View style={styles.form}>
-              {error !== null && (
-                <Text style={styles.errorText}>{error}</Text>
-              )}
-              <TextInput
-                style={styles.input}
-                placeholder="Name"
-                placeholderTextColor="rgba(255,255,255,0.45)"
-                value={name}
-                onChangeText={setName}
-                autoCapitalize="words"
-                autoComplete="name"
-              />
-              <TextInput
-                style={styles.input}
-                placeholder="Email"
-                placeholderTextColor="rgba(255,255,255,0.45)"
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoComplete="email"
-              />
-              <TextInput
-                style={styles.input}
-                placeholder="Password"
-                placeholderTextColor="rgba(255,255,255,0.45)"
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry
-                autoComplete="new-password"
-              />
-              <Pressable
-                style={[styles.btn, loading && styles.btnDisabled]}
-                onPress={submit}
-                disabled={loading}
-              >
-                {loading ? (
-                  <ActivityIndicator color="#141414" />
-                ) : (
-                  <Text style={styles.btnText}>Create account</Text>
-                )}
-              </Pressable>
-            </View>
-
-            <Pressable onPress={() => router.replace('/(auth)/login')}>
-              <Text style={styles.toggleLink}>
-                Already have an account?{' '}
-                <Text style={styles.toggleLinkBold}>Login</Text>
-              </Text>
-            </Pressable>
-          </ScrollView>
-        </KeyboardAvoidingView>
+      <View style={styles.imageWrap}>
+        <ImageBackground
+          source={require('../../assets/books.jpeg')}
+          resizeMode="cover"
+          style={styles.image}
+        />
+        <LinearGradient
+          colors={['transparent', '#F5F0E8']}
+          style={styles.fadeOverlay}
+        />
       </View>
-    </ImageBackground>
+
+      <SafeAreaView style={styles.sheet}>
+        <ScrollView
+          contentContainerStyle={styles.scroll}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.logoWrap}>
+            <EchoLogo color="#2C2418" width={220} />
+          </View>
+
+          <View style={styles.divider} />
+
+          {error !== null && (
+            <Text style={styles.errorText}>{error}</Text>
+          )}
+
+          <TextInput
+            style={styles.input}
+            placeholder="name"
+            placeholderTextColor="#B0A89E"
+            value={name}
+            onChangeText={setName}
+            autoCapitalize="words"
+            autoComplete="name"
+          />
+
+          <TextInput
+            style={styles.input}
+            placeholder="email"
+            placeholderTextColor="#B0A89E"
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoComplete="email"
+          />
+
+          <TextInput
+            style={[styles.input, styles.inputPassword]}
+            placeholder="password"
+            placeholderTextColor="#B0A89E"
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+            autoComplete="new-password"
+          />
+
+          <Pressable
+            style={[styles.btn, loading && styles.btnDisabled]}
+            onPress={submit}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color="#F5F0E8" />
+            ) : (
+              <Text style={styles.btnText}>CREATE ACCOUNT</Text>
+            )}
+          </Pressable>
+
+          <Pressable onPress={() => router.replace('/(auth)/login')}>
+            <Text style={styles.toggleLink}>
+              Already have an account?{'  '}
+              <Text style={styles.toggleLinkBold}>Sign in</Text>
+            </Text>
+          </Pressable>
+        </ScrollView>
+      </SafeAreaView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  bg: { flex: 1 },
-  overlay: {
+  root: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.50)',
+    backgroundColor: '#F5F0E8',
   },
-  kav: { flex: 1 },
+  imageWrap: {
+    height: 280,
+  },
+  image: {
+    flex: 1,
+  },
+  fadeOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 120,
+  },
+  sheet: {
+    flex: 1,
+    backgroundColor: '#F5F0E8',
+  },
   scroll: {
-    paddingHorizontal: 32,
+    paddingHorizontal: 28,
     paddingBottom: 40,
+    alignItems: 'center',
   },
-  topSpacer: { height: SCREEN_H * 0.2 },
-  logoArea: { alignItems: 'center' },
-  appName: {
-    fontFamily: FONTS.formal,
-    fontSize: 44,
-    color: '#FFFFFF',
-    letterSpacing: 3,
-    textAlign: 'center',
+  logoWrap: {
+    marginTop: -16,
+    alignItems: 'center',
   },
-  tagline: {
-    fontFamily: FONTS.robotoSerif,
-    fontStyle: 'italic',
-    fontSize: 15,
-    color: 'rgba(255,255,255,0.72)',
-    textAlign: 'center',
-    marginTop: 8,
+  divider: {
+    width: 28,
+    height: 1,
+    backgroundColor: '#D6CFC4',
+    alignSelf: 'center',
+    marginVertical: 14,
   },
-  formGap: { height: 32 },
-  form: { width: '100%' },
   errorText: {
+    fontSize: 13,
+    color: '#C0392B',
     fontFamily: FONTS.modern,
-    fontSize: 14,
-    color: '#FF6B6B',
     textAlign: 'center',
-    marginBottom: 12,
+    marginBottom: 8,
   },
   input: {
-    backgroundColor: 'rgba(255,255,255,0.12)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.25)',
-    borderRadius: 12,
-    paddingHorizontal: 18,
-    paddingVertical: 14,
-    color: '#FFFFFF',
-    fontFamily: FONTS.modern,
+    alignSelf: 'stretch',
+    borderBottomWidth: 1,
+    borderBottomColor: '#C5BDB4',
+    paddingVertical: 10,
+    paddingHorizontal: 2,
     fontSize: 15,
-    marginBottom: 12,
+    fontFamily: FONTS.modern,
+    color: '#2C2418',
+    marginBottom: 14,
+  },
+  inputPassword: {
+    marginBottom: 6,
   },
   btn: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
+    alignSelf: 'stretch',
+    backgroundColor: '#2C2418',
+    borderRadius: 4,
+    paddingVertical: 14,
     alignItems: 'center',
-    marginTop: 8,
+    marginTop: 10,
   },
-  btnDisabled: { opacity: 0.6 },
+  btnDisabled: {
+    opacity: 0.6,
+  },
   btnText: {
-    color: '#141414',
+    fontSize: 11,
+    letterSpacing: 3,
+    color: '#F5F0E8',
     fontFamily: FONTS.modern,
     fontWeight: '700',
-    fontSize: 16,
   },
   toggleLink: {
-    color: 'rgba(255,255,255,0.65)',
-    fontSize: 14,
+    fontSize: 13,
+    color: '#9A8F84',
+    fontFamily: FONTS.modern,
     textAlign: 'center',
     marginTop: 16,
-    fontFamily: FONTS.modern,
   },
   toggleLinkBold: {
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: '#6B6157',
   },
 });
