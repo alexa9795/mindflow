@@ -181,11 +181,13 @@ const styles = StyleSheet.create({
     marginVertical: 14,
   },
   errorText: {
-    fontSize: 13,
-    color: '#C0392B',
     fontFamily: FONTS.modern,
+    fontSize: 13,
     textAlign: 'center',
-    marginBottom: 8,
+    marginBottom: 12,
+    // Intentional hardcode — login/register screens are unthemed
+    // (photo background). #C0392B matches warmNeutral destructive.
+    color: '#C0392B',
   },
   input: {
     alignSelf: 'stretch',

@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { api, Entry, Message, NetworkError } from '../services/api';
+import { api, Entry, NetworkError } from '../services/api';
 
 interface EntriesState {
   entries: Entry[];
@@ -10,7 +10,6 @@ interface EntriesState {
   fetchEntries: () => Promise<void>;
   loadMore: () => Promise<void>;
   createEntry: (content: string, moodScore?: number) => Promise<Entry>;
-  requestAIResponse: (entryId: string) => Promise<Message>;
 }
 
 export function useEntries(): EntriesState {
@@ -29,7 +28,7 @@ export function useEntries(): EntriesState {
       const res = await api.getEntries(1);
       setEntries(res.entries);
       setPage(1);
-      setHasMore(res.entries.length === 20);
+      setHasMore(res.entries.length === res.limit);
     } catch (e: unknown) {
       if (e instanceof NetworkError) {
         setIsOffline(true);
@@ -49,7 +48,7 @@ export function useEntries(): EntriesState {
       const res = await api.getEntries(nextPage);
       setEntries((prev) => [...prev, ...res.entries]);
       setPage(nextPage);
-      setHasMore(res.entries.length === 20);
+      setHasMore(res.entries.length === res.limit);
     } catch (e: unknown) {
       if (e instanceof NetworkError) setIsOffline(true);
     } finally {
@@ -69,15 +68,5 @@ export function useEntries(): EntriesState {
     }
   }, []);
 
-  const requestAIResponse = useCallback(async (entryId: string): Promise<Message> => {
-    setIsOffline(false);
-    try {
-      return await api.respond(entryId);
-    } catch (e: unknown) {
-      if (e instanceof NetworkError) setIsOffline(true);
-      throw e;
-    }
-  }, []);
-
-  return { entries, loading, error, isOffline, hasMore, fetchEntries, loadMore, createEntry, requestAIResponse };
+  return { entries, loading, error, isOffline, hasMore, fetchEntries, loadMore, createEntry };
 }
