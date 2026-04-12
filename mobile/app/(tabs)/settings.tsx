@@ -161,7 +161,7 @@ export default function SettingsScreen() {
               onPress={() => void setEntryFont(opt.key as FontKey)}
             >
               <Text style={[styles.fontSample, { color: theme.text, fontFamily: FONTS[opt.key] }]}>
-                Writing feels better in the right font
+                Amor fati — love your fate.
               </Text>
               <Text style={[styles.fontLabel, { color: theme.textSecondary, fontFamily: FONTS.modern }]}>
                 {opt.label}

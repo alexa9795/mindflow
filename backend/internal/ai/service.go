@@ -114,7 +114,7 @@ func (s *service) CallClaude(ctx context.Context, messages []Message, userID str
 	}
 
 	resp, err := s.client.Messages.New(ctx, anthropic.MessageNewParams{
-		Model:     "claude-sonnet-4-6",
+		Model:     anthropic.ModelClaudeSonnet4_6,
 		MaxTokens: 500,
 		System: []anthropic.TextBlockParam{
 			{Text: SystemPrompt, Type: "text"},

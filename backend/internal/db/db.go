@@ -18,16 +18,21 @@ func Connect() error {
 	password := os.Getenv("DB_PASSWORD")
 	dbname := os.Getenv("DB_NAME")
 
+	sslMode := os.Getenv("DB_SSL_MODE")
+
 	if host == "" {
 		host = "localhost"
 	}
 	if port == "" {
 		port = "5433"
 	}
+	if sslMode == "" {
+		sslMode = "disable"
+	}
 
 	dsn := fmt.Sprintf(
-		"host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
-		host, port, user, password, dbname,
+		"host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",
+		host, port, user, password, dbname, sslMode,
 	)
 
 	var err error

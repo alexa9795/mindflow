@@ -15,6 +15,7 @@ import AIMessage from '../../components/AIMessage';
 import MoodSelector from '../../components/MoodSelector';
 import OfflineBanner from '../../components/OfflineBanner';
 import ThemedView from '../../components/ThemedView';
+import { COMPANION_NAME } from '../../constants/config';
 import { FONTS } from '../../constants/fonts';
 import { useSettings } from '../../context/SettingsContext';
 import { useEntries } from '../../hooks/useEntries';
@@ -128,6 +129,9 @@ export default function NewEntryScreen() {
           {aiLoading && (
             <View style={[styles.thinkingBubble, { backgroundColor: theme.surface, borderColor: theme.border }]}>
               <ActivityIndicator color={theme.accent} style={styles.thinkingSpinner} />
+              <Text style={[styles.thinkingText, { color: theme.textSecondary, fontFamily: FONTS.modern }]}>
+                {COMPANION_NAME} is thinking…
+              </Text>
             </View>
           )}
 
@@ -194,6 +198,11 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   thinkingSpinner: { alignSelf: 'flex-start' },
+  thinkingText: {
+    fontSize: 13,
+    marginTop: 6,
+    fontStyle: 'italic',
+  },
   footer: {
     padding: 20,
     paddingBottom: 32,
