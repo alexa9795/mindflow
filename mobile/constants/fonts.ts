@@ -17,7 +17,7 @@ export const DEFAULT_UI_FONT: FontKey = 'modern';
 /** Font used for journal entry body text. */
 export const DEFAULT_ENTRY_FONT: FontKey = 'robotoSerif';
 
-export const FONT_STORAGE_KEY = 'mindflow_font';
+export const FONT_STORAGE_KEY = 'echo_font';
 
 export const FONT_OPTIONS: { key: FontKey; label: string }[] = [
   { key: 'modern',      label: 'Modern'      },

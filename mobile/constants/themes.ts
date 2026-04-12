@@ -42,4 +42,4 @@ export const THEMES: Record<string, Theme> = {
 
 export const DEFAULT_THEME_ID = 'warmNeutral';
 
-export const THEME_STORAGE_KEY = 'mindflow_theme';
+export const THEME_STORAGE_KEY = 'echo_theme';

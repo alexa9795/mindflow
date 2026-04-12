@@ -63,4 +63,4 @@ export const MOOD_SETS: Record<string, MoodSet> = {
 };
 
 export const DEFAULT_MOOD_SET_ID = 'basic';
-export const MOOD_SET_STORAGE_KEY = 'mindflow_mood_set';
+export const MOOD_SET_STORAGE_KEY = 'echo_mood_set';

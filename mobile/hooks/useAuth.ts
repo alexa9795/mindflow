@@ -2,7 +2,7 @@ import * as SecureStore from 'expo-secure-store';
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { api, setToken, User } from '../services/api';
 
-const TOKEN_KEY = 'mindflow_jwt';
+const TOKEN_KEY = 'echo_jwt';
 
 interface AuthContextType {
   isAuthenticated: boolean;

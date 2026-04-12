@@ -66,7 +66,7 @@ func main() {
 	mux.HandleFunc("POST /api/entries/{id}/respond", middleware.Auth(middleware.MaxBodySize(entryHandler.Respond)))
 	mux.HandleFunc("POST /api/entries/{id}/messages", middleware.Auth(middleware.MaxBodySize(entryHandler.AddMessage)))
 
-	log.Printf("MindFlow API starting on port %s", port)
+	log.Printf("Echo API starting on port %s", port)
 	srv := &http.Server{
 		Addr:         ":" + port,
 		Handler:      mux,
