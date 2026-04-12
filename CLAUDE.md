@@ -1,4 +1,7 @@
-# MindFlow
+# Echo — AI-powered mobile journaling app
+
+> App name: **Echo**. AI companion name: **Echo** (same — intentional).
+> GitHub repo and local folder remain `mindflow` for continuity.
 
 ## Stack
 - Backend: Go 1.22+ (REST API) — golang.org/x/crypto pinned to v0.31.0 for Go 1.22 compatibility
@@ -55,3 +58,9 @@
 - [ ] Apple Developer account ($99/yr) + Google Play ($25 one-time)
 - [ ] Insights screen must have real content (not placeholder)
       before App Store submission — empty screens fail review
+- [ ] eas.json must be created before first EAS build
+      (run: eas build:configure)
+- [ ] App Store developer name and privacy policy must use
+      a company name, not personal name, if acquisition is
+      the goal — consider registering a legal entity before
+      submission

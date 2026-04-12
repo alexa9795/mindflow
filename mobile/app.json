@@ -1,20 +1,21 @@
 {
   "expo": {
-    "name": "MindFlow",
-    "slug": "mindflow",
-    "scheme": "mindflow",
+    "name": "Echo",
+    "slug": "echo-journal",
+    "scheme": "echo-journal",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#EDE8E0"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "journal.echo.app"
     },
     "android": {
       "adaptiveIcon": {
@@ -22,7 +23,8 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "journal.echo.app"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -30,7 +32,8 @@
     "plugins": [
       "expo-router",
       "expo-secure-store",
-      "expo-font"
+      "expo-font",
+      "react-native-svg"
     ]
   }
 }
