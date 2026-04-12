@@ -11,26 +11,22 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import AIMessage from '../../components/AIMessage';
 import MoodSelector from '../../components/MoodSelector';
 import OfflineBanner from '../../components/OfflineBanner';
 import ThemedView from '../../components/ThemedView';
-import { COMPANION_NAME } from '../../constants/config';
 import { FONTS } from '../../constants/fonts';
 import { useSettings } from '../../context/SettingsContext';
 import { useEntries } from '../../hooks/useEntries';
-import { ApiError, Message, NetworkError } from '../../services/api';
+import { ApiError, NetworkError } from '../../services/api';
 
 export default function NewEntryScreen() {
   const router = useRouter();
   const { theme, entryFont } = useSettings();
-  const { createEntry, requestAIResponse, isOffline } = useEntries();
+  const { createEntry, isOffline } = useEntries();
 
   const [content, setContent] = useState('');
   const [mood, setMood] = useState<number | undefined>();
   const [saving, setSaving] = useState(false);
-  const [aiLoading, setAiLoading] = useState(false);
-  const [aiMessage, setAiMessage] = useState<Message | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   async function submit() {
@@ -40,21 +36,9 @@ export default function NewEntryScreen() {
     }
     setError(null);
     setSaving(true);
-
     try {
       const entry = await createEntry(content.trim(), mood);
-      setSaving(false);
-      setAiLoading(true);
-
-      try {
-        const msg = await requestAIResponse(entry.id);
-        setAiMessage(msg);
-        setTimeout(() => router.replace(`/entry/${entry.id}`), 1200);
-      } catch (e: unknown) {
-        router.replace(`/entry/${entry.id}`);
-      } finally {
-        setAiLoading(false);
-      }
+      router.replace(`/entry/${entry.id}`);
     } catch (e: unknown) {
       setSaving(false);
       if (e instanceof NetworkError) {
@@ -67,7 +51,6 @@ export default function NewEntryScreen() {
     }
   }
 
-  const isSubmitting = saving || aiLoading;
   const activeEntryFont = FONTS[entryFont];
 
   return (
@@ -125,17 +108,6 @@ export default function NewEntryScreen() {
           {error && (
             <Text style={[styles.errorText, { fontFamily: FONTS.modern }]}>{error}</Text>
           )}
-
-          {aiLoading && (
-            <View style={[styles.thinkingBubble, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-              <ActivityIndicator color={theme.accent} style={styles.thinkingSpinner} />
-              <Text style={[styles.thinkingText, { color: theme.textSecondary, fontFamily: FONTS.modern }]}>
-                {COMPANION_NAME} is thinking…
-              </Text>
-            </View>
-          )}
-
-          {aiMessage && <AIMessage message={aiMessage} />}
         </ScrollView>
 
         <View style={[styles.footer, { backgroundColor: theme.background }]}>
@@ -143,16 +115,16 @@ export default function NewEntryScreen() {
             style={[
               styles.saveBtn,
               { backgroundColor: theme.accent },
-              isSubmitting && styles.saveBtnDisabled,
+              saving && styles.saveBtnDisabled,
             ]}
             onPress={submit}
-            disabled={isSubmitting}
+            disabled={saving}
           >
             {saving ? (
               <ActivityIndicator color={theme.background} />
             ) : (
               <Text style={[styles.saveBtnText, { color: theme.background, fontFamily: FONTS.modern }]}>
-                {aiLoading ? 'Getting reflection…' : 'Save & get reflection →'}
+                Save entry →
               </Text>
             )}
           </Pressable>
@@ -189,19 +161,6 @@ const styles = StyleSheet.create({
     color: '#DC2626',
     fontSize: 14,
     marginTop: 10,
-  },
-  thinkingBubble: {
-    borderRadius: 14,
-    borderWidth: 1,
-    padding: 14,
-    marginTop: 16,
-    alignItems: 'flex-start',
-  },
-  thinkingSpinner: { alignSelf: 'flex-start' },
-  thinkingText: {
-    fontSize: 13,
-    marginTop: 6,
-    fontStyle: 'italic',
   },
   footer: {
     padding: 20,

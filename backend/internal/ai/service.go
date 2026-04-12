@@ -115,7 +115,9 @@ func (s *service) CallClaude(ctx context.Context, messages []Message, userID str
 
 	resp, err := s.client.Messages.New(ctx, anthropic.MessageNewParams{
 		Model:     anthropic.ModelClaudeSonnet4_6,
-		MaxTokens: 500,
+		MaxTokens: 600,
+		// TextBlockParam{Type: "text"} is the SDK-idiomatic way to pass
+		// the system prompt as of v1.35.0 — no constructor available.
 		System: []anthropic.TextBlockParam{
 			{Text: SystemPrompt, Type: "text"},
 		},

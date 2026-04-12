@@ -34,3 +34,16 @@
 - Commit messages: imperative mood, under 72 chars
 - Branch per feature: feature/name
 - Never commit .env files
+
+## DEPLOYMENT CHECKLIST (before Railway launch)
+- [ ] Set JWT_SECRET env var (never use the dev fallback in prod)
+- [ ] Set DB_SSL_MODE=require for Railway Postgres
+- [ ] Restrict CORS Access-Control-Allow-Origin from "*" to the
+      actual Railway backend URL in middleware/cors.go
+- [ ] Set ANTHROPIC_API_KEY env var
+- [ ] Set DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME for
+      Railway Postgres instance
+- [ ] Review trigger word log rotation (logs/triggers.log will
+      grow unbounded in production)
+- [ ] Privacy policy in place before App Store submission (~€150)
+- [ ] Apple Developer account ($99/yr) + Google Play ($25 one-time)
