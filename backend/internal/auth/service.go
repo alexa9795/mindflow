@@ -5,9 +5,9 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"os"
 	"time"
 
+	"github.com/alexa9795/mindflow/internal/config"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/lib/pq"
 	"golang.org/x/crypto/bcrypt"
@@ -115,11 +115,6 @@ func (s *service) DeleteMe(ctx context.Context, userID string) error {
 }
 
 func generateToken(userID, email string) (string, error) {
-	secret := os.Getenv("JWT_SECRET")
-	if secret == "" {
-		secret = "dev_secret_change_in_production"
-	}
-
 	claims := jwt.MapClaims{
 		"sub":   userID,
 		"email": email,
@@ -128,5 +123,5 @@ func generateToken(userID, email string) (string, error) {
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString([]byte(secret))
+	return token.SignedString([]byte(config.JWTSecret()))
 }

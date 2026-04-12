@@ -3,10 +3,10 @@ package middleware
 import (
 	"context"
 	"net/http"
-	"os"
 	"strings"
 
 	"github.com/alexa9795/mindflow/internal/api"
+	"github.com/alexa9795/mindflow/internal/config"
 	"github.com/golang-jwt/jwt/v5"
 )
 
@@ -23,16 +23,12 @@ func Auth(next http.HandlerFunc) http.HandlerFunc {
 		}
 
 		tokenStr := strings.TrimPrefix(authHeader, "Bearer ")
-		secret := os.Getenv("JWT_SECRET")
-		if secret == "" {
-			secret = "dev_secret_change_in_production"
-		}
 
 		token, err := jwt.Parse(tokenStr, func(t *jwt.Token) (interface{}, error) {
 			if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
 				return nil, jwt.ErrSignatureInvalid
 			}
-			return []byte(secret), nil
+			return []byte(config.JWTSecret()), nil
 		})
 		if err != nil || !token.Valid {
 			api.WriteError(w, api.ErrUnauthorized)

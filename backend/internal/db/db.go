@@ -22,7 +22,7 @@ func Connect() error {
 		host = "localhost"
 	}
 	if port == "" {
-		port = "5432"
+		port = "5433"
 	}
 
 	dsn := fmt.Sprintf(

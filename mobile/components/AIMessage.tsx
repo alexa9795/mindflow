@@ -38,7 +38,7 @@ export default function AIMessage({ message }: AIMessageProps) {
 
   return (
     <View style={[styles.userBubble, { backgroundColor: theme.accent }]}>
-      <Text style={[styles.text, styles.userText, { fontFamily: activeEntryFont }]}>
+      <Text style={[styles.text, { color: theme.background, fontFamily: activeEntryFont }]}>
         {message.content}
       </Text>
     </View>
@@ -64,5 +64,4 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   text: { fontSize: 15, lineHeight: 22 },
-  userText: { color: '#FFFFFF' },
 });

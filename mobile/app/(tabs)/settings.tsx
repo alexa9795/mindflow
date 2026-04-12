@@ -291,7 +291,7 @@ export default function SettingsScreen() {
               placeholder="Your name"
               placeholderTextColor={theme.textSecondary}
               autoFocus
-              maxLength={60}
+              maxLength={50}
             />
             {nameError && (
               <Text style={[styles.modalError, { color: theme.destructive, fontFamily: FONTS.modern }]}>
