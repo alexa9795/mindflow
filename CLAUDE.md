@@ -35,6 +35,12 @@
 - Branch per feature: feature/name
 - Never commit .env files
 
+## 📋 TODO
+- Pattern detection (analyse mood trends and common themes across entries)
+- Insights screen (currently placeholder — must show real content
+  before App Store submission; will display pattern detection
+  results, mood trends, word frequency)
+
 ## DEPLOYMENT CHECKLIST (before Railway launch)
 - [ ] Set JWT_SECRET env var (never use the dev fallback in prod)
 - [ ] Set DB_SSL_MODE=require for Railway Postgres
@@ -47,3 +53,5 @@
       grow unbounded in production)
 - [ ] Privacy policy in place before App Store submission (~€150)
 - [ ] Apple Developer account ($99/yr) + Google Play ($25 one-time)
+- [ ] Insights screen must have real content (not placeholder)
+      before App Store submission — empty screens fail review

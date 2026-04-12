@@ -68,11 +68,7 @@ export default function NewEntryScreen() {
         <Text style={[styles.headerTitle, { color: theme.text, fontFamily: FONTS.modern }]}>
           New entry
         </Text>
-        <Pressable onPress={() => undefined} hitSlop={12}>
-          <Text style={[styles.fontToggle, { color: theme.textSecondary, fontFamily: FONTS.modern }]}>
-            Aa
-          </Text>
-        </Pressable>
+        <View style={{ width: 52 }} />
       </View>
 
       <KeyboardAvoidingView
@@ -106,7 +102,7 @@ export default function NewEntryScreen() {
           />
 
           {error && (
-            <Text style={[styles.errorText, { fontFamily: FONTS.modern }]}>{error}</Text>
+            <Text style={[styles.errorText, { color: theme.destructive, fontFamily: FONTS.modern }]}>{error}</Text>
           )}
         </ScrollView>
 
@@ -147,7 +143,6 @@ const styles = StyleSheet.create({
   },
   backBtn: { fontSize: 15, width: 52 },
   headerTitle: { fontSize: 17, fontWeight: '700' },
-  fontToggle: { fontSize: 15, width: 52, textAlign: 'right' },
   scrollContent: { padding: 20, paddingBottom: 20 },
   journal: {
     borderRadius: 14,
@@ -158,7 +153,6 @@ const styles = StyleSheet.create({
     minHeight: 220,
   },
   errorText: {
-    color: '#DC2626',
     fontSize: 14,
     marginTop: 10,
   },

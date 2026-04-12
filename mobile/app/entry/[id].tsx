@@ -165,7 +165,7 @@ export default function EntryDetailScreen() {
           )}
 
           {error && (
-            <Text style={[styles.errorText, { color: '#DC2626', fontFamily: FONTS.modern }]}>
+            <Text style={[styles.errorText, { color: theme.destructive, fontFamily: FONTS.modern }]}>
               {error}
             </Text>
           )}

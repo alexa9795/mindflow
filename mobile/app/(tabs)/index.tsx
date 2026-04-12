@@ -19,7 +19,7 @@ import { useFocusEffect } from 'expo-router';
 export default function HomeScreen() {
   const router = useRouter();
   const { theme } = useSettings();
-  const { entries, loading, isOffline, fetchEntries } = useEntries();
+  const { entries, loading, isOffline, fetchEntries, loadMore, hasMore } = useEntries();
 
   useFocusEffect(
     useCallback(() => {
@@ -37,7 +37,7 @@ export default function HomeScreen() {
         </Text>
       </View>
 
-      {loading ? (
+      {loading && entries.length === 0 ? (
         <View style={styles.center}>
           <ActivityIndicator color={theme.accent} />
         </View>
@@ -60,6 +60,16 @@ export default function HomeScreen() {
             </View>
           }
           renderItem={({ item }) => <EntryCard entry={item} />}
+          onEndReached={hasMore ? () => void loadMore() : undefined}
+          onEndReachedThreshold={0.3}
+          ListFooterComponent={
+            loading && entries.length > 0 ? (
+              <ActivityIndicator
+                color={theme.accent}
+                style={{ marginVertical: 20 }}
+              />
+            ) : null
+          }
         />
       )}
 

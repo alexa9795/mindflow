@@ -6,7 +6,9 @@ interface EntriesState {
   loading: boolean;
   error: string | null;
   isOffline: boolean;
+  hasMore: boolean;
   fetchEntries: () => Promise<void>;
+  loadMore: () => Promise<void>;
   createEntry: (content: string, moodScore?: number) => Promise<Entry>;
   requestAIResponse: (entryId: string) => Promise<Message>;
 }
@@ -16,14 +18,18 @@ export function useEntries(): EntriesState {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isOffline, setIsOffline] = useState(false);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
 
   const fetchEntries = useCallback(async () => {
     setLoading(true);
     setError(null);
     setIsOffline(false);
     try {
-      const res = await api.getEntries();
+      const res = await api.getEntries(1);
       setEntries(res.entries);
+      setPage(1);
+      setHasMore(res.entries.length === 20);
     } catch (e: unknown) {
       if (e instanceof NetworkError) {
         setIsOffline(true);
@@ -34,6 +40,22 @@ export function useEntries(): EntriesState {
       setLoading(false);
     }
   }, []);
+
+  const loadMore = useCallback(async () => {
+    if (loading || !hasMore) return;
+    setLoading(true);
+    try {
+      const nextPage = page + 1;
+      const res = await api.getEntries(nextPage);
+      setEntries((prev) => [...prev, ...res.entries]);
+      setPage(nextPage);
+      setHasMore(res.entries.length === 20);
+    } catch (e: unknown) {
+      if (e instanceof NetworkError) setIsOffline(true);
+    } finally {
+      setLoading(false);
+    }
+  }, [loading, hasMore, page]);
 
   const createEntry = useCallback(async (content: string, moodScore?: number): Promise<Entry> => {
     setIsOffline(false);
@@ -57,5 +79,5 @@ export function useEntries(): EntriesState {
     }
   }, []);
 
-  return { entries, loading, error, isOffline, fetchEntries, createEntry, requestAIResponse };
+  return { entries, loading, error, isOffline, hasMore, fetchEntries, loadMore, createEntry, requestAIResponse };
 }
