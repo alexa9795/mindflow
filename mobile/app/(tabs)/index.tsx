@@ -33,7 +33,7 @@ export default function HomeScreen() {
 
       <View style={[styles.header, { backgroundColor: theme.surface, borderBottomColor: theme.border }]}>
         <Text style={[styles.title, { color: theme.text, fontFamily: FONTS.modern }]}>
-          My Journal
+          Dear Journal
         </Text>
       </View>
 

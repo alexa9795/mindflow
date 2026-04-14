@@ -6,11 +6,11 @@ import {
   Platform,
   Pressable,
   SafeAreaView,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
+  useWindowDimensions,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -23,6 +23,7 @@ import EchoLogo from '../../components/EchoLogo';
 export default function RegisterScreen() {
   const router = useRouter();
   const { register } = useAuth();
+  const { height } = useWindowDimensions();
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -52,6 +53,9 @@ export default function RegisterScreen() {
     }
   }
 
+  const zone1Height = height * 0.52;
+  const zone2Height = height * 0.18;
+
   return (
     <KeyboardAvoidingView
       style={styles.root}
@@ -59,30 +63,32 @@ export default function RegisterScreen() {
     >
       <StatusBar style="light" />
 
-      <View style={styles.imageWrap}>
+      {/* Zone 1 — Hero image */}
+      <View style={{ height: zone1Height }}>
         <ImageBackground
-          source={require('../../assets/books.jpeg')}
+          source={require('../../assets/stones.jpeg')}
           resizeMode="cover"
-          style={styles.image}
+          style={StyleSheet.absoluteFill}
         />
         <LinearGradient
-          colors={['transparent', '#F5F0E8']}
-          style={styles.fadeOverlay}
+          colors={['transparent', 'transparent', '#EDE8E000', '#EDE8E0']}
+          locations={[0, 0.4, 0.7, 1]}
+          style={StyleSheet.absoluteFill}
         />
       </View>
 
-      <SafeAreaView style={styles.sheet}>
-        <ScrollView
-          contentContainerStyle={styles.scroll}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
-          <View style={styles.logoWrap}>
-            <EchoLogo color="#2C2418" width={220} />
-          </View>
+      {/* Zone 2 — Identity */}
+      <View style={[styles.identityZone, { height: zone2Height }]}>
+        <View style={styles.logoRow}>
+          <EchoLogo color="#2C2418" width={220} hideText />
+          <Text style={styles.wordmark}>Echo</Text>
+        </View>
+        <Text style={styles.tagline}>your private space to think</Text>
+      </View>
 
-          <View style={styles.divider} />
-
+      {/* Zone 3 — Form */}
+      <SafeAreaView style={styles.formZone}>
+        <View style={styles.form}>
           {error !== null && (
             <Text style={styles.errorText}>{error}</Text>
           )}
@@ -136,7 +142,7 @@ export default function RegisterScreen() {
               <Text style={styles.toggleLinkBold}>Sign in</Text>
             </Text>
           </Pressable>
-        </ScrollView>
+        </View>
       </SafeAreaView>
     </KeyboardAvoidingView>
   );
@@ -145,40 +151,41 @@ export default function RegisterScreen() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: '#F5F0E8',
+    backgroundColor: '#EDE8E0',
   },
-  imageWrap: {
-    height: 280,
-  },
-  image: {
-    flex: 1,
-  },
-  fadeOverlay: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 120,
-  },
-  sheet: {
-    flex: 1,
-    backgroundColor: '#F5F0E8',
-  },
-  scroll: {
+  identityZone: {
+    backgroundColor: '#EDE8E0',
+    alignItems: 'center',
+    justifyContent: 'center',
     paddingHorizontal: 28,
-    paddingBottom: 40,
-    alignItems: 'center',
+    paddingBottom: 8,
   },
-  logoWrap: {
-    marginTop: -16,
+  logoRow: {
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 10,
   },
-  divider: {
-    width: 28,
-    height: 1,
-    backgroundColor: '#D6CFC4',
-    alignSelf: 'center',
-    marginVertical: 14,
+  wordmark: {
+    fontFamily: FONTS.handwriting,
+    fontSize: 38,
+    color: '#2C2418',
+  },
+  tagline: {
+    fontFamily: FONTS.handwriting,
+    fontSize: 18,
+    color: '#7A6F63',
+    marginTop: 4,
+  },
+  formZone: {
+    flex: 1,
+    backgroundColor: '#EDE8E0',
+  },
+  form: {
+    flex: 1,
+    paddingHorizontal: 28,
+    paddingTop: 8,
+    paddingBottom: 16,
+    justifyContent: 'center',
   },
   errorText: {
     fontFamily: FONTS.modern,
@@ -193,15 +200,15 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch',
     borderBottomWidth: 1,
     borderBottomColor: '#C5BDB4',
-    paddingVertical: 10,
+    paddingVertical: 12,
     paddingHorizontal: 2,
     fontSize: 15,
     fontFamily: FONTS.modern,
     color: '#2C2418',
-    marginBottom: 14,
+    marginBottom: 18,
   },
   inputPassword: {
-    marginBottom: 6,
+    marginBottom: 8,
   },
   btn: {
     alignSelf: 'stretch',
@@ -209,7 +216,7 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     paddingVertical: 14,
     alignItems: 'center',
-    marginTop: 10,
+    marginTop: 12,
   },
   btnDisabled: {
     opacity: 0.6,
@@ -226,7 +233,7 @@ const styles = StyleSheet.create({
     color: '#9A8F84',
     fontFamily: FONTS.modern,
     textAlign: 'center',
-    marginTop: 16,
+    marginTop: 18,
   },
   toggleLinkBold: {
     fontWeight: '600',

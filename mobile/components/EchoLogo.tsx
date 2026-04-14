@@ -4,6 +4,8 @@ import Svg, { Rect, Text } from 'react-native-svg';
 export interface EchoLogoProps {
   color: string;
   width?: number;
+  /** Render only the waveform bars — omit the "Echo" SVG text. */
+  hideText?: boolean;
 }
 
 // Bar data encoding the phonetic shape of "love yourself".
@@ -29,14 +31,18 @@ const BAR_RX = 1.75;
 const CENTER_Y = 26;
 const GROUP_X = 30;
 
-export default function EchoLogo({ color, width = 220 }: EchoLogoProps) {
-  const scale = width / 220;
+export default function EchoLogo({ color, width = 220, hideText = false }: EchoLogoProps) {
+  // When hiding text, crop viewBox to the bars' actual bounding box (x=26–128)
+  // trimming the ~30px of leading empty space so the row centres correctly.
+  const viewBox = hideText ? '26 0 102 52' : '0 0 220 52';
+  const svgWidth = hideText ? Math.round(width * 102 / 220) : width;
+  const scale = svgWidth / (hideText ? 102 : 220);
 
   return (
     <Svg
-      width={width}
+      width={svgWidth}
       height={52 * scale}
-      viewBox="0 0 220 52"
+      viewBox={viewBox}
     >
       {/* Regular bars */}
       {BARS.map(([xOff, h, op], i) => (
@@ -73,16 +79,18 @@ export default function EchoLogo({ color, width = 220 }: EchoLogoProps) {
       />
 
       {/* "Echo" wordmark — x = GROUP_X + 103 = 133 */}
-      <Text
-        x={133}
-        y={33}
-        fontFamily="PlayfairDisplay_400Regular"
-        fontSize={22}
-        letterSpacing={2}
-        fill={color}
-      >
-        Echo
-      </Text>
+      {!hideText && (
+        <Text
+          x={133}
+          y={33}
+          fontFamily="PlayfairDisplay_400Regular"
+          fontSize={22}
+          letterSpacing={2}
+          fill={color}
+        >
+          Echo
+        </Text>
+      )}
     </Svg>
   );
 }
