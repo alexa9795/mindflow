@@ -48,7 +48,11 @@ func main() {
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprintf(w, `{"status":"ok","service":"echo-api"}`)
+		env := os.Getenv("ENV")
+		if env == "" {
+			env = "development"
+		}
+		fmt.Fprintf(w, `{"status":"ok","env":"%s"}`, env)
 	})
 
 	// Auth routes.

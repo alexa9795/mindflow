@@ -1,8 +1,5 @@
-import Constants from 'expo-constants';
-
-// Automatically uses the right IP when running in Expo Go on a device
-const host = Constants.expoConfig?.hostUri?.split(':').shift() ?? 'localhost';
-export const API_URL = `http://${host}:8080`;
+const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:8080';
+export const API_URL = BASE_URL;
 
 let authToken: string | null = null;
 

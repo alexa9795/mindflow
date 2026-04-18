@@ -1,38 +1,33 @@
 {
   "expo": {
-    "name": "Echo",
-    "slug": "echo-journal",
-    "scheme": "echo-journal",
-    "version": "1.0.0",
+    "name": "MindFlow",
+    "slug": "mindflow",
+    "version": "0.1.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
+    "icon": "./assets/icon.png",
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#EDE8E0"
     },
     "ios": {
-      "supportsTablet": true,
-      "bundleIdentifier": "journal.echo.app"
+      "supportsTablet": false,
+      "bundleIdentifier": "com.antie.mindflow",
+      "buildNumber": "1"
     },
     "android": {
+      "package": "com.antie.mindflow",
+      "versionCode": 1,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#EDE8E0"
-      },
-      "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false,
-      "package": "journal.echo.app"
+      }
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "plugins": [
-      "expo-router",
-      "expo-secure-store",
-      "expo-font"
-    ]
+    "plugins": ["expo-router", "expo-secure-store", "expo-font"],
+    "scheme": "mindflow"
   }
 }
