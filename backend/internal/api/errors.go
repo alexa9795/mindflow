@@ -19,12 +19,14 @@ func (e APIError) WithMessage(msg string) APIError {
 
 // Pre-defined errors covering the common HTTP error cases.
 var (
-	ErrBadRequest     = APIError{Code: "BAD_REQUEST", Message: "Bad request", HTTPStatus: http.StatusBadRequest}
-	ErrUnauthorized   = APIError{Code: "UNAUTHORIZED", Message: "Unauthorized", HTTPStatus: http.StatusUnauthorized}
-	ErrForbidden      = APIError{Code: "FORBIDDEN", Message: "Forbidden", HTTPStatus: http.StatusForbidden}
-	ErrNotFound       = APIError{Code: "NOT_FOUND", Message: "Not found", HTTPStatus: http.StatusNotFound}
-	ErrConflict       = APIError{Code: "CONFLICT", Message: "Conflict", HTTPStatus: http.StatusConflict}
-	ErrInternalServer = APIError{Code: "INTERNAL_SERVER_ERROR", Message: "Internal server error", HTTPStatus: http.StatusInternalServerError}
+	ErrBadRequest          = APIError{Code: "BAD_REQUEST", Message: "Bad request", HTTPStatus: http.StatusBadRequest}
+	ErrUnauthorized        = APIError{Code: "UNAUTHORIZED", Message: "Unauthorized", HTTPStatus: http.StatusUnauthorized}
+	ErrForbidden           = APIError{Code: "FORBIDDEN", Message: "Forbidden", HTTPStatus: http.StatusForbidden}
+	ErrNotFound            = APIError{Code: "NOT_FOUND", Message: "Not found", HTTPStatus: http.StatusNotFound}
+	ErrConflict            = APIError{Code: "CONFLICT", Message: "Conflict", HTTPStatus: http.StatusConflict}
+	ErrInternalServer      = APIError{Code: "INTERNAL_SERVER_ERROR", Message: "Internal server error", HTTPStatus: http.StatusInternalServerError}
+	ErrSubscriptionLimit   = APIError{Code: "SUBSCRIPTION_LIMIT_REACHED", Message: "You've reached your 10 entry limit for this month. Upgrade to continue journaling.", HTTPStatus: http.StatusForbidden}
+	ErrTrialNotAvailable   = APIError{Code: "TRIAL_NOT_AVAILABLE", Message: "Trial is only available for free accounts.", HTTPStatus: http.StatusBadRequest}
 )
 
 // WriteError writes a JSON error response in the canonical shape:

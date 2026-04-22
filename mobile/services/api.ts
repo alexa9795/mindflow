@@ -20,7 +20,16 @@ export class ApiError extends Error {
   constructor(
     message: string,
     readonly status: number,
+    readonly code?: string,
   ) {
+    super(message);
+  }
+}
+
+/** Thrown specifically when the user has hit their monthly free-tier entry limit. */
+export class SubscriptionLimitError extends Error {
+  readonly isSubscriptionLimit = true;
+  constructor(message: string) {
     super(message);
   }
 }
@@ -43,13 +52,15 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
   if (!res.ok) {
     let message = `HTTP ${res.status}`;
+    let code: string | undefined;
     try {
-      const body = (await res.json()) as { error?: { message?: string } };
+      const body = (await res.json()) as { error?: { message?: string; code?: string } };
       if (body.error?.message) message = body.error.message;
+      if (body.error?.code) code = body.error.code;
     } catch {
       // response body wasn't JSON — fall back to status code message
     }
-    throw new ApiError(message, res.status);
+    throw new ApiError(message, res.status, code);
   }
 
   if (res.status === 204 || res.status === 205) {
@@ -59,11 +70,20 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+export interface SubscriptionInfo {
+  tier: string;
+  is_active: boolean;
+  entries_used: number;
+  limit: number;
+  expires_at: string | null;
+}
+
 export interface User {
   id: string;
   email: string;
   name: string;
   created_at?: string;
+  subscription?: SubscriptionInfo;
 }
 
 export interface AuthResponse {
@@ -105,10 +125,23 @@ export const api = {
       `/api/entries?page=${page}`,
     ),
 
-  createEntry: (content: string, mood_score?: number) =>
-    request<Entry>('/api/entries', {
+  createEntry: async (content: string, mood_score?: number) => {
+    try {
+      return await request<Entry>('/api/entries', {
+        method: 'POST',
+        body: JSON.stringify({ content, mood_score }),
+      });
+    } catch (e) {
+      if (e instanceof ApiError && e.code === 'SUBSCRIPTION_LIMIT_REACHED') {
+        throw new SubscriptionLimitError(e.message);
+      }
+      throw e;
+    }
+  },
+
+  activateTrial: () =>
+    request<{ tier: string; expires_at: string }>('/api/subscription/trial', {
       method: 'POST',
-      body: JSON.stringify({ content, mood_score }),
     }),
 
   getEntry: (id: string) => request<Entry>(`/api/entries/${id}`),

@@ -12,6 +12,7 @@ interface AuthContextType {
   register: (email: string, password: string, name: string) => Promise<void>;
   logout: () => Promise<void>;
   updateUser: (user: User) => void;
+  isSubscriptionLimitReached: () => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -71,9 +72,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setCurrentUser(user);
   }, []);
 
+  const isSubscriptionLimitReached = useCallback((): boolean => {
+    const sub = currentUser?.subscription;
+    if (!sub) return false;
+    return sub.limit !== -1 && sub.entries_used >= sub.limit;
+  }, [currentUser]);
+
   return React.createElement(
     AuthContext.Provider,
-    { value: { isAuthenticated: currentUser !== null, isLoading, currentUser, login, register, logout, updateUser } },
+    { value: { isAuthenticated: currentUser !== null, isLoading, currentUser, login, register, logout, updateUser, isSubscriptionLimitReached } },
     children,
   );
 }

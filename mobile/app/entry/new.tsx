@@ -16,18 +16,22 @@ import OfflineBanner from '../../components/OfflineBanner';
 import ThemedView from '../../components/ThemedView';
 import { FONTS } from '../../constants/fonts';
 import { useSettings } from '../../context/SettingsContext';
+import { useAuth } from '../../hooks/useAuth';
 import { useEntries } from '../../hooks/useEntries';
-import { ApiError, NetworkError } from '../../services/api';
+import { ApiError, NetworkError, SubscriptionLimitError } from '../../services/api';
 
 export default function NewEntryScreen() {
   const router = useRouter();
   const { theme, entryFont } = useSettings();
   const { createEntry, isOffline } = useEntries();
+  const { isSubscriptionLimitReached } = useAuth();
 
   const [content, setContent] = useState('');
   const [mood, setMood] = useState<number | undefined>();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const limitReached = isSubscriptionLimitReached();
 
   async function submit() {
     if (!content.trim()) {
@@ -41,7 +45,9 @@ export default function NewEntryScreen() {
       router.replace(`/entry/${entry.id}`);
     } catch (e: unknown) {
       setSaving(false);
-      if (e instanceof NetworkError) {
+      if (e instanceof SubscriptionLimitError) {
+        setError("You've used all 10 free entries this month.");
+      } else if (e instanceof NetworkError) {
         setError("You're offline — your entry couldn't be saved");
       } else if (e instanceof ApiError) {
         setError(e.message);
@@ -82,6 +88,19 @@ export default function NewEntryScreen() {
         >
           <MoodSelector selected={mood} onSelect={setMood} />
 
+          {limitReached && (
+            <View style={[styles.limitBanner, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+              <Text style={[styles.limitText, { color: theme.textSecondary, fontFamily: FONTS.modern }]}>
+                You've used all 10 free entries this month.{' '}
+              </Text>
+              <Pressable onPress={() => router.push('/(tabs)/settings')}>
+                <Text style={[styles.upgradeLink, { color: theme.accent, fontFamily: FONTS.modern }]}>
+                  Upgrade
+                </Text>
+              </Pressable>
+            </View>
+          )}
+
           <TextInput
             style={[
               styles.journal,
@@ -111,10 +130,10 @@ export default function NewEntryScreen() {
             style={[
               styles.saveBtn,
               { backgroundColor: theme.accent },
-              saving && styles.saveBtnDisabled,
+              (saving || limitReached) && styles.saveBtnDisabled,
             ]}
             onPress={submit}
-            disabled={saving}
+            disabled={saving || limitReached}
           >
             {saving ? (
               <ActivityIndicator color={theme.background} />
@@ -156,6 +175,17 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginTop: 10,
   },
+  limitBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    borderRadius: 10,
+    borderWidth: 1,
+    padding: 12,
+    marginTop: 12,
+  },
+  limitText: { fontSize: 13 },
+  upgradeLink: { fontSize: 13, fontWeight: '600' },
   footer: {
     padding: 20,
     paddingBottom: 32,

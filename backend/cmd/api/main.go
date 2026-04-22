@@ -12,6 +12,7 @@ import (
 	"github.com/alexa9795/mindflow/internal/db"
 	"github.com/alexa9795/mindflow/internal/entry"
 	"github.com/alexa9795/mindflow/internal/middleware"
+	"github.com/alexa9795/mindflow/internal/subscription"
 	"github.com/joho/godotenv"
 )
 
@@ -30,9 +31,12 @@ func main() {
 	}
 
 	// Wire up dependencies: repo → service → handler.
+	subRepo := subscription.NewRepository(db.DB)
+	subSvc := subscription.NewService(subRepo)
+
 	authRepo := auth.NewRepository(db.DB)
 	authSvc := auth.NewService(authRepo)
-	authHandler := auth.NewHandler(authSvc)
+	authHandler := auth.NewHandler(authSvc, subSvc)
 
 	aiSvc := ai.NewService()
 	entryRepo := entry.NewRepository(db.DB)
@@ -55,15 +59,21 @@ func main() {
 		fmt.Fprintf(w, `{"status":"ok","env":"%s"}`, env)
 	})
 
+	subCheck := middleware.CheckSubscription(subSvc)
+
 	// Auth routes.
 	mux.HandleFunc("POST /api/auth/register", middleware.MaxBodySize(authHandler.Register))
 	mux.HandleFunc("POST /api/auth/login", middleware.MaxBodySize(authHandler.Login))
 	mux.HandleFunc("GET /api/auth/me", middleware.Auth(authHandler.Me))
 	mux.HandleFunc("PATCH /api/auth/me", middleware.Auth(middleware.MaxBodySize(authHandler.PatchMe)))
 	mux.HandleFunc("DELETE /api/auth/me", middleware.Auth(authHandler.DeleteMe))
+	mux.HandleFunc("POST /api/subscription/trial", middleware.Auth(authHandler.Trial))
 
 	// Entry routes (require auth).
-	mux.HandleFunc("POST /api/entries", middleware.Auth(middleware.MaxBodySize(entryHandler.Create)))
+	// POST /api/entries also enforces the subscription limit.
+	mux.Handle("POST /api/entries", middleware.Auth(
+		http.HandlerFunc(subCheck(middleware.MaxBodySize(entryHandler.Create)).ServeHTTP),
+	))
 	mux.HandleFunc("GET /api/entries", middleware.Auth(entryHandler.List))
 	mux.HandleFunc("DELETE /api/entries", middleware.Auth(entryHandler.DeleteAll))
 	mux.HandleFunc("GET /api/entries/{id}", middleware.Auth(entryHandler.Get))

@@ -20,6 +20,7 @@ type Service interface {
 	GetMe(ctx context.Context, userID string) (*User, error)
 	UpdateMe(ctx context.Context, userID, name string) (*User, error)
 	DeleteMe(ctx context.Context, userID string) error
+	ActivateTrial(ctx context.Context, userID string) (time.Time, error)
 }
 
 type service struct {
@@ -112,6 +113,24 @@ func (s *service) DeleteMe(ctx context.Context, userID string) error {
 		return fmt.Errorf("delete me: %w", err)
 	}
 	return nil
+}
+
+func (s *service) ActivateTrial(ctx context.Context, userID string) (time.Time, error) {
+	subType, err := s.repo.GetSubscriptionType(ctx, userID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return time.Time{}, ErrUserNotFound
+		}
+		return time.Time{}, fmt.Errorf("get subscription type: %w", err)
+	}
+	if subType != "free" {
+		return time.Time{}, ErrTrialNotAvailable
+	}
+	expiresAt, err := s.repo.ActivateTrial(ctx, userID)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("activate trial: %w", err)
+	}
+	return expiresAt, nil
 }
 
 func generateToken(userID, email string) (string, error) {

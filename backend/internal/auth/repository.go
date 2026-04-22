@@ -14,6 +14,8 @@ type Repository interface {
 	GetUserByID(ctx context.Context, id string) (*User, error)
 	UpdateUserName(ctx context.Context, id, name string) error
 	DeleteUser(ctx context.Context, id string) error
+	GetSubscriptionType(ctx context.Context, userID string) (string, error)
+	ActivateTrial(ctx context.Context, userID string) (time.Time, error)
 }
 
 type repository struct {
@@ -76,4 +78,31 @@ func (r *repository) DeleteUser(ctx context.Context, id string) error {
 		return fmt.Errorf("delete user: %w", err)
 	}
 	return nil
+}
+
+func (r *repository) GetSubscriptionType(ctx context.Context, userID string) (string, error) {
+	var subType string
+	err := r.db.QueryRowContext(ctx,
+		`SELECT subscription_type FROM users WHERE id = $1`, userID,
+	).Scan(&subType)
+	if err != nil {
+		return "", fmt.Errorf("get subscription type: %w", err)
+	}
+	return subType, nil
+}
+
+func (r *repository) ActivateTrial(ctx context.Context, userID string) (time.Time, error) {
+	var expiresAt time.Time
+	err := r.db.QueryRowContext(ctx, `
+		UPDATE users
+		SET subscription_type = 'trial',
+		    subscription_expires_at = NOW() + INTERVAL '7 days'
+		WHERE id = $1
+		RETURNING subscription_expires_at`,
+		userID,
+	).Scan(&expiresAt)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("activate trial: %w", err)
+	}
+	return expiresAt, nil
 }

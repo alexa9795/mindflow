@@ -9,16 +9,18 @@ import (
 
 	api "github.com/alexa9795/mindflow/internal/api"
 	"github.com/alexa9795/mindflow/internal/middleware"
+	"github.com/alexa9795/mindflow/internal/subscription"
 )
 
 // Handler holds the HTTP handlers for auth endpoints.
 type Handler struct {
-	svc Service
+	svc    Service
+	subSvc *subscription.Service
 }
 
-// NewHandler returns a Handler backed by the given Service.
-func NewHandler(svc Service) *Handler {
-	return &Handler{svc: svc}
+// NewHandler returns a Handler backed by the given Service and subscription Service.
+func NewHandler(svc Service, subSvc *subscription.Service) *Handler {
+	return &Handler{svc: svc, subSvc: subSvc}
 }
 
 func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
@@ -124,8 +126,51 @@ func (h *Handler) Me(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	subStatus, err := h.subSvc.CheckSubscription(r.Context(), userID)
+	if err != nil {
+		log.Printf("subscription check error in me: %v", err)
+		api.WriteError(w, api.ErrInternalServer)
+		return
+	}
+	user.Subscription = &SubscriptionInfo{
+		Tier:        string(subStatus.Tier),
+		IsActive:    subStatus.IsActive,
+		EntriesUsed: subStatus.EntriesUsed,
+		Limit:       subStatus.Limit,
+		ExpiresAt:   subStatus.ExpiresAt,
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(user)
+}
+
+func (h *Handler) Trial(w http.ResponseWriter, r *http.Request) {
+	userID, ok := r.Context().Value(middleware.UserIDKey).(string)
+	if !ok || userID == "" {
+		api.WriteError(w, api.ErrUnauthorized)
+		return
+	}
+
+	expiresAt, err := h.svc.ActivateTrial(r.Context(), userID)
+	if err != nil {
+		if errors.Is(err, ErrTrialNotAvailable) {
+			api.WriteError(w, api.ErrTrialNotAvailable)
+			return
+		}
+		if errors.Is(err, ErrUserNotFound) {
+			api.WriteError(w, api.ErrNotFound)
+			return
+		}
+		log.Printf("activate trial error: %v", err)
+		api.WriteError(w, api.ErrInternalServer)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
+		"tier":       "trial",
+		"expires_at": expiresAt,
+	})
 }
 
 func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
