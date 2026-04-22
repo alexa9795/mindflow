@@ -38,8 +38,7 @@ func (s *service) Register(ctx context.Context, req RegisterRequest) (*AuthRespo
 		return nil, fmt.Errorf("hash password: %w", err)
 	}
 
-	trialEndsAt := time.Now().Add(7 * 24 * time.Hour)
-	userID, err := s.repo.CreateUser(ctx, req.Email, req.Name, string(hashed), trialEndsAt)
+	userID, err := s.repo.CreateUser(ctx, req.Email, req.Name, string(hashed))
 	if err != nil {
 		var pgErr *pq.Error
 		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
