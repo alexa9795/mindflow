@@ -65,7 +65,7 @@ func (r *repository) GetUserByID(ctx context.Context, id string) (*User, error) 
 }
 
 func (r *repository) UpdateUserName(ctx context.Context, id, name string) error {
-	_, err := r.db.ExecContext(ctx, `UPDATE users SET name = $1 WHERE id = $2`, name, id)
+	_, err := r.db.ExecContext(ctx, `UPDATE users SET name = $1, updated_at = NOW() WHERE id = $2`, name, id)
 	if err != nil {
 		return fmt.Errorf("update user name: %w", err)
 	}

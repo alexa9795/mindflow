@@ -18,3 +18,9 @@ type Message struct {
 	Content   string    `json:"content"`
 	CreatedAt time.Time `json:"created_at"`
 }
+
+// ExportData is the GDPR Article 20 machine-readable export for one user.
+type ExportData struct {
+	ExportedAt time.Time `json:"exported_at"`
+	Entries    []Entry   `json:"entries"`
+}

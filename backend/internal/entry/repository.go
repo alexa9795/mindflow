@@ -9,12 +9,14 @@ import (
 // Repository is the data-access interface for journal entries and messages.
 type Repository interface {
 	Create(ctx context.Context, userID, content string, moodScore *int) (*Entry, error)
-	List(ctx context.Context, userID string, limit, offset int) ([]Entry, error)
+	List(ctx context.Context, userID string, limit, offset int) ([]Entry, int, error)
 	GetByID(ctx context.Context, id, userID string) (*Entry, error)
 	GetContent(ctx context.Context, id, userID string) (string, error)
+	GetAssistantMessage(ctx context.Context, entryID string) (*Message, error)
 	SaveMessage(ctx context.Context, entryID, role, content string) (*Message, error)
 	SaveMessagesInTx(ctx context.Context, entryID, userContent, aiContent string) (*Message, *Message, error)
 	LoadMessages(ctx context.Context, entryID string) ([]Message, error)
+	ExportUserData(ctx context.Context, userID string) ([]Entry, error)
 	DeleteAllByUserID(ctx context.Context, userID string) error
 }
 
@@ -41,9 +43,9 @@ func (r *repository) Create(ctx context.Context, userID, content string, moodSco
 	return &e, nil
 }
 
-func (r *repository) List(ctx context.Context, userID string, limit, offset int) ([]Entry, error) {
+func (r *repository) List(ctx context.Context, userID string, limit, offset int) ([]Entry, int, error) {
 	rows, err := r.db.QueryContext(ctx, `
-		SELECT id, user_id, content, mood_score, created_at
+		SELECT id, user_id, LEFT(content, 120) AS content, mood_score, created_at, COUNT(*) OVER() AS total
 		FROM entries
 		WHERE user_id = $1
 		ORDER BY created_at DESC
@@ -51,19 +53,20 @@ func (r *repository) List(ctx context.Context, userID string, limit, offset int)
 		userID, limit, offset,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("list entries: %w", err)
+		return nil, 0, fmt.Errorf("list entries: %w", err)
 	}
 	defer rows.Close()
 
+	var total int
 	entries := []Entry{}
 	for rows.Next() {
 		var e Entry
-		if err := rows.Scan(&e.ID, &e.UserID, &e.Content, &e.MoodScore, &e.CreatedAt); err != nil {
-			return nil, fmt.Errorf("scan entry: %w", err)
+		if err := rows.Scan(&e.ID, &e.UserID, &e.Content, &e.MoodScore, &e.CreatedAt, &total); err != nil {
+			return nil, 0, fmt.Errorf("scan entry: %w", err)
 		}
 		entries = append(entries, e)
 	}
-	return entries, rows.Err()
+	return entries, total, rows.Err()
 }
 
 func (r *repository) GetByID(ctx context.Context, id, userID string) (*Entry, error) {
@@ -90,6 +93,22 @@ func (r *repository) GetContent(ctx context.Context, id, userID string) (string,
 		return "", fmt.Errorf("get entry content: %w", err)
 	}
 	return content, nil
+}
+
+func (r *repository) GetAssistantMessage(ctx context.Context, entryID string) (*Message, error) {
+	var m Message
+	err := r.db.QueryRowContext(ctx, `
+		SELECT id, entry_id, role, content, created_at
+		FROM messages
+		WHERE entry_id = $1 AND role = 'assistant'
+		ORDER BY created_at ASC
+		LIMIT 1`,
+		entryID,
+	).Scan(&m.ID, &m.EntryID, &m.Role, &m.Content, &m.CreatedAt)
+	if err != nil {
+		return nil, err
+	}
+	return &m, nil
 }
 
 func (r *repository) SaveMessage(ctx context.Context, entryID, role, content string) (*Message, error) {
@@ -186,4 +205,40 @@ func (r *repository) LoadMessages(ctx context.Context, entryID string) ([]Messag
 		messages = append(messages, m)
 	}
 	return messages, rows.Err()
+}
+
+// ExportUserData returns all entries with their full content and messages for GDPR Article 20.
+func (r *repository) ExportUserData(ctx context.Context, userID string) ([]Entry, error) {
+	rows, err := r.db.QueryContext(ctx, `
+		SELECT id, user_id, content, mood_score, created_at
+		FROM entries
+		WHERE user_id = $1
+		ORDER BY created_at ASC`,
+		userID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("export entries: %w", err)
+	}
+	defer rows.Close()
+
+	entries := []Entry{}
+	for rows.Next() {
+		var e Entry
+		if err := rows.Scan(&e.ID, &e.UserID, &e.Content, &e.MoodScore, &e.CreatedAt); err != nil {
+			return nil, fmt.Errorf("scan entry: %w", err)
+		}
+		entries = append(entries, e)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	for i := range entries {
+		msgs, err := r.LoadMessages(ctx, entries[i].ID)
+		if err != nil {
+			return nil, fmt.Errorf("load messages for export: %w", err)
+		}
+		entries[i].Messages = msgs
+	}
+	return entries, nil
 }

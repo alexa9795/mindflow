@@ -1,4 +1,6 @@
+import * as FileSystem from 'expo-file-system/legacy';
 import { useRouter } from 'expo-router';
+import * as Sharing from 'expo-sharing';
 import React, { useState } from 'react';
 import {
   Alert,
@@ -87,6 +89,23 @@ export default function SettingsScreen() {
         },
       ],
     );
+  }
+
+  async function handleExportData() {
+    try {
+      const data = await api.exportData();
+      const json = JSON.stringify(data, null, 2);
+      const path = `${FileSystem.cacheDirectory}echo-export.json`;
+      await FileSystem.writeAsStringAsync(path, json, { encoding: FileSystem.EncodingType.UTF8 });
+      const canShare = await Sharing.isAvailableAsync();
+      if (canShare) {
+        await Sharing.shareAsync(path, { mimeType: 'application/json', dialogTitle: 'Export journal data' });
+      } else {
+        Alert.alert('Export saved', `Your data has been saved to:\n${path}`);
+      }
+    } catch {
+      Alert.alert('Error', 'Could not export data. Please try again.');
+    }
   }
 
   function handleDeleteAccount() {
@@ -236,6 +255,15 @@ export default function SettingsScreen() {
         >
           <Text style={[styles.actionText, { color: theme.text, fontFamily: FONTS.modern }]}>
             Sign out
+          </Text>
+        </Pressable>
+
+        <Pressable
+          style={[styles.actionRow, { backgroundColor: theme.surface, borderColor: theme.border }]}
+          onPress={() => void handleExportData()}
+        >
+          <Text style={[styles.actionText, { color: theme.text, fontFamily: FONTS.modern }]}>
+            Export my data
           </Text>
         </Pressable>
 

@@ -7,16 +7,17 @@ import (
 	"time"
 )
 
-type subscriptionInfo struct {
-	subscriptionType      string
-	subscriptionExpiresAt *time.Time
-	isTester              bool
-	entriesThisMonth      int
+// SubscriptionInfo holds the raw subscription fields fetched from the DB.
+type SubscriptionInfo struct {
+	SubscriptionType      string
+	SubscriptionExpiresAt *time.Time
+	IsTester              bool
+	EntriesThisMonth      int
 }
 
 // Repository is the data-access interface for subscription queries.
 type Repository interface {
-	getSubscriptionInfo(ctx context.Context, userID string) (*subscriptionInfo, error)
+	GetSubscriptionInfo(ctx context.Context, userID string) (*SubscriptionInfo, error)
 }
 
 type repository struct {
@@ -28,8 +29,8 @@ func NewRepository(db *sql.DB) Repository {
 	return &repository{db: db}
 }
 
-func (r *repository) getSubscriptionInfo(ctx context.Context, userID string) (*subscriptionInfo, error) {
-	var info subscriptionInfo
+func (r *repository) GetSubscriptionInfo(ctx context.Context, userID string) (*SubscriptionInfo, error) {
+	var info SubscriptionInfo
 	var expiresAt sql.NullTime
 
 	err := r.db.QueryRowContext(ctx, `
@@ -45,12 +46,12 @@ func (r *repository) getSubscriptionInfo(ctx context.Context, userID string) (*s
 		WHERE u.id = $1
 		GROUP BY u.subscription_type, u.subscription_expires_at, u.is_tester`,
 		userID,
-	).Scan(&info.subscriptionType, &expiresAt, &info.isTester, &info.entriesThisMonth)
+	).Scan(&info.SubscriptionType, &expiresAt, &info.IsTester, &info.EntriesThisMonth)
 	if err != nil {
 		return nil, fmt.Errorf("get subscription info: %w", err)
 	}
 	if expiresAt.Valid {
-		info.subscriptionExpiresAt = &expiresAt.Time
+		info.SubscriptionExpiresAt = &expiresAt.Time
 	}
 	return &info, nil
 }

@@ -84,6 +84,7 @@ func main() {
 		http.HandlerFunc(subCheck(middleware.MaxBodySize(entryHandler.Create)).ServeHTTP),
 	))
 	mux.HandleFunc("GET /api/entries", middleware.Auth(entryHandler.List))
+	mux.HandleFunc("GET /api/export", middleware.Auth(entryHandler.Export))
 	mux.HandleFunc("DELETE /api/entries", middleware.Auth(entryHandler.DeleteAll))
 	mux.HandleFunc("GET /api/entries/{id}", middleware.Auth(entryHandler.Get))
 	mux.HandleFunc("POST /api/entries/{id}/respond", middleware.Auth(middleware.MaxBodySize(entryHandler.Respond)))

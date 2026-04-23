@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"time"
 
 	mindai "github.com/alexa9795/mindflow/internal/ai"
 )
@@ -16,10 +17,11 @@ var ErrNotFound = errors.New("not found")
 // Service is the business-logic interface for journal entries.
 type Service interface {
 	Create(ctx context.Context, userID, content string, moodScore *int) (*Entry, error)
-	List(ctx context.Context, userID string, page, limit int) ([]Entry, error)
+	List(ctx context.Context, userID string, page, limit int) ([]Entry, int, error)
 	Get(ctx context.Context, id, userID string) (*Entry, error)
 	Respond(ctx context.Context, entryID, userID string) (*Message, error)
 	AddMessage(ctx context.Context, entryID, userID, content string) (*Message, *Message, error)
+	GetExport(ctx context.Context, userID string) (*ExportData, error)
 	DeleteAll(ctx context.Context, userID string) error
 }
 
@@ -41,13 +43,13 @@ func (s *service) Create(ctx context.Context, userID, content string, moodScore 
 	return e, nil
 }
 
-func (s *service) List(ctx context.Context, userID string, page, limit int) ([]Entry, error) {
+func (s *service) List(ctx context.Context, userID string, page, limit int) ([]Entry, int, error) {
 	offset := (page - 1) * limit
-	entries, err := s.repo.List(ctx, userID, limit, offset)
+	entries, total, err := s.repo.List(ctx, userID, limit, offset)
 	if err != nil {
-		return nil, fmt.Errorf("list entries: %w", err)
+		return nil, 0, fmt.Errorf("list entries: %w", err)
 	}
-	return entries, nil
+	return entries, total, nil
 }
 
 func (s *service) Get(ctx context.Context, id, userID string) (*Entry, error) {
@@ -74,6 +76,11 @@ func (s *service) Respond(ctx context.Context, entryID, userID string) (*Message
 			return nil, ErrNotFound
 		}
 		return nil, fmt.Errorf("get entry content: %w", err)
+	}
+
+	// Idempotency: return the existing AI response without re-calling Claude.
+	if existing, err := s.repo.GetAssistantMessage(ctx, entryID); err == nil {
+		return existing, nil
 	}
 
 	existing, err := s.repo.LoadMessages(ctx, entryID)
@@ -135,6 +142,17 @@ func (s *service) AddMessage(ctx context.Context, entryID, userID, content strin
 		return nil, nil, fmt.Errorf("save messages: %w", err)
 	}
 	return userMsg, aiMsg, nil
+}
+
+func (s *service) GetExport(ctx context.Context, userID string) (*ExportData, error) {
+	entries, err := s.repo.ExportUserData(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("export user data: %w", err)
+	}
+	return &ExportData{
+		ExportedAt: time.Now().UTC(),
+		Entries:    entries,
+	}, nil
 }
 
 func (s *service) DeleteAll(ctx context.Context, userID string) error {

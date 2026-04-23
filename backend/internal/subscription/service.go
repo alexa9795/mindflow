@@ -39,12 +39,12 @@ func NewService(repo Repository) *Service {
 
 // CheckSubscription returns the current subscription state for a user.
 func (s *Service) CheckSubscription(ctx context.Context, userID string) (*SubscriptionStatus, error) {
-	info, err := s.repo.getSubscriptionInfo(ctx, userID)
+	info, err := s.repo.GetSubscriptionInfo(ctx, userID)
 	if err != nil {
 		return nil, fmt.Errorf("check subscription: %w", err)
 	}
 
-	if info.isTester {
+	if info.IsTester {
 		return &SubscriptionStatus{
 			Tier:     TierTester,
 			IsActive: true,
@@ -53,7 +53,7 @@ func (s *Service) CheckSubscription(ctx context.Context, userID string) (*Subscr
 		}, nil
 	}
 
-	switch info.subscriptionType {
+	switch info.SubscriptionType {
 	case "monthly":
 		return &SubscriptionStatus{
 			Tier:     TierMonthly,
@@ -69,24 +69,24 @@ func (s *Service) CheckSubscription(ctx context.Context, userID string) (*Subscr
 			CanPost:  true,
 		}, nil
 	case "trial":
-		if info.subscriptionExpiresAt == nil || info.subscriptionExpiresAt.After(time.Now()) {
+		if info.SubscriptionExpiresAt == nil || info.SubscriptionExpiresAt.After(time.Now()) {
 			return &SubscriptionStatus{
 				Tier:      TierTrial,
 				IsActive:  true,
 				Limit:     -1,
 				CanPost:   true,
-				ExpiresAt: info.subscriptionExpiresAt,
+				ExpiresAt: info.SubscriptionExpiresAt,
 			}, nil
 		}
 		// trial expired — fall through to free-tier logic
 		fallthrough
 	default:
-		if info.entriesThisMonth < 10 {
+		if info.EntriesThisMonth < 10 {
 			return &SubscriptionStatus{
 				Tier:        TierFree,
 				IsActive:    true,
 				Limit:       10,
-				EntriesUsed: info.entriesThisMonth,
+				EntriesUsed: info.EntriesThisMonth,
 				CanPost:     true,
 			}, nil
 		}
@@ -94,7 +94,7 @@ func (s *Service) CheckSubscription(ctx context.Context, userID string) (*Subscr
 			Tier:        TierFree,
 			IsActive:    false,
 			Limit:       10,
-			EntriesUsed: info.entriesThisMonth,
+			EntriesUsed: info.EntriesThisMonth,
 			CanPost:     false,
 		}, nil
 	}

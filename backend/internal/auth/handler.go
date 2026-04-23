@@ -80,6 +80,10 @@ func (h *Handler) PatchMe(w http.ResponseWriter, r *http.Request) {
 		api.WriteError(w, api.ErrBadRequest.WithMessage("Name is required"))
 		return
 	}
+	if len(body.Name) > 50 {
+		api.WriteError(w, api.ErrBadRequest.WithMessage("Name must be 50 characters or less"))
+		return
+	}
 
 	user, err := h.svc.UpdateMe(r.Context(), userID, body.Name)
 	if err != nil {

@@ -121,7 +121,7 @@ export const api = {
     }),
 
   getEntries: (page = 1) =>
-    request<{ entries: Entry[]; page: number; limit: number }>(
+    request<{ entries: Entry[]; page: number; limit: number; total: number }>(
       `/api/entries?page=${page}`,
     ),
 
@@ -168,4 +168,7 @@ export const api = {
 
   deleteAccount: () =>
     request<void>('/api/auth/me', { method: 'DELETE' }),
+
+  exportData: () =>
+    request<{ exported_at: string; entries: Entry[] }>('/api/export'),
 };

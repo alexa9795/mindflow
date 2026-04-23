@@ -32,6 +32,8 @@ export default function NewEntryScreen() {
   const [error, setError] = useState<string | null>(null);
 
   const limitReached = isSubscriptionLimitReached();
+  const MAX_ENTRY_LENGTH = 10000;
+  const charsLeft = MAX_ENTRY_LENGTH - content.length;
 
   async function submit() {
     if (!content.trim()) {
@@ -118,7 +120,17 @@ export default function NewEntryScreen() {
             multiline
             textAlignVertical="top"
             autoFocus
+            maxLength={MAX_ENTRY_LENGTH}
           />
+
+          {charsLeft < 500 && (
+            <Text style={[
+              styles.charCount,
+              { color: charsLeft < 100 ? theme.destructive : theme.textSecondary, fontFamily: FONTS.modern },
+            ]}>
+              {charsLeft} characters remaining
+            </Text>
+          )}
 
           {error && (
             <Text style={[styles.errorText, { color: theme.destructive, fontFamily: FONTS.modern }]}>{error}</Text>
@@ -174,6 +186,11 @@ const styles = StyleSheet.create({
   errorText: {
     fontSize: 14,
     marginTop: 10,
+  },
+  charCount: {
+    fontSize: 12,
+    textAlign: 'right',
+    marginTop: 6,
   },
   limitBanner: {
     flexDirection: 'row',

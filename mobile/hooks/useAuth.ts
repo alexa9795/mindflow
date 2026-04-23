@@ -52,14 +52,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const res = await api.login(email, password);
     await SecureStore.setItemAsync(TOKEN_KEY, res.token);
     setToken(res.token);
-    setCurrentUser(res.user);
+    // Fetch full user profile (includes subscription) — auth response doesn't include it.
+    try {
+      const user = await api.getMe();
+      setCurrentUser(user);
+    } catch {
+      setCurrentUser(res.user);
+    }
   }, []);
 
   const register = useCallback(async (email: string, password: string, name: string) => {
     const res = await api.register(email, password, name);
     await SecureStore.setItemAsync(TOKEN_KEY, res.token);
     setToken(res.token);
-    setCurrentUser(res.user);
+    // Fetch full user profile (includes subscription) — auth response doesn't include it.
+    try {
+      const user = await api.getMe();
+      setCurrentUser(user);
+    } catch {
+      setCurrentUser(res.user);
+    }
   }, []);
 
   const logout = useCallback(async () => {

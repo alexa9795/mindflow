@@ -79,7 +79,7 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	entries, err := h.svc.List(r.Context(), userID, page, limit)
+	entries, total, err := h.svc.List(r.Context(), userID, page, limit)
 	if err != nil {
 		log.Printf("list entries error: %v", err)
 		api.WriteError(w, api.ErrInternalServer)
@@ -91,6 +91,7 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 		"entries": entries,
 		"page":    page,
 		"limit":   limit,
+		"total":   total,
 	})
 }
 
@@ -183,6 +184,25 @@ func (h *Handler) AddMessage(w http.ResponseWriter, r *http.Request) {
 		"user_message":      userMsg,
 		"assistant_message": aiMsg,
 	})
+}
+
+func (h *Handler) Export(w http.ResponseWriter, r *http.Request) {
+	userID, ok := r.Context().Value(middleware.UserIDKey).(string)
+	if !ok || userID == "" {
+		api.WriteError(w, api.ErrUnauthorized)
+		return
+	}
+
+	data, err := h.svc.GetExport(r.Context(), userID)
+	if err != nil {
+		log.Printf("export error: %v", err)
+		api.WriteError(w, api.ErrInternalServer)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Disposition", `attachment; filename="echo-export.json"`)
+	_ = json.NewEncoder(w).Encode(data)
 }
 
 func (h *Handler) DeleteAll(w http.ResponseWriter, r *http.Request) {
