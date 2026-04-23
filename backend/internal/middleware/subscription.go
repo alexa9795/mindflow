@@ -10,7 +10,7 @@ import (
 
 // CheckSubscription enforces the monthly entry limit for free-tier users.
 // It must be applied after the Auth middleware so UserIDKey is set.
-func CheckSubscription(subSvc *subscription.Service) func(http.Handler) http.Handler {
+func CheckSubscription(subSvc subscription.Service) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			userID, ok := r.Context().Value(UserIDKey).(string)

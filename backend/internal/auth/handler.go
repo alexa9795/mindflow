@@ -15,11 +15,11 @@ import (
 // Handler holds the HTTP handlers for auth endpoints.
 type Handler struct {
 	svc    Service
-	subSvc *subscription.Service
+	subSvc subscription.Service
 }
 
 // NewHandler returns a Handler backed by the given Service and subscription Service.
-func NewHandler(svc Service, subSvc *subscription.Service) *Handler {
+func NewHandler(svc Service, subSvc subscription.Service) *Handler {
 	return &Handler{svc: svc, subSvc: subSvc}
 }
 

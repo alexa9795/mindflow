@@ -19,8 +19,18 @@ type Message struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
+// ExportUser is the user profile embedded in a GDPR data export.
+type ExportUser struct {
+	ID               string    `json:"id"`
+	Email            string    `json:"email"`
+	Name             string    `json:"name"`
+	CreatedAt        time.Time `json:"created_at"`
+	SubscriptionType string    `json:"subscription_type"`
+}
+
 // ExportData is the GDPR Article 20 machine-readable export for one user.
 type ExportData struct {
-	ExportedAt time.Time `json:"exported_at"`
-	Entries    []Entry   `json:"entries"`
+	ExportedAt time.Time  `json:"exported_at"`
+	User       ExportUser `json:"user"`
+	Entries    []Entry    `json:"entries"`
 }

@@ -145,12 +145,17 @@ func (s *service) AddMessage(ctx context.Context, entryID, userID, content strin
 }
 
 func (s *service) GetExport(ctx context.Context, userID string) (*ExportData, error) {
+	user, err := s.repo.GetUserForExport(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("get user for export: %w", err)
+	}
 	entries, err := s.repo.ExportUserData(ctx, userID)
 	if err != nil {
 		return nil, fmt.Errorf("export user data: %w", err)
 	}
 	return &ExportData{
 		ExportedAt: time.Now().UTC(),
+		User:       *user,
 		Entries:    entries,
 	}, nil
 }

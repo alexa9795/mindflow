@@ -16,6 +16,7 @@ type Repository interface {
 	SaveMessage(ctx context.Context, entryID, role, content string) (*Message, error)
 	SaveMessagesInTx(ctx context.Context, entryID, userContent, aiContent string) (*Message, *Message, error)
 	LoadMessages(ctx context.Context, entryID string) ([]Message, error)
+	GetUserForExport(ctx context.Context, userID string) (*ExportUser, error)
 	ExportUserData(ctx context.Context, userID string) ([]Entry, error)
 	DeleteAllByUserID(ctx context.Context, userID string) error
 }
@@ -205,6 +206,20 @@ func (r *repository) LoadMessages(ctx context.Context, entryID string) ([]Messag
 		messages = append(messages, m)
 	}
 	return messages, rows.Err()
+}
+
+// GetUserForExport fetches the user profile fields needed for a GDPR Article 20 export.
+func (r *repository) GetUserForExport(ctx context.Context, userID string) (*ExportUser, error) {
+	var u ExportUser
+	err := r.db.QueryRowContext(ctx, `
+		SELECT id, email, name, created_at, subscription_type
+		FROM users WHERE id = $1`,
+		userID,
+	).Scan(&u.ID, &u.Email, &u.Name, &u.CreatedAt, &u.SubscriptionType)
+	if err != nil {
+		return nil, fmt.Errorf("get user for export: %w", err)
+	}
+	return &u, nil
 }
 
 // ExportUserData returns all entries with their full content and messages for GDPR Article 20.

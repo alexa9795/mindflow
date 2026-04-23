@@ -27,18 +27,22 @@ type SubscriptionStatus struct {
 	ExpiresAt   *time.Time
 }
 
-// Service computes subscription status from the database.
-type Service struct {
+// Service is the business-logic interface for subscription checks.
+type Service interface {
+	CheckSubscription(ctx context.Context, userID string) (*SubscriptionStatus, error)
+}
+
+type service struct {
 	repo Repository
 }
 
 // NewService returns a Service backed by the given Repository.
-func NewService(repo Repository) *Service {
-	return &Service{repo: repo}
+func NewService(repo Repository) Service {
+	return &service{repo: repo}
 }
 
 // CheckSubscription returns the current subscription state for a user.
-func (s *Service) CheckSubscription(ctx context.Context, userID string) (*SubscriptionStatus, error) {
+func (s *service) CheckSubscription(ctx context.Context, userID string) (*SubscriptionStatus, error) {
 	info, err := s.repo.GetSubscriptionInfo(ctx, userID)
 	if err != nil {
 		return nil, fmt.Errorf("check subscription: %w", err)
