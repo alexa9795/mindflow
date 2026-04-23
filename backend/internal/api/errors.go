@@ -27,6 +27,7 @@ var (
 	ErrInternalServer      = APIError{Code: "INTERNAL_SERVER_ERROR", Message: "Internal server error", HTTPStatus: http.StatusInternalServerError}
 	ErrSubscriptionLimit   = APIError{Code: "SUBSCRIPTION_LIMIT_REACHED", Message: "You've reached your 10 entry limit for this month. Upgrade to continue journaling.", HTTPStatus: http.StatusForbidden}
 	ErrTrialNotAvailable   = APIError{Code: "TRIAL_NOT_AVAILABLE", Message: "Trial is only available for free accounts.", HTTPStatus: http.StatusBadRequest}
+	ErrRateLimited         = APIError{Code: "RATE_LIMITED", Message: "Too many requests. Please try again later.", HTTPStatus: http.StatusTooManyRequests}
 )
 
 // WriteError writes a JSON error response in the canonical shape:

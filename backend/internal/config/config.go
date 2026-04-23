@@ -1,12 +1,16 @@
 package config
 
-import "os"
+import (
+	"log"
+	"os"
+)
 
-// JWTSecret returns the JWT signing secret.
-// Falls back to a dev-only default — never use in production.
+// JWTSecret returns the JWT signing secret from the environment.
+// The server will not start if JWT_SECRET is unset.
 func JWTSecret() string {
-	if s := os.Getenv("JWT_SECRET"); s != "" {
-		return s
+	s := os.Getenv("JWT_SECRET")
+	if s == "" {
+		log.Fatal("JWT_SECRET environment variable is required — server will not start without it")
 	}
-	return "dev_secret_change_in_production"
+	return s
 }

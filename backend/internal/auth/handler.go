@@ -41,6 +41,10 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 		api.WriteError(w, api.ErrBadRequest.WithMessage("Password must be at least 8 characters"))
 		return
 	}
+	if len(req.Password) > 72 {
+		api.WriteError(w, api.ErrBadRequest.WithMessage("Password must be 72 characters or less"))
+		return
+	}
 
 	resp, err := h.svc.Register(r.Context(), req)
 	if err != nil {
@@ -181,6 +185,10 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 	if !isValidEmail(req.Email) {
 		api.WriteError(w, api.ErrBadRequest.WithMessage("Invalid email address"))
+		return
+	}
+	if len(req.Password) > 72 {
+		api.WriteError(w, api.ErrBadRequest.WithMessage("Password must be 72 characters or less"))
 		return
 	}
 

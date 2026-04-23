@@ -13,6 +13,19 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+// dummyHash is a pre-computed bcrypt hash used to equalise response timing
+// when a login attempt is made for an email that does not exist.
+// Without this, the absence of bcrypt work leaks whether an email is registered.
+var dummyHash []byte
+
+func init() {
+	var err error
+	dummyHash, err = bcrypt.GenerateFromPassword([]byte("echo-dummy-bcrypt-sentinel"), bcrypt.DefaultCost)
+	if err != nil {
+		panic(fmt.Sprintf("failed to initialise dummy bcrypt hash: %v", err))
+	}
+}
+
 // Service is the business-logic interface for authentication.
 type Service interface {
 	Register(ctx context.Context, req RegisterRequest) (*AuthResponse, error)
@@ -62,6 +75,9 @@ func (s *service) Login(ctx context.Context, req LoginRequest) (*AuthResponse, e
 	userID, name, hashedPassword, err := s.repo.GetUserByEmail(ctx, req.Email)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
+			// Run a dummy bcrypt comparison to equalise timing regardless of
+			// whether the email exists — prevents user-enumeration via timing.
+			_ = bcrypt.CompareHashAndPassword(dummyHash, []byte(req.Password))
 			return nil, ErrInvalidCredentials
 		}
 		return nil, fmt.Errorf("lookup user: %w", err)

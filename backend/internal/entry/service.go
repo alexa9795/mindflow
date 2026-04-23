@@ -108,30 +108,31 @@ func (s *service) AddMessage(ctx context.Context, entryID, userID, content strin
 		return nil, nil, fmt.Errorf("get entry content: %w", err)
 	}
 
-	userMsg, err := s.repo.SaveMessage(ctx, entryID, "user", content)
-	if err != nil {
-		return nil, nil, fmt.Errorf("save user message: %w", err)
-	}
-
-	messages, err := s.repo.LoadMessages(ctx, entryID)
+	// Load existing messages to build conversation context for Claude.
+	existing, err := s.repo.LoadMessages(ctx, entryID)
 	if err != nil {
 		return nil, nil, fmt.Errorf("load messages: %w", err)
 	}
 
-	msgs := make([]mindai.Message, 0, 1+len(messages))
+	// Build the full message history: original entry + conversation + new message.
+	// The new user message is appended in-memory only — no DB write until Claude succeeds.
+	msgs := make([]mindai.Message, 0, 2+len(existing))
 	msgs = append(msgs, mindai.Message{Role: "user", Content: "Here is my journal entry:\n\n" + entryContent})
-	for _, m := range messages {
+	for _, m := range existing {
 		msgs = append(msgs, mindai.Message{Role: m.Role, Content: m.Content})
 	}
+	msgs = append(msgs, mindai.Message{Role: "user", Content: content})
 
+	// Call Claude before any DB writes — if this fails, nothing is persisted.
 	aiText, err := s.ai.CallClaude(ctx, msgs, userID)
 	if err != nil {
 		return nil, nil, fmt.Errorf("call claude: %w", err)
 	}
 
-	aiMsg, err := s.repo.SaveMessage(ctx, entryID, "assistant", aiText)
+	// Persist both messages atomically — either both are saved or neither is.
+	userMsg, aiMsg, err := s.repo.SaveMessagesInTx(ctx, entryID, content, aiText)
 	if err != nil {
-		return nil, nil, fmt.Errorf("save ai message: %w", err)
+		return nil, nil, fmt.Errorf("save messages: %w", err)
 	}
 	return userMsg, aiMsg, nil
 }

@@ -13,6 +13,7 @@ type Repository interface {
 	GetByID(ctx context.Context, id, userID string) (*Entry, error)
 	GetContent(ctx context.Context, id, userID string) (string, error)
 	SaveMessage(ctx context.Context, entryID, role, content string) (*Message, error)
+	SaveMessagesInTx(ctx context.Context, entryID, userContent, aiContent string) (*Message, *Message, error)
 	LoadMessages(ctx context.Context, entryID string) ([]Message, error)
 	DeleteAllByUserID(ctx context.Context, userID string) error
 }
@@ -105,21 +106,62 @@ func (r *repository) SaveMessage(ctx context.Context, entryID, role, content str
 	return &m, nil
 }
 
+// SaveMessagesInTx persists the user message and AI response atomically.
+// Claude must be called before this — if this fails, nothing is saved.
+func (r *repository) SaveMessagesInTx(ctx context.Context, entryID, userContent, aiContent string) (*Message, *Message, error) {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, nil, fmt.Errorf("begin tx: %w", err)
+	}
+	defer tx.Rollback() //nolint:errcheck
+
+	var userMsg Message
+	if err := tx.QueryRowContext(ctx, `
+		INSERT INTO messages (entry_id, role, content)
+		VALUES ($1, 'user', $2)
+		RETURNING id, entry_id, role, content, created_at`,
+		entryID, userContent,
+	).Scan(&userMsg.ID, &userMsg.EntryID, &userMsg.Role, &userMsg.Content, &userMsg.CreatedAt); err != nil {
+		return nil, nil, fmt.Errorf("save user message: %w", err)
+	}
+
+	var aiMsg Message
+	if err := tx.QueryRowContext(ctx, `
+		INSERT INTO messages (entry_id, role, content)
+		VALUES ($1, 'assistant', $2)
+		RETURNING id, entry_id, role, content, created_at`,
+		entryID, aiContent,
+	).Scan(&aiMsg.ID, &aiMsg.EntryID, &aiMsg.Role, &aiMsg.Content, &aiMsg.CreatedAt); err != nil {
+		return nil, nil, fmt.Errorf("save ai message: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, nil, fmt.Errorf("commit messages: %w", err)
+	}
+	return &userMsg, &aiMsg, nil
+}
+
 func (r *repository) DeleteAllByUserID(ctx context.Context, userID string) error {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin tx: %w", err)
+	}
+	defer tx.Rollback() //nolint:errcheck
+
 	// Messages must be deleted before entries to satisfy the FK constraint.
-	_, err := r.db.ExecContext(ctx, `
+	if _, err := tx.ExecContext(ctx, `
 		DELETE FROM messages
 		WHERE entry_id IN (SELECT id FROM entries WHERE user_id = $1)`,
 		userID,
-	)
-	if err != nil {
+	); err != nil {
 		return fmt.Errorf("delete messages for user: %w", err)
 	}
-	_, err = r.db.ExecContext(ctx, `DELETE FROM entries WHERE user_id = $1`, userID)
-	if err != nil {
+
+	if _, err := tx.ExecContext(ctx, `DELETE FROM entries WHERE user_id = $1`, userID); err != nil {
 		return fmt.Errorf("delete all entries: %w", err)
 	}
-	return nil
+
+	return tx.Commit()
 }
 
 func (r *repository) LoadMessages(ctx context.Context, entryID string) ([]Message, error) {

@@ -160,6 +160,11 @@ func (h *Handler) AddMessage(w http.ResponseWriter, r *http.Request) {
 		api.WriteError(w, api.ErrBadRequest.WithMessage("Content is required"))
 		return
 	}
+	const maxMessageLength = 2000
+	if len(req.Content) > maxMessageLength {
+		api.WriteError(w, api.ErrBadRequest.WithMessage("Message must be 2000 characters or less"))
+		return
+	}
 
 	userMsg, aiMsg, err := h.svc.AddMessage(r.Context(), entryID, userID, req.Content)
 	if err != nil {

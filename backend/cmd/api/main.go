@@ -1,10 +1,14 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/alexa9795/mindflow/internal/ai"
@@ -14,6 +18,7 @@ import (
 	"github.com/alexa9795/mindflow/internal/middleware"
 	"github.com/alexa9795/mindflow/internal/subscription"
 	"github.com/joho/godotenv"
+	"golang.org/x/time/rate"
 )
 
 func main() {
@@ -61,9 +66,13 @@ func main() {
 
 	subCheck := middleware.CheckSubscription(subSvc)
 
+	// Per-IP rate limiters for auth endpoints.
+	loginLimit    := middleware.RateLimit(rate.Every(6*time.Second), 3)  // 10 req/min, burst 3
+	registerLimit := middleware.RateLimit(rate.Every(12*time.Second), 2) // 5 req/min, burst 2
+
 	// Auth routes.
-	mux.HandleFunc("POST /api/auth/register", middleware.MaxBodySize(authHandler.Register))
-	mux.HandleFunc("POST /api/auth/login", middleware.MaxBodySize(authHandler.Login))
+	mux.Handle("POST /api/auth/register", registerLimit(http.HandlerFunc(middleware.MaxBodySize(authHandler.Register))))
+	mux.Handle("POST /api/auth/login", loginLimit(http.HandlerFunc(middleware.MaxBodySize(authHandler.Login))))
 	mux.HandleFunc("GET /api/auth/me", middleware.Auth(authHandler.Me))
 	mux.HandleFunc("PATCH /api/auth/me", middleware.Auth(middleware.MaxBodySize(authHandler.PatchMe)))
 	mux.HandleFunc("DELETE /api/auth/me", middleware.Auth(authHandler.DeleteMe))
@@ -83,14 +92,29 @@ func main() {
 	log.Printf("Echo API starting on port %s", port)
 	srv := &http.Server{
 		Addr:         ":" + port,
-		Handler:      mux,
+		Handler:      middleware.SecurityHeaders(middleware.CORS(mux)),
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 60 * time.Second,
 		IdleTimeout:  120 * time.Second,
 	}
-	// TODO: restrict Access-Control-Allow-Origin before launch
-	srv.Handler = middleware.CORS(mux)
-	if err := srv.ListenAndServe(); err != nil {
-		log.Fatalf("Server failed: %v", err)
+
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGTERM, syscall.SIGINT)
+
+	go func() {
+		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			log.Fatalf("Server failed: %v", err)
+		}
+	}()
+
+	log.Println("Server ready, waiting for shutdown signal")
+	<-quit
+	log.Println("Shutdown signal received, draining connections...")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	if err := srv.Shutdown(ctx); err != nil {
+		log.Printf("Graceful shutdown failed: %v", err)
 	}
+	log.Println("Server stopped")
 }

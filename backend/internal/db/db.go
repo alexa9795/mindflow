@@ -12,7 +12,6 @@ import (
 var DB *sql.DB
 
 func Connect() error {
-log.Printf("DATABASE_URL present: %v", os.Getenv("DATABASE_URL") != "")
 	var dsn string
 
 	// Prefer DATABASE_URL (provided by Railway and other PaaS platforms).
