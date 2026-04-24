@@ -206,9 +206,8 @@ func (h *Handler) AddMessage(w http.ResponseWriter, r *http.Request) {
 	if aiError {
 		w.WriteHeader(http.StatusOK)
 		_ = json.NewEncoder(w).Encode(map[string]interface{}{
-			"user_message":     userMsg,
 			"ai_error":         true,
-			"ai_error_message": "AI is temporarily unavailable. Your message has been saved.",
+			"ai_error_message": "AI is temporarily unavailable. Please try again.",
 		})
 		return
 	}

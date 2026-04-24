@@ -8,6 +8,8 @@ import (
 	"net"
 	"net/http"
 	"strings"
+	"sync"
+	"time"
 )
 
 // Action is a string identifier for an auditable event.
@@ -18,6 +20,10 @@ const (
 	ActionLoginSuccess Action = "auth.login.success"
 	ActionLoginFailure Action = "auth.login.failure"
 	ActionRegister     Action = "auth.register"
+	// ActionLogout is intentionally never emitted server-side.
+	// Logout is client-side only (token discarded from SecureStore).
+	// No server-side session exists beyond the token TTL.
+	// Refresh token revocation IS audited (token.revoked action covers this).
 	ActionLogout       Action = "auth.logout"
 	ActionTokenRevoked Action = "auth.token.revoked"
 	ActionRateLimitHit Action = "auth.rate_limit_hit"
@@ -35,24 +41,81 @@ const (
 
 	// Data actions.
 	ActionDataExport Action = "data.export"
+
+	// Retention actions.
+	ActionRetentionFlagged      Action = "retention.flagged"
+	ActionRetentionWarning      Action = "retention.warning_sent"
+	ActionRetentionFinalWarning Action = "retention.final_warning_sent"
+	ActionRetentionDeleted      Action = "retention.account_deleted"
+
+	// AI actions.
+	ActionAIRateLimitHit Action = "ai.rate_limit_hit"
 )
+
+type auditEvent struct {
+	userID   *string
+	action   Action
+	ip       string
+	metadata map[string]any
+}
 
 // dbExecer is the minimal DB interface needed by Logger. *sql.DB satisfies it.
 type dbExecer interface {
 	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
 }
 
-// Logger writes audit events to the audit_events table.
+// Logger writes audit events to the audit_events table via a bounded worker pool.
 type Logger struct {
-	db dbExecer
+	db    dbExecer
+	queue chan auditEvent
+	wg    sync.WaitGroup
+}
+
+// newLogger is the internal constructor used by both NewLogger and tests.
+func newLogger(db dbExecer) *Logger {
+	l := &Logger{
+		db:    db,
+		queue: make(chan auditEvent, 500),
+	}
+	for i := 0; i < 3; i++ {
+		l.wg.Add(1)
+		go l.worker()
+	}
+	return l
 }
 
 // NewLogger returns a Logger backed by the given *sql.DB.
 func NewLogger(db *sql.DB) *Logger {
-	return &Logger{db: db}
+	return newLogger(db)
+}
+
+func (l *Logger) worker() {
+	defer l.wg.Done()
+	for event := range l.queue {
+		var metaJSON interface{}
+		if event.metadata != nil {
+			b, err := json.Marshal(event.metadata)
+			if err != nil {
+				slog.Error("audit: failed to marshal metadata", "action", event.action, "error", err)
+				continue
+			}
+			metaJSON = string(b)
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		_, err := l.db.ExecContext(ctx,
+			`INSERT INTO audit_events (user_id, action, ip_address, metadata)
+			 VALUES ($1, $2, $3, $4)`,
+			event.userID, string(event.action), event.ip, metaJSON,
+		)
+		cancel()
+		if err != nil {
+			slog.Error("audit: failed to insert event", "action", event.action, "error", err)
+		}
+	}
 }
 
 // Log records an audit event asynchronously. It never blocks the caller.
+// If the queue is full, the event is dropped with a warning.
 // userID may be nil for unauthenticated events.
 //
 // NEVER include journal content in metadata — only settings values, flags,
@@ -61,25 +124,21 @@ func (l *Logger) Log(ctx context.Context, userID *string, action Action, ip stri
 	if l == nil {
 		return
 	}
-	var metaJSON interface{}
-	if metadata != nil {
-		b, err := json.Marshal(metadata)
-		if err != nil {
-			slog.Error("audit: failed to marshal metadata", "action", action, "error", err)
-			return
-		}
-		metaJSON = string(b)
+	select {
+	case l.queue <- auditEvent{userID: userID, action: action, ip: ip, metadata: metadata}:
+	default:
+		slog.Warn("audit.queue_full — event dropped", "action", action)
 	}
-	go func() {
-		_, err := l.db.ExecContext(context.Background(),
-			`INSERT INTO audit_events (user_id, action, ip_address, metadata)
-			 VALUES ($1, $2, $3, $4)`,
-			userID, string(action), ip, metaJSON,
-		)
-		if err != nil {
-			slog.Error("audit: failed to insert event", "action", action, "error", err)
-		}
-	}()
+}
+
+// Shutdown drains the queue and waits for all in-flight inserts to complete.
+// Call before db.Close() in graceful shutdown.
+func (l *Logger) Shutdown() {
+	if l == nil {
+		return
+	}
+	close(l.queue)
+	l.wg.Wait()
 }
 
 // IPFromRequest extracts the best-effort client IP from a request.

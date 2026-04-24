@@ -1,9 +1,7 @@
 package middleware
 
 import (
-	"net"
 	"net/http"
-	"strings"
 	"sync"
 	"time"
 
@@ -19,21 +17,29 @@ type limiterEntry struct {
 }
 
 // StartEviction launches a goroutine that removes entries from m that have not
-// been seen for longer than ttl. It ticks at ttl/2.
-func StartEviction(m *sync.Map, ttl time.Duration) {
+// been seen for longer than ttl. It returns a stop function; call it during
+// graceful shutdown to release the goroutine.
+func StartEviction(m *sync.Map, ttl time.Duration) (stop func()) {
+	ch := make(chan struct{})
 	go func() {
 		ticker := time.NewTicker(ttl / 2)
 		defer ticker.Stop()
-		for range ticker.C {
-			cutoff := time.Now().Add(-ttl)
-			m.Range(func(k, v any) bool {
-				if v.(*limiterEntry).lastSeen.Before(cutoff) {
-					m.Delete(k)
-				}
-				return true
-			})
+		for {
+			select {
+			case <-ticker.C:
+				cutoff := time.Now().Add(-ttl)
+				m.Range(func(k, v any) bool {
+					if v.(*limiterEntry).lastSeen.Before(cutoff) {
+						m.Delete(k)
+					}
+					return true
+				})
+			case <-ch:
+				return
+			}
 		}
 	}()
+	return func() { close(ch) }
 }
 
 // RateLimitWithMap returns a per-IP rate-limiting middleware using the provided
@@ -50,7 +56,7 @@ func RateLimitWithMap(m *sync.Map, rps rate.Limit, burst int, auditLogger *audit
 
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			ip := clientIP(r)
+			ip := audit.IPFromRequest(r)
 			if !getLimiter(ip).Allow() {
 				auditLogger.Log(r.Context(), nil, audit.ActionRateLimitHit, ip,
 					map[string]any{"path": r.URL.Path})
@@ -67,26 +73,4 @@ func RateLimitWithMap(m *sync.Map, rps rate.Limit, burst int, auditLogger *audit
 func RateLimit(rps rate.Limit, burst int) func(http.Handler) http.Handler {
 	var m sync.Map
 	return RateLimitWithMap(&m, rps, burst, nil)
-}
-
-// clientIP extracts the best-effort client IP.
-//
-// On Railway (and similar proxies), the rightmost value in X-Forwarded-For is
-// the IP appended by the trusted proxy — it cannot be spoofed by the client.
-// Taking the FIRST value (the common default) allows a client to inject a fake
-// IP and bypass per-IP limiting.
-func clientIP(r *http.Request) string {
-	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
-		parts := strings.Split(xff, ",")
-		ip := strings.TrimSpace(parts[len(parts)-1])
-		if ip != "" {
-			return ip
-		}
-	}
-	// Fall back to direct connection address.
-	host, _, err := net.SplitHostPort(r.RemoteAddr)
-	if err != nil {
-		return r.RemoteAddr
-	}
-	return host
 }

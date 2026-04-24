@@ -18,14 +18,16 @@ import (
 // ---- Mocks ----------------------------------------------------------------
 
 type mockAuthSvc struct {
-	regResp    *auth.AuthResponse
-	regErr     error
-	loginResp  *auth.AuthResponse
-	loginErr   error
-	getMeResp  *auth.User
-	getMeErr   error
-	updateResp *auth.User
-	updateErr  error
+	regResp      *auth.AuthResponse
+	regErr       error
+	loginResp    *auth.AuthResponse
+	loginErr     error
+	getMeResp    *auth.User
+	getMeErr     error
+	updateResp   *auth.User
+	updateErr    error
+	refreshResp  *auth.AuthTokens
+	refreshErr   error
 }
 
 func (m *mockAuthSvc) Register(_ context.Context, _ auth.RegisterRequest) (*auth.AuthResponse, error) {
@@ -40,13 +42,19 @@ func (m *mockAuthSvc) GetMe(_ context.Context, _ string) (*auth.User, error) {
 func (m *mockAuthSvc) UpdateMe(_ context.Context, _, _ string) (*auth.User, error) {
 	return m.updateResp, m.updateErr
 }
-func (m *mockAuthSvc) DeleteMe(_ context.Context, _ string) error { return nil }
+func (m *mockAuthSvc) DeleteMe(_ context.Context, _ string) error           { return nil }
 func (m *mockAuthSvc) ActivateTrial(_ context.Context, _ string) (time.Time, error) {
 	return time.Time{}, nil
 }
 func (m *mockAuthSvc) UpdateAIEnabled(_ context.Context, _ string, _ bool) error { return nil }
 func (m *mockAuthSvc) GetAIEnabled(_ context.Context, _ string) (bool, error)    { return true, nil }
 func (m *mockAuthSvc) RevokeToken(_ context.Context, _ string, _ time.Time) error { return nil }
+func (m *mockAuthSvc) SetAIConsent(_ context.Context, _ string) error             { return nil }
+func (m *mockAuthSvc) RequestPasswordReset(_ context.Context, _ string) error     { return nil }
+func (m *mockAuthSvc) ResetPassword(_ context.Context, _, _ string) error         { return nil }
+func (m *mockAuthSvc) RefreshTokens(_ context.Context, _ string) (*auth.AuthTokens, error) {
+	return m.refreshResp, m.refreshErr
+}
 
 type mockSubSvcForHandler struct {
 	status *subscription.SubscriptionStatus
@@ -67,7 +75,17 @@ var defaultSubStatus = &subscription.SubscriptionStatus{
 }
 
 func newHandler(svc auth.Service, subSvc subscription.Service) *auth.Handler {
-	return auth.NewHandler(svc, subSvc, nil)
+	return auth.NewHandler(svc, subSvc, nil, nil)
+}
+
+func makeAuthResponse() *auth.AuthResponse {
+	return &auth.AuthResponse{
+		AuthTokens: auth.AuthTokens{
+			AccessToken:  "access-tok",
+			RefreshToken: "refresh-tok",
+		},
+		User: auth.UserInfo{ID: "1", Email: "a@b.com", Name: "Alice"},
+	}
 }
 
 // ---- POST /api/auth/register -----------------------------------------------
@@ -78,7 +96,6 @@ func TestRegisterHandler(t *testing.T) {
 		body       string
 		svcErr     error
 		wantStatus int
-		wantCode   string
 	}{
 		{
 			name:       "valid body returns 201",
@@ -115,10 +132,7 @@ func TestRegisterHandler(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			svc := &mockAuthSvc{
-				regResp: &auth.AuthResponse{Token: "tok", User: auth.UserInfo{ID: "1", Email: "a@b.com", Name: "Alice"}},
-				regErr:  tc.svcErr,
-			}
+			svc := &mockAuthSvc{regResp: makeAuthResponse(), regErr: tc.svcErr}
 			h := newHandler(svc, &mockSubSvcForHandler{status: defaultSubStatus})
 
 			req := httptest.NewRequest(http.MethodPost, "/api/auth/register", strings.NewReader(tc.body))
@@ -158,14 +172,16 @@ func TestLoginHandler(t *testing.T) {
 			body:       `{bad json`,
 			wantStatus: http.StatusBadRequest,
 		},
+		{
+			name:       "empty password returns 400",
+			body:       `{"email":"a@b.com","password":""}`,
+			wantStatus: http.StatusBadRequest,
+		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			svc := &mockAuthSvc{
-				loginResp: &auth.AuthResponse{Token: "tok", User: auth.UserInfo{ID: "1", Email: "a@b.com"}},
-				loginErr:  tc.svcErr,
-			}
+			svc := &mockAuthSvc{loginResp: makeAuthResponse(), loginErr: tc.svcErr}
 			h := newHandler(svc, &mockSubSvcForHandler{status: defaultSubStatus})
 
 			req := httptest.NewRequest(http.MethodPost, "/api/auth/login", strings.NewReader(tc.body))
@@ -238,10 +254,75 @@ func TestMeHandler(t *testing.T) {
 	}
 }
 
+// ---- POST /api/auth/refresh ------------------------------------------------
+
+func TestRefreshHandler(t *testing.T) {
+	tests := []struct {
+		name       string
+		body       string
+		svcResp    *auth.AuthTokens
+		svcErr     error
+		wantStatus int
+	}{
+		{
+			name: "valid refresh token returns 200 with new tokens",
+			body: `{"refresh_token":"valid-raw-token"}`,
+			svcResp: &auth.AuthTokens{
+				AccessToken:  "new-access",
+				RefreshToken: "new-refresh",
+			},
+			wantStatus: http.StatusOK,
+		},
+		{
+			name:       "invalid refresh token returns 401",
+			body:       `{"refresh_token":"bad-token"}`,
+			svcErr:     auth.ErrInvalidRefreshToken,
+			wantStatus: http.StatusUnauthorized,
+		},
+		{
+			name:       "missing refresh_token field returns 400",
+			body:       `{}`,
+			wantStatus: http.StatusBadRequest,
+		},
+		{
+			name:       "malformed JSON returns 400",
+			body:       `{bad`,
+			wantStatus: http.StatusBadRequest,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			svc := &mockAuthSvc{refreshResp: tc.svcResp, refreshErr: tc.svcErr}
+			h := newHandler(svc, &mockSubSvcForHandler{status: defaultSubStatus})
+
+			req := httptest.NewRequest(http.MethodPost, "/api/auth/refresh", strings.NewReader(tc.body))
+			req.Header.Set("Content-Type", "application/json")
+			rr := httptest.NewRecorder()
+			h.Refresh(rr, req)
+
+			if rr.Code != tc.wantStatus {
+				t.Errorf("status = %d, want %d (body: %s)", rr.Code, tc.wantStatus, rr.Body.String())
+			}
+			if tc.wantStatus == http.StatusOK {
+				var body map[string]interface{}
+				if err := json.NewDecoder(rr.Body).Decode(&body); err != nil {
+					t.Fatalf("decode body: %v", err)
+				}
+				if body["access_token"] == "" {
+					t.Error("response missing access_token")
+				}
+				if body["refresh_token"] == "" {
+					t.Error("response missing refresh_token")
+				}
+			}
+		})
+	}
+}
+
 // ---- Error type assertions -------------------------------------------------
 
 func TestRegisterErrorMapping(t *testing.T) {
-	// Verify that ErrEmailExists is distinct from other error types
 	err := auth.ErrEmailExists
 	if !errors.Is(err, auth.ErrEmailExists) {
 		t.Error("ErrEmailExists identity check failed")

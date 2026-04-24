@@ -31,7 +31,7 @@ func Connect() error {
 			host = "localhost"
 		}
 		if port == "" {
-			port = "5433"
+			port = "5432" // Local dev overrides to 5433 via DB_PORT in .env
 		}
 		if sslMode == "" {
 			sslMode = "disable"

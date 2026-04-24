@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"os"
 	"testing"
 	"time"
@@ -19,11 +20,12 @@ func TestMain(m *testing.M) {
 
 // mockAuthRepo is a controllable in-memory Repository for service tests.
 type mockAuthRepo struct {
-	users      map[string]*User
-	byEmail    map[string]mockEmailEntry
-	createErr  error
-	subType    string
-	trialAt    time.Time
+	users         map[string]*User
+	byEmail       map[string]mockEmailEntry
+	refreshTokens map[string]*RefreshToken // hash → token
+	createErr     error
+	subType       string
+	trialAt       time.Time
 }
 
 type mockEmailEntry struct {
@@ -32,9 +34,10 @@ type mockEmailEntry struct {
 
 func newMockAuthRepo() *mockAuthRepo {
 	return &mockAuthRepo{
-		users:   make(map[string]*User),
-		byEmail: make(map[string]mockEmailEntry),
-		subType: "free",
+		users:         make(map[string]*User),
+		byEmail:       make(map[string]mockEmailEntry),
+		refreshTokens: make(map[string]*RefreshToken),
+		subType:       "free",
 	}
 }
 
@@ -57,7 +60,7 @@ func (m *mockAuthRepo) GetUserByEmail(_ context.Context, email string) (id, name
 	if e, ok := m.byEmail[email]; ok {
 		return e.id, e.name, e.hash, nil
 	}
-	return "", "", "", sql.ErrNoRows
+	return "", "", "", fmt.Errorf("get user by email: %w", sql.ErrNoRows)
 }
 
 func (m *mockAuthRepo) GetUserByID(_ context.Context, id string) (*User, error) {
@@ -110,6 +113,61 @@ func (m *mockAuthRepo) GetAIEnabled(_ context.Context, userID string) (bool, err
 func (m *mockAuthRepo) RevokeToken(_ context.Context, _ string, _ time.Time) error { return nil }
 func (m *mockAuthRepo) IsTokenRevoked(_ context.Context, _ string) (bool, error)   { return false, nil }
 func (m *mockAuthRepo) UpdateLastActive(_ context.Context, _ string) error         { return nil }
+func (m *mockAuthRepo) SetAIConsent(_ context.Context, _ string) error             { return nil }
+func (m *mockAuthRepo) UpdatePassword(_ context.Context, _, _ string) error        { return nil }
+
+func (m *mockAuthRepo) SetResetToken(_ context.Context, _, _ string, _ time.Time) error { return nil }
+
+func (m *mockAuthRepo) GetUserByResetToken(_ context.Context, _ string) (*User, error) {
+	for _, u := range m.users {
+		return u, nil // return first user
+	}
+	return nil, sql.ErrNoRows
+}
+
+func (m *mockAuthRepo) ClearResetToken(_ context.Context, _ string) error { return nil }
+
+func (m *mockAuthRepo) CreateRefreshToken(_ context.Context, userID, tokenHash string, expiresAt time.Time) error {
+	m.refreshTokens[tokenHash] = &RefreshToken{
+		ID:        "rt-" + tokenHash[:8],
+		UserID:    userID,
+		TokenHash: tokenHash,
+		ExpiresAt: expiresAt,
+		CreatedAt: time.Now(),
+	}
+	return nil
+}
+
+func (m *mockAuthRepo) GetRefreshToken(_ context.Context, tokenHash string) (*RefreshToken, error) {
+	rt, ok := m.refreshTokens[tokenHash]
+	if !ok {
+		return nil, sql.ErrNoRows
+	}
+	if rt.RevokedAt != nil || time.Now().After(rt.ExpiresAt) {
+		return nil, sql.ErrNoRows
+	}
+	return rt, nil
+}
+
+func (m *mockAuthRepo) RevokeRefreshToken(_ context.Context, id string) error {
+	now := time.Now()
+	for _, rt := range m.refreshTokens {
+		if rt.ID == id {
+			rt.RevokedAt = &now
+		}
+	}
+	return nil
+}
+
+func (m *mockAuthRepo) RevokeAllUserRefreshTokens(_ context.Context, userID string) error {
+	now := time.Now()
+	for _, rt := range m.refreshTokens {
+		if rt.UserID == userID {
+			rt.RevokedAt = &now
+		}
+	}
+	return nil
+}
 
 // ---- Register tests --------------------------------------------------------
 
@@ -138,7 +196,7 @@ func TestRegister(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			r := newMockAuthRepo()
 			r.createErr = tc.createErr
-			svc := NewService(r)
+			svc := NewService(r, nil)
 
 			resp, err := svc.Register(context.Background(), tc.req)
 
@@ -151,8 +209,11 @@ func TestRegister(t *testing.T) {
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
-			if tc.wantToken && resp.Token == "" {
-				t.Error("expected non-empty JWT token")
+			if tc.wantToken && resp.AccessToken == "" {
+				t.Error("expected non-empty access token")
+			}
+			if resp.RefreshToken == "" {
+				t.Error("expected non-empty refresh token")
 			}
 			if resp.User.Email != tc.req.Email {
 				t.Errorf("user email = %q, want %q", resp.User.Email, tc.req.Email)
@@ -171,7 +232,7 @@ func TestLogin(t *testing.T) {
 
 	r := newMockAuthRepo()
 	r.addUser("uid-1", "user@example.com", "User One", string(correctHash))
-	svc := NewService(r)
+	svc := NewService(r, nil)
 
 	tests := []struct {
 		name    string
@@ -180,7 +241,7 @@ func TestLogin(t *testing.T) {
 		wantErr error
 	}{
 		{
-			name:  "valid credentials returns token",
+			name:  "valid credentials returns tokens",
 			email: "user@example.com",
 			pass:  "correct-password",
 		},
@@ -211,8 +272,11 @@ func TestLogin(t *testing.T) {
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
-			if resp.Token == "" {
-				t.Error("expected non-empty JWT token")
+			if resp.AccessToken == "" {
+				t.Error("expected non-empty access token")
+			}
+			if resp.RefreshToken == "" {
+				t.Error("expected non-empty refresh token")
 			}
 		})
 	}
@@ -223,7 +287,7 @@ func TestLogin(t *testing.T) {
 func TestGetMe(t *testing.T) {
 	r := newMockAuthRepo()
 	r.addUser("uid-2", "me@example.com", "Me User", "hash")
-	svc := NewService(r)
+	svc := NewService(r, nil)
 
 	tests := []struct {
 		name    string
@@ -266,7 +330,7 @@ func TestGetMe(t *testing.T) {
 func TestUpdateMe(t *testing.T) {
 	r := newMockAuthRepo()
 	r.addUser("uid-3", "update@example.com", "Old Name", "hash")
-	svc := NewService(r)
+	svc := NewService(r, nil)
 
 	tests := []struct {
 		name    string
@@ -313,7 +377,7 @@ func TestActivateTrial(t *testing.T) {
 	r := newMockAuthRepo()
 	r.addUser("uid-4", "trial@example.com", "Trial User", "hash")
 	r.trialAt = time.Now().Add(7 * 24 * time.Hour)
-	svc := NewService(r)
+	svc := NewService(r, nil)
 
 	tests := []struct {
 		name    string
@@ -359,4 +423,64 @@ func TestActivateTrial(t *testing.T) {
 			}
 		})
 	}
+}
+
+// ---- RequestPasswordReset tests --------------------------------------------
+
+func TestRequestPasswordReset(t *testing.T) {
+	r := newMockAuthRepo()
+	r.addUser("uid-5", "reset@example.com", "Reset User", "hash")
+	svc := NewService(r, nil)
+
+	t.Run("known email returns nil", func(t *testing.T) {
+		if err := svc.RequestPasswordReset(context.Background(), "reset@example.com"); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+	t.Run("unknown email returns nil (no enumeration)", func(t *testing.T) {
+		if err := svc.RequestPasswordReset(context.Background(), "unknown@example.com"); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+}
+
+// ---- RefreshTokens tests ---------------------------------------------------
+
+func TestRefreshTokens(t *testing.T) {
+	r := newMockAuthRepo()
+	r.addUser("uid-6", "refresh@example.com", "Refresh User", "hash")
+	svc := NewService(r, nil)
+
+	rawToken := "test-raw-refresh-token-base64url-encoded-abc123"
+	hash := sha256Hex(rawToken)
+	r.refreshTokens[hash] = &RefreshToken{
+		ID:        "rt-1",
+		UserID:    "uid-6",
+		TokenHash: hash,
+		ExpiresAt: time.Now().Add(7 * 24 * time.Hour),
+		CreatedAt: time.Now(),
+	}
+
+	t.Run("valid refresh token returns new tokens and rotates", func(t *testing.T) {
+		tokens, err := svc.RefreshTokens(context.Background(), rawToken)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if tokens.AccessToken == "" {
+			t.Error("expected non-empty access token")
+		}
+		if tokens.RefreshToken == "" {
+			t.Error("expected non-empty refresh token")
+		}
+		if tokens.RefreshToken == rawToken {
+			t.Error("refresh token must be rotated")
+		}
+	})
+
+	t.Run("invalid refresh token returns ErrInvalidRefreshToken", func(t *testing.T) {
+		_, err := svc.RefreshTokens(context.Background(), "invalid-token")
+		if !errors.Is(err, ErrInvalidRefreshToken) {
+			t.Errorf("got error %v, want ErrInvalidRefreshToken", err)
+		}
+	})
 }

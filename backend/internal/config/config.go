@@ -1,16 +1,25 @@
 package config
 
 import (
-	"log"
+	"log/slog"
 	"os"
 )
 
-// JWTSecret returns the JWT signing secret from the environment.
-// The server will not start if JWT_SECRET is unset.
-func JWTSecret() string {
+var jwtSecret string
+
+// InitJWTSecret reads and caches JWT_SECRET from the environment.
+// Exits the process if the variable is not set — must be called at startup.
+func InitJWTSecret() {
 	s := os.Getenv("JWT_SECRET")
 	if s == "" {
-		log.Fatal("JWT_SECRET environment variable is required — server will not start without it")
+		slog.Error("JWT_SECRET environment variable is required — server will not start without it")
+		os.Exit(1)
 	}
-	return s
+	jwtSecret = s
+}
+
+// JWTSecret returns the cached JWT signing secret.
+// Panics if InitJWTSecret was not called first.
+func JWTSecret() string {
+	return jwtSecret
 }

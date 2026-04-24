@@ -29,13 +29,16 @@ func (m *mockExecer) ExecContext(_ context.Context, query string, args ...any) (
 	return nil, m.err
 }
 
+// newTestLogger creates a logger backed by the mock, using the internal constructor
+// so tests can inject the mock dbExecer.
 func newTestLogger(db dbExecer) *Logger {
-	return &Logger{db: db}
+	return newLogger(db)
 }
 
 func TestLogWithValidUserID(t *testing.T) {
 	mock := &mockExecer{}
 	l := newTestLogger(mock)
+	defer l.Shutdown()
 	mock.wg.Add(1)
 
 	userID := "user-abc-123"
@@ -67,6 +70,7 @@ func TestLogWithValidUserID(t *testing.T) {
 func TestLogWithNilUserID(t *testing.T) {
 	mock := &mockExecer{}
 	l := newTestLogger(mock)
+	defer l.Shutdown()
 	mock.wg.Add(1)
 
 	l.Log(context.Background(), nil, ActionInvalidToken, "2.2.2.2", nil)
@@ -87,6 +91,7 @@ func TestLogWithNilUserID(t *testing.T) {
 func TestLogWithMetadata(t *testing.T) {
 	mock := &mockExecer{}
 	l := newTestLogger(mock)
+	defer l.Shutdown()
 	mock.wg.Add(1)
 
 	userID := "user-xyz"
@@ -109,6 +114,7 @@ func TestLogWithMetadata(t *testing.T) {
 func TestLogDBFailureNoPanic(t *testing.T) {
 	mock := &mockExecer{err: errors.New("connection refused")}
 	l := newTestLogger(mock)
+	defer l.Shutdown()
 	mock.wg.Add(1)
 
 	userID := "user-fail"
@@ -122,4 +128,37 @@ func TestLogNilLogger(t *testing.T) {
 	var l *Logger
 	// Must not panic when Logger is nil.
 	l.Log(context.Background(), nil, ActionLoginSuccess, "", nil)
+}
+
+func TestShutdownDrainsQueue(t *testing.T) {
+	mock := &mockExecer{}
+	l := newTestLogger(mock)
+
+	const n = 10
+	mock.wg.Add(n)
+	for i := 0; i < n; i++ {
+		l.Log(context.Background(), nil, ActionLoginSuccess, "", nil)
+	}
+	l.Shutdown()
+
+	mock.mu.Lock()
+	defer mock.mu.Unlock()
+	if len(mock.calls) != n {
+		t.Errorf("expected %d calls after shutdown, got %d", n, len(mock.calls))
+	}
+}
+
+func TestLogQueueFullDropsEvent(t *testing.T) {
+	// Fill the queue so the next event is dropped.
+	mock := &mockExecer{}
+	l := &Logger{
+		db:    mock,
+		queue: make(chan auditEvent, 1),
+	}
+	// Don't start workers — queue stays full after 1 event.
+	l.queue <- auditEvent{action: ActionLoginSuccess}
+
+	// This send should be dropped (queue full), not block.
+	l.Log(context.Background(), nil, ActionLoginFailure, "", nil)
+	// If we reach here without blocking, the test passes.
 }

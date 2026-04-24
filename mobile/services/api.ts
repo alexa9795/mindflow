@@ -1,10 +1,23 @@
+if (!process.env.EXPO_PUBLIC_API_URL) {
+  console.warn('[api] EXPO_PUBLIC_API_URL is not set — falling back to http://localhost:8080. Set it for production builds.');
+}
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:8080';
 export const API_URL = BASE_URL;
 
 let authToken: string | null = null;
+let refreshToken: string | null = null;
+let onUnauthorized: (() => void) | null = null;
 
 export function setToken(token: string | null) {
   authToken = token;
+}
+
+export function setRefreshToken(token: string | null) {
+  refreshToken = token;
+}
+
+export function setUnauthorizedHandler(handler: () => void) {
+  onUnauthorized = handler;
 }
 
 /** Thrown when the device has no network connection. */
@@ -42,10 +55,11 @@ export class SubscriptionLimitError extends Error {
   }
 }
 
-async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+async function rawFetch(path: string, options: RequestInit & { _headers?: Record<string, string> }): Promise<Response> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(options.headers as Record<string, string>),
+    ...options._headers,
   };
   if (authToken) {
     headers['Authorization'] = `Bearer ${authToken}`;
@@ -54,9 +68,8 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 30000);
 
-  let res: Response;
   try {
-    res = await fetch(`${API_URL}${path}`, {
+    return await fetch(`${API_URL}${path}`, {
       ...options,
       headers,
       signal: controller.signal,
@@ -68,6 +81,37 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     throw new NetworkError();
   } finally {
     clearTimeout(timeout);
+  }
+}
+
+async function refreshAccessToken(): Promise<boolean> {
+  if (!refreshToken) return false;
+  try {
+    const res = await rawFetch('/api/auth/refresh', {
+      method: 'POST',
+      body: JSON.stringify({ refresh_token: refreshToken }),
+    });
+    if (!res.ok) return false;
+    const data = (await res.json()) as AuthTokens;
+    authToken = data.access_token;
+    refreshToken = data.refresh_token;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+  let res = await rawFetch(path, options);
+
+  if (res.status === 401 && refreshToken) {
+    const refreshed = await refreshAccessToken();
+    if (refreshed) {
+      res = await rawFetch(path, options);
+    } else {
+      onUnauthorized?.();
+      throw new ApiError('Session expired. Please sign in again.', 401);
+    }
   }
 
   if (!res.ok) {
@@ -104,11 +148,18 @@ export interface User {
   name: string;
   created_at?: string;
   ai_enabled: boolean;
+  ai_consent_given_at?: string | null;
   subscription?: SubscriptionInfo;
 }
 
-export interface AuthResponse {
-  token: string;
+export interface AuthTokens {
+  access_token: string;
+  refresh_token: string;
+  access_token_expires_at: string;
+  refresh_token_expires_at: string;
+}
+
+export interface AuthResponse extends AuthTokens {
   user: User;
 }
 
@@ -153,6 +204,13 @@ export interface ExportEntry {
   messages: ExportMessage[];
 }
 
+export interface ExportAuditEvent {
+  action: string;
+  ip_address: string | null;
+  metadata: Record<string, unknown>;
+  created_at: string;
+}
+
 export interface ExportData {
   exported_at: string;
   user: {
@@ -160,10 +218,12 @@ export interface ExportData {
     email: string;
     name: string;
     created_at: string;
+    last_active_at: string;
     subscription_type: string;
     ai_enabled: boolean;
   };
   entries: ExportEntry[];
+  audit_events: ExportAuditEvent[];
 }
 
 export interface Insights {
@@ -187,6 +247,24 @@ export const api = {
     request<AuthResponse>('/api/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, password }),
+    }),
+
+  refresh: (token: string) =>
+    request<AuthTokens>('/api/auth/refresh', {
+      method: 'POST',
+      body: JSON.stringify({ refresh_token: token }),
+    }),
+
+  requestPasswordReset: (email: string) =>
+    request<{ message: string }>('/api/auth/reset-password/request', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    }),
+
+  resetPassword: (token: string, password: string) =>
+    request<{ message: string }>('/api/auth/reset-password/confirm', {
+      method: 'POST',
+      body: JSON.stringify({ token, password }),
     }),
 
   getEntries: (page = 1) =>

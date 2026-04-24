@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
 import { api, Entry, NetworkError } from '../services/api';
+import { useAuth } from './useAuth';
 
 interface EntriesState {
   entries: Entry[];
@@ -13,6 +14,7 @@ interface EntriesState {
 }
 
 export function useEntries(): EntriesState {
+  const { updateUser } = useAuth();
   const [entries, setEntries] = useState<Entry[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -62,15 +64,19 @@ export function useEntries(): EntriesState {
 
   const createEntry = useCallback(async (content: string, moodScore?: number): Promise<Entry> => {
     setIsOffline(false);
+    setError(null);
     try {
       const entry = await api.createEntry(content, moodScore);
       setEntries((prev) => [entry, ...prev]);
+      // Refresh subscription count so the entry limit UI stays accurate.
+      api.getMe().then((user) => updateUser(user)).catch(() => undefined);
       return entry;
     } catch (e: unknown) {
       if (e instanceof NetworkError) setIsOffline(true);
+      setError(e instanceof Error ? e.message : 'Failed to create entry');
       throw e;
     }
-  }, []);
+  }, [updateUser]);
 
   return { entries, loading, error, isOffline, hasMore, fetchEntries, loadMore, createEntry };
 }

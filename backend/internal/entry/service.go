@@ -39,8 +39,7 @@ type Service interface {
 	// When AI is disabled by the user: returns (nil, false, ErrAIDisabled).
 	Respond(ctx context.Context, entryID, userID string) (*Message, bool, error)
 	// AddMessage appends a user reply and AI response to an entry's conversation.
-	// aiError is true when the user message was saved but Claude failed transiently;
-	// in that case aiMsg is nil and err is nil.
+	// aiError is true when Claude failed transiently; in that case neither message is saved.
 	// When AI is disabled by the user: returns (nil, nil, false, ErrAIDisabled).
 	AddMessage(ctx context.Context, entryID, userID, content string) (*Message, *Message, bool, error)
 	GetExport(ctx context.Context, userID string) (*ExportData, error)
@@ -102,13 +101,10 @@ func (s *service) Respond(ctx context.Context, entryID, userID string) (*Message
 	}
 
 	// Idempotency: return the existing AI response without re-calling Claude.
-	// Return the cached message even if ai_enabled is now false — the response
-	// was already generated and stored.
 	if existing, err := s.repo.GetAssistantMessage(ctx, entryID); err == nil {
 		return existing, false, nil
 	}
 
-	// Check whether the user has AI responses enabled.
 	enabled, err := s.userFlags.GetAIEnabled(ctx, userID)
 	if err != nil {
 		return nil, false, fmt.Errorf("check ai enabled: %w", err)
@@ -125,7 +121,7 @@ func (s *service) Respond(ctx context.Context, entryID, userID string) (*Message
 	msgs := make([]mindai.Message, 0, 1+len(existing))
 	msgs = append(msgs, mindai.Message{Role: "user", Content: "Here is my journal entry:\n\n" + entryContent})
 	for _, m := range existing {
-		msgs = append(msgs, mindai.Message{Role: m.Role, Content: m.Content})
+		msgs = append(msgs, mindai.Message{Role: string(m.Role), Content: m.Content})
 	}
 
 	aiText, err := s.ai.CallClaude(ctx, msgs, userID)
@@ -134,7 +130,7 @@ func (s *service) Respond(ctx context.Context, entryID, userID string) (*Message
 		return nil, false, ErrAIUnavailable
 	}
 
-	msg, err := s.repo.SaveMessage(ctx, entryID, "assistant", aiText)
+	msg, err := s.repo.SaveMessage(ctx, entryID, RoleAssistant, aiText)
 	if err != nil {
 		return nil, false, fmt.Errorf("save message: %w", err)
 	}
@@ -150,8 +146,6 @@ func (s *service) AddMessage(ctx context.Context, entryID, userID, content strin
 		return nil, nil, false, fmt.Errorf("get entry content: %w", err)
 	}
 
-	// Check AI enabled before saving the user message — no point saving if we
-	// cannot respond and the user hasn't opted in.
 	enabled, err := s.userFlags.GetAIEnabled(ctx, userID)
 	if err != nil {
 		return nil, nil, false, fmt.Errorf("check ai enabled: %w", err)
@@ -160,37 +154,29 @@ func (s *service) AddMessage(ctx context.Context, entryID, userID, content strin
 		return nil, nil, false, ErrAIDisabled
 	}
 
-	// Load existing messages to build conversation context for Claude.
 	existing, err := s.repo.LoadMessages(ctx, entryID)
 	if err != nil {
 		return nil, nil, false, fmt.Errorf("load messages: %w", err)
 	}
 
-	// Build the full message history for Claude.
 	msgs := make([]mindai.Message, 0, 2+len(existing))
 	msgs = append(msgs, mindai.Message{Role: "user", Content: "Here is my journal entry:\n\n" + entryContent})
 	for _, m := range existing {
-		msgs = append(msgs, mindai.Message{Role: m.Role, Content: m.Content})
+		msgs = append(msgs, mindai.Message{Role: string(m.Role), Content: m.Content})
 	}
 	msgs = append(msgs, mindai.Message{Role: "user", Content: content})
 
-	// Save the user message first so it is persisted even if Claude fails.
-	userMsg, err := s.repo.SaveMessage(ctx, entryID, "user", content)
-	if err != nil {
-		return nil, nil, false, fmt.Errorf("save user message: %w", err)
-	}
-
-	// Call Claude. On failure: return the saved user message with aiError=true
-	// so the handler can surface a graceful error without losing the user's message.
+	// Call Claude BEFORE saving any messages — if Claude fails, nothing is persisted.
 	aiText, err := s.ai.CallClaude(ctx, msgs, userID)
 	if err != nil {
 		slog.Error("claude api error in add_message", "entry_id", entryID, "error", err)
-		return userMsg, nil, true, nil
+		return nil, nil, true, nil
 	}
 
-	aiMsg, err := s.repo.SaveMessage(ctx, entryID, "assistant", aiText)
+	// Both messages saved atomically — if this fails, neither is persisted.
+	userMsg, aiMsg, err := s.repo.SaveMessagesInTx(ctx, entryID, content, aiText)
 	if err != nil {
-		return nil, nil, false, fmt.Errorf("save ai message: %w", err)
+		return nil, nil, false, fmt.Errorf("save messages: %w", err)
 	}
 	return userMsg, aiMsg, false, nil
 }
@@ -204,10 +190,18 @@ func (s *service) GetExport(ctx context.Context, userID string) (*ExportData, er
 	if err != nil {
 		return nil, fmt.Errorf("export user data: %w", err)
 	}
+	auditEvents, err := s.repo.GetAuditEventsForExport(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("export audit events: %w", err)
+	}
+	if auditEvents == nil {
+		auditEvents = []ExportAuditEvent{}
+	}
 	return &ExportData{
-		ExportedAt: time.Now().UTC(),
-		User:       *user,
-		Entries:    entries,
+		ExportedAt:  time.Now().UTC(),
+		User:        *user,
+		Entries:     entries,
+		AuditEvents: auditEvents,
 	}, nil
 }
 

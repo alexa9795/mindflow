@@ -125,6 +125,10 @@ export default function LoginScreen() {
             )}
           </Pressable>
 
+          <Pressable onPress={() => router.push('/(auth)/forgot-password')}>
+            <Text style={[styles.toggleLink, styles.forgotLink]}>Forgot password?</Text>
+          </Pressable>
+
           <Pressable onPress={() => router.replace('/(auth)/register')}>
             <Text style={styles.toggleLink}>
               Don't have an account?{'  '}
@@ -226,6 +230,11 @@ const styles = StyleSheet.create({
   },
   toggleLinkBold: {
     fontWeight: '600',
+    color: '#6B6157',
+  },
+  forgotLink: {
+    marginTop: 0,
+    marginBottom: 4,
     color: '#6B6157',
   },
 });

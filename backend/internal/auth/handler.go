@@ -17,15 +17,16 @@ import (
 
 // Handler holds the HTTP handlers for auth endpoints.
 type Handler struct {
-	svc    Service
-	subSvc subscription.Service
-	audit  *audit.Logger
+	svc         Service
+	subSvc      subscription.Service
+	audit       *audit.Logger
+	revokeCache *middleware.RevocationCache
 }
 
 // NewHandler returns a Handler backed by the given Service, subscription Service,
-// and audit Logger (may be nil — no audit events emitted).
-func NewHandler(svc Service, subSvc subscription.Service, auditLogger *audit.Logger) *Handler {
-	return &Handler{svc: svc, subSvc: subSvc, audit: auditLogger}
+// audit Logger (may be nil), and revocation cache (may be nil).
+func NewHandler(svc Service, subSvc subscription.Service, auditLogger *audit.Logger, cache *middleware.RevocationCache) *Handler {
+	return &Handler{svc: svc, subSvc: subSvc, audit: auditLogger, revokeCache: cache}
 }
 
 func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
@@ -34,6 +35,7 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 		api.WriteError(w, api.ErrBadRequest.WithMessage("Invalid request body"))
 		return
 	}
+	req.Name = strings.TrimSpace(req.Name)
 	if req.Email == "" || req.Password == "" || req.Name == "" {
 		api.WriteError(w, api.ErrBadRequest.WithMessage("Email, password and name are required"))
 		return
@@ -93,6 +95,7 @@ func (h *Handler) PatchMe(w http.ResponseWriter, r *http.Request) {
 		api.WriteError(w, api.ErrBadRequest.WithMessage("Invalid request body"))
 		return
 	}
+	body.Name = strings.TrimSpace(body.Name)
 	if body.Name == "" {
 		api.WriteError(w, api.ErrBadRequest.WithMessage("Name is required"))
 		return
@@ -129,19 +132,25 @@ func (h *Handler) DeleteMe(w http.ResponseWriter, r *http.Request) {
 	jti, _ := r.Context().Value(middleware.JTIKey).(string)
 	tokenExpiry, _ := r.Context().Value(middleware.TokenExpiryKey).(time.Time)
 
+	// Add JTI to in-memory cache immediately so the revocation is effective
+	// even during DB blips that happen during deletion.
+	if jti != "" && !tokenExpiry.IsZero() && h.revokeCache != nil {
+		h.revokeCache.Add(jti, tokenExpiry)
+	}
+
+	// Audit BEFORE deleting — user_id FK must still be valid for the INSERT.
+	h.audit.Log(r.Context(), &userID, audit.ActionDeleteAccount, audit.IPFromRequest(r), nil)
+
 	if err := h.svc.DeleteMe(r.Context(), userID); err != nil {
 		slog.Error("delete me error", "error", err)
 		api.WriteError(w, api.ErrInternalServer)
 		return
 	}
 
-	h.audit.Log(r.Context(), &userID, audit.ActionDeleteAccount, audit.IPFromRequest(r), nil)
-
-	// Revoke the JWT so it cannot be replayed within its remaining 24-hour window.
+	// Persist JTI revocation in DB (best-effort — cache already covers the gap).
 	if jti != "" && !tokenExpiry.IsZero() {
 		if err := h.svc.RevokeToken(r.Context(), jti, tokenExpiry); err != nil {
 			slog.Error("token revocation failed after account deletion", "jti", jti, "error", err)
-			// Non-fatal: the user row is already deleted; any replay returns 404.
 		}
 	}
 
@@ -206,7 +215,8 @@ func (h *Handler) Trial(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.audit.Log(r.Context(), &userID, audit.ActionTrialActivated, audit.IPFromRequest(r), nil)
+	h.audit.Log(r.Context(), &userID, audit.ActionTrialActivated, audit.IPFromRequest(r),
+		map[string]any{"expires_at": expiresAt.Format(time.RFC3339)})
 
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]interface{}{
@@ -219,6 +229,10 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	var req LoginRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		api.WriteError(w, api.ErrBadRequest.WithMessage("Invalid request body"))
+		return
+	}
+	if req.Password == "" {
+		api.WriteError(w, api.ErrBadRequest.WithMessage("Password is required"))
 		return
 	}
 	if len(req.Email) > 254 {
@@ -237,8 +251,6 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	resp, err := h.svc.Login(r.Context(), req)
 	if err != nil {
 		if errors.Is(err, ErrInvalidCredentials) {
-			// Do not distinguish wrong password vs unknown email in the audit log
-			// — distinguishing them leaks whether an email is registered.
 			h.audit.Log(r.Context(), nil, audit.ActionLoginFailure, audit.IPFromRequest(r), nil)
 			api.WriteError(w, api.ErrUnauthorized.WithMessage("Invalid credentials"))
 			return
@@ -255,8 +267,6 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 }
 
 // AIToggle handles PATCH /api/auth/ai-toggle.
-// It enables or disables AI responses for the authenticated user.
-// When disabled, journal entries are never sent to the Anthropic API.
 func (h *Handler) AIToggle(w http.ResponseWriter, r *http.Request) {
 	userID, ok := r.Context().Value(middleware.UserIDKey).(string)
 	if !ok || userID == "" {
@@ -285,10 +295,83 @@ func (h *Handler) AIToggle(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(map[string]bool{"ai_enabled": body.AIEnabled})
 }
 
-// TODO: Password reset flow is required before public launch. It needs an email
-// sending infrastructure (SMTP / transactional email service). When implemented,
-// add POST /api/auth/forgot-password and POST /api/auth/reset-password endpoints
-// with time-limited, single-use tokens stored in a dedicated table.
+// RequestPasswordReset handles POST /api/auth/reset-password/request.
+// Always returns 200 — never reveals whether an email is registered.
+func (h *Handler) RequestPasswordReset(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Email string `json:"email"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		api.WriteError(w, api.ErrBadRequest.WithMessage("Invalid request body"))
+		return
+	}
+
+	// Fire and forget — always return 200.
+	if err := h.svc.RequestPasswordReset(r.Context(), body.Email); err != nil {
+		slog.Warn("password reset request failed", "error", err)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]string{"message": "If that email is registered, you'll receive reset instructions shortly."})
+}
+
+// ConfirmPasswordReset handles POST /api/auth/reset-password/confirm.
+func (h *Handler) ConfirmPasswordReset(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Token    string `json:"token"`
+		Password string `json:"password"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		api.WriteError(w, api.ErrBadRequest.WithMessage("Invalid request body"))
+		return
+	}
+	if body.Token == "" || body.Password == "" {
+		api.WriteError(w, api.ErrBadRequest.WithMessage("Token and password are required"))
+		return
+	}
+
+	if err := h.svc.ResetPassword(r.Context(), body.Token, body.Password); err != nil {
+		if errors.Is(err, ErrInvalidResetToken) {
+			api.WriteError(w, api.ErrBadRequest.WithMessage("Invalid or expired reset token"))
+			return
+		}
+		slog.Error("reset password error", "error", err)
+		api.WriteError(w, api.ErrInternalServer)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]string{"message": "Password reset successfully."})
+}
+
+// Refresh handles POST /api/auth/refresh.
+func (h *Handler) Refresh(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		RefreshToken string `json:"refresh_token"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		api.WriteError(w, api.ErrBadRequest.WithMessage("Invalid request body"))
+		return
+	}
+	if body.RefreshToken == "" {
+		api.WriteError(w, api.ErrBadRequest.WithMessage("refresh_token is required"))
+		return
+	}
+
+	tokens, err := h.svc.RefreshTokens(r.Context(), body.RefreshToken)
+	if err != nil {
+		if errors.Is(err, ErrInvalidRefreshToken) {
+			api.WriteError(w, api.ErrUnauthorized.WithMessage("Invalid or expired refresh token"))
+			return
+		}
+		slog.Error("refresh token error", "error", err)
+		api.WriteError(w, api.ErrInternalServer)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(tokens)
+}
 
 // isValidEmail checks that email is a valid RFC 5322 address and nothing more
 // (rejects display-name wrappers like "Name <email>").

@@ -21,47 +21,22 @@ func NewService(repo Repository) Service {
 }
 
 func (s *service) GetInsights(ctx context.Context, userID string) (*Insights, error) {
-	total, err := s.repo.TotalEntries(ctx, userID)
+	data, err := s.repo.GetInsightsData(ctx, userID)
 	if err != nil {
-		return nil, fmt.Errorf("get insights: total entries: %w", err)
-	}
-
-	avg, err := s.repo.AvgMoodLast30Days(ctx, userID)
-	if err != nil {
-		return nil, fmt.Errorf("get insights: avg mood: %w", err)
-	}
-
-	mostCommon, err := s.repo.MostCommonMoodLast30Days(ctx, userID)
-	if err != nil {
-		return nil, fmt.Errorf("get insights: most common mood: %w", err)
-	}
-
-	thisMonth, err := s.repo.EntriesThisMonth(ctx, userID)
-	if err != nil {
-		return nil, fmt.Errorf("get insights: entries this month: %w", err)
-	}
-
-	lastMonth, err := s.repo.EntriesLastMonth(ctx, userID)
-	if err != nil {
-		return nil, fmt.Errorf("get insights: entries last month: %w", err)
-	}
-
-	dates, err := s.repo.EntryDates(ctx, userID)
-	if err != nil {
-		return nil, fmt.Errorf("get insights: entry dates: %w", err)
+		return nil, fmt.Errorf("get insights: %w", err)
 	}
 
 	today := time.Now().UTC().Truncate(24 * time.Hour)
-	current, longest := computeStreaks(dates, today)
+	current, longest := computeStreaks(data.EntryDates, today)
 
 	return &Insights{
-		TotalEntries:     total,
-		AvgMoodLast30:    avg,
-		MostCommonMood:   mostCommon,
+		TotalEntries:     data.TotalEntries,
+		AvgMoodLast30:    data.AvgMood,
+		MostCommonMood:   data.CommonMood,
 		CurrentStreak:    current,
 		LongestStreak:    longest,
-		EntriesThisMonth: thisMonth,
-		EntriesLastMonth: lastMonth,
+		EntriesThisMonth: data.ThisMonth,
+		EntriesLastMonth: data.LastMonth,
 	}, nil
 }
 
@@ -71,6 +46,10 @@ func (s *service) GetInsights(ctx context.Context, userID string) (*Insights, er
 // Current streak: consecutive days ending on today or yesterday (grace period
 // so a streak doesn't break at midnight before the user has written today).
 // Longest streak: the longest run of consecutive days across all history.
+//
+// NOTE: streak calculation uses UTC dates. Users in UTC+12 or UTC-12
+// may see streaks that are off by one day depending on when they journal.
+// Phase 2: add timezone preference to user settings.
 func computeStreaks(days []time.Time, today time.Time) (current, longest int) {
 	if len(days) == 0 {
 		return 0, 0

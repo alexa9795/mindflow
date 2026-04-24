@@ -31,6 +31,7 @@ export default function SettingsScreen() {
   const [nameLoading, setNameLoading] = useState(false);
   const [nameError, setNameError] = useState<string | null>(null);
   const [aiToggleLoading, setAiToggleLoading] = useState(false);
+  const [trialLoading, setTrialLoading] = useState(false);
 
   async function handleLogout() {
     Alert.alert('Sign out', 'Are you sure?', [
@@ -127,6 +128,20 @@ export default function SettingsScreen() {
       } else {
         Alert.alert('Error', 'Could not export data. Please try again.');
       }
+    }
+  }
+
+  async function handleActivateTrial() {
+    setTrialLoading(true);
+    try {
+      await api.activateTrial();
+      const user = await api.getMe();
+      updateUser(user);
+      Alert.alert('Trial activated', 'Your 7-day trial is now active.');
+    } catch (e: unknown) {
+      Alert.alert('Error', e instanceof ApiError ? e.message : 'Could not activate trial. Please try again.');
+    } finally {
+      setTrialLoading(false);
     }
   }
 
@@ -296,6 +311,18 @@ export default function SettingsScreen() {
             </View>
           </Pressable>
         </View>
+
+        {currentUser?.subscription?.tier === 'free' && (
+          <Pressable
+            style={[styles.actionRow, { backgroundColor: theme.surface, borderColor: theme.border }]}
+            onPress={() => void handleActivateTrial()}
+            disabled={trialLoading}
+          >
+            <Text style={[styles.actionText, { color: theme.accent, fontFamily: FONTS.modern }]}>
+              {trialLoading ? 'Activating…' : 'Try free trial (7 days)'}
+            </Text>
+          </Pressable>
+        )}
 
         <Pressable
           style={[styles.actionRow, { backgroundColor: theme.surface, borderColor: theme.border }]}

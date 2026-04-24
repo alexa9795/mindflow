@@ -32,10 +32,10 @@ type TokenRevocationChecker interface {
 //
 // Token revocation is only applied on explicit account deletion; normal logout
 // is client-side only (token discarded from SecureStore). If the revocation
-// check itself fails (e.g. DB unavailable), the request is allowed through
-// with a warning — a DB outage should not log out all active users, and a
-// deleted user's token expires within 24 h regardless.
-func Auth(checker TokenRevocationChecker, auditLogger *audit.Logger) func(http.HandlerFunc) http.HandlerFunc {
+// check itself fails (e.g. DB unavailable), the middleware falls back to the
+// in-memory cache: if the JTI is cached as revoked, the request is rejected;
+// otherwise it is allowed through (a DB outage should not log out all users).
+func Auth(checker TokenRevocationChecker, auditLogger *audit.Logger, cache *RevocationCache) func(http.HandlerFunc) http.HandlerFunc {
 	return func(next http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
 			authHeader := r.Header.Get("Authorization")
@@ -76,11 +76,17 @@ func Auth(checker TokenRevocationChecker, auditLogger *audit.Logger) func(http.H
 			jti, _ := claims["jti"].(string)
 
 			// Check token revocation (used for account deletion).
+			// On DB error: fall back to in-memory cache for deleted-account JTIs.
 			if jti != "" {
 				revoked, err := checker.IsTokenRevoked(r.Context(), jti)
 				if err != nil {
-					slog.Warn("token revocation check failed, allowing request",
+					slog.Warn("token revocation check failed, falling back to cache",
 						"jti", jti, "error", err)
+					if cache != nil && cache.Contains(jti) {
+						api.WriteError(w, api.ErrUnauthorized)
+						return
+					}
+					// Not in cache — allow through (same as before for other users).
 				} else if revoked {
 					auditLogger.Log(r.Context(), &userID, audit.ActionTokenRevoked, ip,
 						map[string]any{"jti": jti})

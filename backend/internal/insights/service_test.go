@@ -6,38 +6,22 @@ import (
 	"time"
 )
 
-// mockRepo is a test double for Repository.
+// mockRepo implements Repository using the single GetInsightsData method.
 type mockRepo struct {
-	total      int
-	avgMood    *float64
-	mostCommon *int
-	thisMonth  int
-	lastMonth  int
-	dates      []time.Time
-	err        error
+	data *InsightsData
+	err  error
 }
 
-func (m *mockRepo) TotalEntries(_ context.Context, _ string) (int, error) {
-	return m.total, m.err
+func (m *mockRepo) GetInsightsData(_ context.Context, _ string) (*InsightsData, error) {
+	return m.data, m.err
 }
-func (m *mockRepo) AvgMoodLast30Days(_ context.Context, _ string) (*float64, error) {
-	return m.avgMood, m.err
-}
-func (m *mockRepo) MostCommonMoodLast30Days(_ context.Context, _ string) (*int, error) {
-	return m.mostCommon, m.err
-}
-func (m *mockRepo) EntriesThisMonth(_ context.Context, _ string) (int, error) {
-	return m.thisMonth, m.err
-}
-func (m *mockRepo) EntriesLastMonth(_ context.Context, _ string) (int, error) {
-	return m.lastMonth, m.err
-}
-func (m *mockRepo) EntryDates(_ context.Context, _ string) ([]time.Time, error) {
-	return m.dates, m.err
+
+func emptyData() *InsightsData {
+	return &InsightsData{}
 }
 
 func TestGetInsightsNoEntries(t *testing.T) {
-	svc := NewService(&mockRepo{})
+	svc := NewService(&mockRepo{data: emptyData()})
 	ins, err := svc.GetInsights(context.Background(), "user-1")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -121,11 +105,10 @@ func TestComputeStreaksGapResetsCurrentStreak(t *testing.T) {
 
 func TestComputeStreaksMultipleEntriesSameDay(t *testing.T) {
 	// EntryDates returns DISTINCT dates, so two entries on the same day appear once.
-	// This test verifies the streak logic handles it correctly.
 	today := time.Now().UTC().Truncate(24 * time.Hour)
 	dates := []time.Time{
-		today,           // one entry today
-		day(today, -1),  // one entry yesterday
+		today,
+		day(today, -1),
 	}
 	cur, long := computeStreaks(dates, today)
 	if cur != 2 {

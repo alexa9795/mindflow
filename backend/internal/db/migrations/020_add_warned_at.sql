@@ -1,0 +1,2 @@
+ALTER TABLE users ADD COLUMN warned_at TIMESTAMPTZ;
+ALTER TABLE users ADD COLUMN final_warned_at TIMESTAMPTZ;

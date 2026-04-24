@@ -6,13 +6,14 @@ import (
 	"time"
 
 	"github.com/alexa9795/mindflow/internal/api"
+	"github.com/alexa9795/mindflow/internal/audit"
 	"golang.org/x/time/rate"
 )
 
 // AIRateLimit returns a per-user rate-limiting middleware for AI-calling endpoints.
 // Limit: 10 AI calls per minute per user, burst 3.
 // Uses the same LoadOrStore + TTL eviction pattern as RateLimit.
-func AIRateLimit(limiters *sync.Map) func(http.Handler) http.Handler {
+func AIRateLimit(limiters *sync.Map, auditLogger *audit.Logger) func(http.Handler) http.Handler {
 	const (
 		rps   = rate.Limit(10.0 / 60.0) // 10 per minute
 		burst = 3
@@ -36,6 +37,8 @@ func AIRateLimit(limiters *sync.Map) func(http.Handler) http.Handler {
 				return
 			}
 			if !getAILimiter(userID).Allow() {
+				auditLogger.Log(r.Context(), &userID, audit.ActionAIRateLimitHit,
+					audit.IPFromRequest(r), nil)
 				api.WriteError(w, api.ErrAIRateLimited)
 				return
 			}
@@ -45,5 +48,5 @@ func AIRateLimit(limiters *sync.Map) func(http.Handler) http.Handler {
 }
 
 // NewAILimiterMap returns a sync.Map for the AI rate limiter.
-// Pass it to both AIRateLimit and startEviction.
+// Pass it to both AIRateLimit and StartEviction.
 func NewAILimiterMap() *sync.Map { return &sync.Map{} }
