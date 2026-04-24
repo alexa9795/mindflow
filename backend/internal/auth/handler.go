@@ -329,6 +329,10 @@ func (h *Handler) ConfirmPasswordReset(w http.ResponseWriter, r *http.Request) {
 		api.WriteError(w, api.ErrBadRequest.WithMessage("Token and password are required"))
 		return
 	}
+	if len(body.Password) < 8 || len(body.Password) > 72 {
+		api.WriteError(w, api.ErrBadRequest.WithMessage("Password must be 8–72 characters"))
+		return
+	}
 
 	if err := h.svc.ResetPassword(r.Context(), body.Token, body.Password); err != nil {
 		if errors.Is(err, ErrInvalidResetToken) {

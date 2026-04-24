@@ -205,32 +205,37 @@ func (s *service) SetAIConsent(ctx context.Context, userID string) error {
 
 // RequestPasswordReset generates a reset token and sends a reset email.
 // Always returns nil even if the email is not found — prevents email enumeration.
+// DB errors are logged internally but never surfaced to the caller.
 func (s *service) RequestPasswordReset(ctx context.Context, emailAddr string) error {
 	userID, _, _, err := s.repo.GetUserByEmail(ctx, emailAddr)
 	if err != nil {
-		// User not found or DB error — return nil to prevent enumeration.
+		if !errors.Is(err, sql.ErrNoRows) {
+			slog.Error("password reset: lookup user failed", "error", err)
+		}
 		return nil
 	}
 
 	rawToken, err := generateSecureToken()
 	if err != nil {
-		return fmt.Errorf("generate reset token: %w", err)
+		slog.Error("password reset: generate token failed", "error", err)
+		return nil
 	}
 
-	expiresAt := time.Now().Add(time.Hour)
-	if err := s.repo.SetResetToken(ctx, userID, rawToken, expiresAt); err != nil {
-		return fmt.Errorf("set reset token: %w", err)
+	tokenHash := sha256Hex(rawToken)
+	expiresAt := time.Now().Add(30 * time.Minute)
+	if err := s.repo.SetResetToken(ctx, userID, tokenHash, expiresAt); err != nil {
+		slog.Error("password reset: set token failed", "user_id", userID, "error", err)
+		return nil
 	}
 
 	if s.emailClient != nil {
-		// Get user name for the email.
 		u, err := s.repo.GetUserByID(ctx, userID)
 		if err != nil {
-			slog.Warn("failed to get user for reset email", "error", err)
+			slog.Error("password reset: get user for email failed", "user_id", userID, "error", err)
 			return nil
 		}
 		if err := s.emailClient.SendPasswordReset(ctx, emailAddr, u.Name, rawToken); err != nil {
-			slog.Warn("failed to send password reset email", "error", err)
+			slog.Warn("password reset: failed to send email", "user_id", userID, "error", err)
 		}
 	}
 	return nil
@@ -238,7 +243,8 @@ func (s *service) RequestPasswordReset(ctx context.Context, emailAddr string) er
 
 // ResetPassword validates a reset token and updates the password.
 func (s *service) ResetPassword(ctx context.Context, token, newPassword string) error {
-	u, err := s.repo.GetUserByResetToken(ctx, token)
+	tokenHash := sha256Hex(token)
+	u, err := s.repo.GetUserByResetToken(ctx, tokenHash)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return ErrInvalidResetToken
@@ -246,15 +252,10 @@ func (s *service) ResetPassword(ctx context.Context, token, newPassword string) 
 		return fmt.Errorf("get user by reset token: %w", err)
 	}
 
-	if len(newPassword) < 8 || len(newPassword) > 72 {
-		return fmt.Errorf("password must be 8–72 characters")
-	}
-
 	hashed, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
 	if err != nil {
 		return fmt.Errorf("hash password: %w", err)
 	}
-
 	if err := s.repo.UpdatePassword(ctx, u.ID, string(hashed)); err != nil {
 		return fmt.Errorf("update password: %w", err)
 	}

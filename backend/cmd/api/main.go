@@ -19,6 +19,7 @@ import (
 	"github.com/alexa9795/mindflow/internal/db"
 	"github.com/alexa9795/mindflow/internal/email"
 	"github.com/alexa9795/mindflow/internal/entry"
+	"github.com/alexa9795/mindflow/internal/export"
 	"github.com/alexa9795/mindflow/internal/insights"
 	"github.com/alexa9795/mindflow/internal/middleware"
 	"github.com/alexa9795/mindflow/internal/retention"
@@ -30,12 +31,12 @@ import (
 func main() {
 	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, nil)))
 
-	// C1: Read JWT secret once at startup — exits if not set.
-	config.InitJWTSecret()
-
 	if err := godotenv.Load(); err != nil {
 		slog.Info("no .env file found, using environment variables")
 	}
+
+	// C1: Read JWT secret once at startup — exits if not set.
+	config.InitJWTSecret()
 
 	// H2: Warn if CORS is not locked down for production.
 	allowedOrigins := os.Getenv("ALLOWED_ORIGINS")
@@ -80,6 +81,10 @@ func main() {
 	entrySvc := entry.NewService(entryRepo, aiSvc, authSvc)
 	entryHandler := entry.NewHandler(entrySvc, auditLogger)
 
+	exportRepo := export.NewRepository(db.DB)
+	exportSvc := export.NewService(exportRepo, entryRepo)
+	exportHandler := export.NewHandler(exportSvc, auditLogger)
+
 	insightsRepo := insights.NewRepository(db.DB)
 	insightsSvc := insights.NewService(insightsRepo)
 	insightsHandler := insights.NewHandler(insightsSvc)
@@ -95,9 +100,12 @@ func main() {
 	stopLoginEviction := middleware.StartEviction(loginLimiters, 10*time.Minute)
 	registerLimiters := &sync.Map{}
 	stopRegisterEviction := middleware.StartEviction(registerLimiters, 10*time.Minute)
-	// Password reset: 3 requests/hour per IP.
+	// Password reset: 3 requests/hour per IP (request + confirm share the same limiters).
 	resetLimiters := &sync.Map{}
 	stopResetEviction := middleware.StartEviction(resetLimiters, time.Hour)
+	// Refresh token: 20 requests/min per IP.
+	refreshLimiters := &sync.Map{}
+	stopRefreshEviction := middleware.StartEviction(refreshLimiters, 10*time.Minute)
 
 	// Per-user limiters for AI endpoints with TTL eviction.
 	aiLimiters := middleware.NewAILimiterMap()
@@ -106,9 +114,10 @@ func main() {
 	// Auth middleware with token revocation checking via authRepo.
 	authMW := middleware.Auth(authRepo, auditLogger, revokeCache)
 
-	loginLimit    := middleware.RateLimitWithMap(loginLimiters, rate.Every(6*time.Second), 3, auditLogger)    // 10 req/min, burst 3
+	loginLimit    := middleware.RateLimitWithMap(loginLimiters, rate.Every(6*time.Second), 3, auditLogger)     // 10 req/min, burst 3
 	registerLimit := middleware.RateLimitWithMap(registerLimiters, rate.Every(12*time.Second), 2, auditLogger) // 5 req/min, burst 2
 	resetLimit    := middleware.RateLimitWithMap(resetLimiters, rate.Every(20*time.Minute), 3, auditLogger)    // 3 req/hour, burst 3
+	refreshLimit  := middleware.RateLimitWithMap(refreshLimiters, rate.Every(3*time.Second), 5, auditLogger)   // 20 req/min, burst 5
 	aiLimit       := middleware.AIRateLimit(aiLimiters, auditLogger)
 
 	subCheck := middleware.CheckSubscription(subSvc)
@@ -134,32 +143,40 @@ func main() {
 	mux.HandleFunc("DELETE /api/auth/me", authMW(authHandler.DeleteMe))
 	mux.HandleFunc("PATCH /api/auth/ai-toggle", authMW(middleware.MaxBodySize(authHandler.AIToggle)))
 	mux.HandleFunc("POST /api/subscription/trial", authMW(authHandler.Trial))
-	// Refresh token rotation — public (carries its own credential).
-	mux.HandleFunc("POST /api/auth/refresh", middleware.MaxBodySize(authHandler.Refresh))
-	// Password reset — public, rate-limited.
+	// Refresh token rotation — public (carries its own credential), rate-limited per IP.
+	mux.Handle("POST /api/auth/refresh",
+		refreshLimit(http.HandlerFunc(middleware.MaxBodySize(authHandler.Refresh))))
+	// Password reset — public, rate-limited (request + confirm share the same IP budget).
 	mux.Handle("POST /api/auth/reset-password/request",
 		resetLimit(http.HandlerFunc(middleware.MaxBodySize(authHandler.RequestPasswordReset))))
-	mux.HandleFunc("POST /api/auth/reset-password/confirm",
-		middleware.MaxBodySize(authHandler.ConfirmPasswordReset))
+	mux.Handle("POST /api/auth/reset-password/confirm",
+		resetLimit(http.HandlerFunc(middleware.MaxBodySize(authHandler.ConfirmPasswordReset))))
 
 	// Entry routes (require auth).
 	// POST /api/entries also enforces the subscription limit.
-	mux.Handle("POST /api/entries", http.HandlerFunc(authMW(
-		http.HandlerFunc(subCheck(middleware.MaxBodySize(entryHandler.Create)).ServeHTTP),
-	)))
+	mux.Handle("POST /api/entries", chain(
+		http.HandlerFunc(entryHandler.Create),
+		adapt(middleware.MaxBodySize),
+		subCheck,
+		adapt(authMW),
+	))
 	mux.HandleFunc("GET /api/entries", authMW(entryHandler.List))
-	mux.HandleFunc("GET /api/export", authMW(entryHandler.Export))
+	mux.HandleFunc("GET /api/export", authMW(exportHandler.Export))
 	mux.HandleFunc("DELETE /api/entries", authMW(entryHandler.DeleteAll))
 	mux.HandleFunc("GET /api/entries/{id}", authMW(entryHandler.Get))
-	// AI endpoints — also rate-limited per user.
-	mux.Handle("POST /api/entries/{id}/respond",
-		http.HandlerFunc(authMW(
-			http.HandlerFunc(aiLimit(middleware.MaxBodySize(entryHandler.Respond)).ServeHTTP),
-		)))
-	mux.Handle("POST /api/entries/{id}/messages",
-		http.HandlerFunc(authMW(
-			http.HandlerFunc(aiLimit(http.HandlerFunc(middleware.MaxBodySize(entryHandler.AddMessage))).ServeHTTP),
-		)))
+	// AI endpoints — auth + per-user rate limit + body size.
+	mux.Handle("POST /api/entries/{id}/respond", chain(
+		http.HandlerFunc(entryHandler.Respond),
+		adapt(middleware.MaxBodySize),
+		aiLimit,
+		adapt(authMW),
+	))
+	mux.Handle("POST /api/entries/{id}/messages", chain(
+		http.HandlerFunc(entryHandler.AddMessage),
+		adapt(middleware.MaxBodySize),
+		aiLimit,
+		adapt(authMW),
+	))
 
 	// Insights route.
 	mux.HandleFunc("GET /api/insights", authMW(insightsHandler.GetInsights))
@@ -217,6 +234,7 @@ func main() {
 	stopLoginEviction()
 	stopRegisterEviction()
 	stopResetEviction()
+	stopRefreshEviction()
 	stopAIEviction()
 	appCancel()
 
@@ -229,4 +247,21 @@ func main() {
 	// Drain audit queue before closing DB.
 	auditLogger.Shutdown()
 	slog.Info("server stopped")
+}
+
+// chain applies middlewares outermost-first to h.
+// Usage: chain(handler, outerMW, innerMW) → outerMW(innerMW(handler))
+func chain(h http.Handler, mw ...func(http.Handler) http.Handler) http.Handler {
+	for i := len(mw) - 1; i >= 0; i-- {
+		h = mw[i](h)
+	}
+	return h
+}
+
+// adapt converts a func(HandlerFunc)HandlerFunc middleware into the
+// func(Handler)Handler form expected by chain.
+func adapt(f func(http.HandlerFunc) http.HandlerFunc) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return f(next.ServeHTTP)
+	}
 }

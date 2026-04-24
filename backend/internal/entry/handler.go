@@ -50,6 +50,10 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		api.WriteError(w, api.ErrBadRequest.WithMessage("Entry is too long (max 10,000 characters)"))
 		return
 	}
+	if req.MoodScore != nil && (*req.MoodScore < 1 || *req.MoodScore > 5) {
+		api.WriteError(w, api.ErrBadRequest.WithMessage("mood_score must be between 1 and 5"))
+		return
+	}
 
 	e, err := h.svc.Create(r.Context(), userID, req.Content, req.MoodScore)
 	if err != nil {
@@ -216,26 +220,6 @@ func (h *Handler) AddMessage(w http.ResponseWriter, r *http.Request) {
 		"user_message":      userMsg,
 		"assistant_message": aiMsg,
 	})
-}
-
-func (h *Handler) Export(w http.ResponseWriter, r *http.Request) {
-	userID, ok := r.Context().Value(middleware.UserIDKey).(string)
-	if !ok || userID == "" {
-		api.WriteError(w, api.ErrUnauthorized)
-		return
-	}
-
-	data, err := h.svc.GetExport(r.Context(), userID)
-	if err != nil {
-		slog.Error("export error", "error", err)
-		api.WriteError(w, api.ErrInternalServer)
-		return
-	}
-
-	h.audit.Log(r.Context(), &userID, audit.ActionDataExport, audit.IPFromRequest(r), nil)
-	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Content-Disposition", `attachment; filename="echo-export.json"`)
-	_ = json.NewEncoder(w).Encode(data)
 }
 
 func (h *Handler) DeleteAll(w http.ResponseWriter, r *http.Request) {

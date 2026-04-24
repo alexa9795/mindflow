@@ -3,7 +3,6 @@ package entry
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"fmt"
 	"log/slog"
 
@@ -20,9 +19,7 @@ type Repository interface {
 	SaveMessage(ctx context.Context, entryID string, role MessageRole, content string) (*Message, error)
 	SaveMessagesInTx(ctx context.Context, entryID, userContent, aiContent string) (*Message, *Message, error)
 	LoadMessages(ctx context.Context, entryID string) ([]Message, error)
-	GetUserForExport(ctx context.Context, userID string) (*ExportUser, error)
 	ExportUserData(ctx context.Context, userID string) ([]Entry, error)
-	GetAuditEventsForExport(ctx context.Context, userID string) ([]ExportAuditEvent, error)
 	DeleteAllByUserID(ctx context.Context, userID string) error
 }
 
@@ -200,54 +197,6 @@ func (r *repository) LoadMessages(ctx context.Context, entryID string) ([]Messag
 		messages = append(messages, m)
 	}
 	return messages, rows.Err()
-}
-
-// GetUserForExport fetches the user profile fields needed for a GDPR Article 20 export.
-func (r *repository) GetUserForExport(ctx context.Context, userID string) (*ExportUser, error) {
-	var u ExportUser
-	err := r.db.QueryRowContext(ctx, `
-		SELECT id, email, name, created_at, last_active_at, subscription_type, ai_enabled
-		FROM users WHERE id = $1`,
-		userID,
-	).Scan(&u.ID, &u.Email, &u.Name, &u.CreatedAt, &u.LastActiveAt, &u.SubscriptionType, &u.AIEnabled)
-	if err != nil {
-		return nil, fmt.Errorf("get user for export: %w", err)
-	}
-	return &u, nil
-}
-
-// GetAuditEventsForExport returns the user's audit trail for GDPR Article 15.
-func (r *repository) GetAuditEventsForExport(ctx context.Context, userID string) ([]ExportAuditEvent, error) {
-	rows, err := r.db.QueryContext(ctx, `
-		SELECT action, ip_address, metadata, created_at
-		FROM audit_events
-		WHERE user_id = $1
-		ORDER BY created_at DESC`,
-		userID,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("get audit events for export: %w", err)
-	}
-	defer rows.Close()
-
-	var events []ExportAuditEvent
-	for rows.Next() {
-		var e ExportAuditEvent
-		var ipAddr *string
-		var metaRaw []byte
-		if err := rows.Scan(&e.Action, &ipAddr, &metaRaw, &e.CreatedAt); err != nil {
-			return nil, fmt.Errorf("scan audit event: %w", err)
-		}
-		e.IPAddress = ipAddr
-		if len(metaRaw) > 0 {
-			var m map[string]any
-			if err := json.Unmarshal(metaRaw, &m); err == nil {
-				e.Metadata = m
-			}
-		}
-		events = append(events, e)
-	}
-	return events, rows.Err()
 }
 
 // ExportUserData returns all entries with their full content and messages for GDPR Article 20.

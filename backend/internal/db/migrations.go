@@ -5,7 +5,7 @@ import (
 	"embed"
 	"fmt"
 	"io/fs"
-	"log"
+	"log/slog"
 	"sort"
 	"strings"
 )
@@ -52,7 +52,7 @@ func RunMigrations(db *sql.DB) error {
 			continue
 		}
 
-		log.Printf("Running migration: %s", name)
+		slog.Info("running migration", "name", name)
 
 		content, err := migrationFS.ReadFile("migrations/" + name)
 		if err != nil {
@@ -80,7 +80,7 @@ func RunMigrations(db *sql.DB) error {
 			return fmt.Errorf("commit migration %s: %w", name, err)
 		}
 
-		log.Printf("Migration applied: %s", name)
+		slog.Info("migration applied", "name", name)
 	}
 
 	return nil

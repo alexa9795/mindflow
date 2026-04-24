@@ -82,7 +82,7 @@ func (j *Job) runFinalWarnings(ctx context.Context) {
 
 func (j *Job) runFirstWarnings(ctx context.Context) {
 	rows, err := j.db.QueryContext(ctx, `
-		SELECT id, email, name FROM users
+		SELECT id, email, name, last_active_at FROM users
 		WHERE last_active_at < NOW() - INTERVAL '11 months'
 		  AND last_active_at >= NOW() - INTERVAL '11 months 15 days'
 		  AND warned_at IS NULL
@@ -94,11 +94,12 @@ func (j *Job) runFirstWarnings(ctx context.Context) {
 
 	type row struct {
 		id, email, name string
+		lastActiveAt    time.Time
 	}
 	var accounts []row
 	for rows.Next() {
 		var r row
-		if err := rows.Scan(&r.id, &r.email, &r.name); err != nil {
+		if err := rows.Scan(&r.id, &r.email, &r.name, &r.lastActiveAt); err != nil {
 			slog.Error("retention: scan error (first warning)", "error", err)
 		} else {
 			accounts = append(accounts, r)
@@ -112,9 +113,11 @@ func (j *Job) runFirstWarnings(ctx context.Context) {
 
 	for _, a := range accounts {
 		if j.emailClient != nil {
-			// 30 days until final warning (~15 days from now to 12-month mark minus 15 days).
-			// Use a conservative estimate for the email message.
-			const daysUntilDeletion = 45
+			deletionDate := a.lastActiveAt.AddDate(1, 0, 0)
+			daysUntilDeletion := int(time.Until(deletionDate).Hours() / 24)
+			if daysUntilDeletion < 1 {
+				daysUntilDeletion = 1
+			}
 			if err := j.emailClient.SendRetentionWarning(ctx, a.email, a.name, daysUntilDeletion); err != nil {
 				slog.Warn("retention: failed to send first warning email", "user_id", a.id, "error", err)
 			}
@@ -157,15 +160,27 @@ func (j *Job) runDeletions(ctx context.Context) {
 
 	for _, id := range ids {
 		localID := id
+		tx, err := j.db.BeginTx(ctx, nil)
+		if err != nil {
+			slog.Error("retention: failed to begin tx for deletion", "user_id", localID, "error", err)
+			continue
+		}
 		// Anonymize audit records before deleting (user_id FK must still be valid).
-		if _, err := j.db.ExecContext(ctx,
+		if _, err := tx.ExecContext(ctx,
 			`UPDATE audit_events SET ip_address = NULL, metadata = metadata - 'ip' - 'email'
 			 WHERE user_id = $1`, localID,
 		); err != nil {
+			_ = tx.Rollback()
 			slog.Error("retention: failed to anonymize audit records", "user_id", localID, "error", err)
+			continue
 		}
-		if _, err := j.db.ExecContext(ctx, `DELETE FROM users WHERE id = $1`, localID); err != nil {
+		if _, err := tx.ExecContext(ctx, `DELETE FROM users WHERE id = $1`, localID); err != nil {
+			_ = tx.Rollback()
 			slog.Error("retention: failed to delete inactive account", "user_id", localID, "error", err)
+			continue
+		}
+		if err := tx.Commit(); err != nil {
+			slog.Error("retention: failed to commit deletion", "user_id", localID, "error", err)
 			continue
 		}
 		j.auditLogger.Log(ctx, nil, audit.ActionRetentionDeleted, "",

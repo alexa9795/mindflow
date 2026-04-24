@@ -9,10 +9,12 @@ import (
 // It is consulted when the DB revocation check fails, so account deletions
 // remain effective even during brief DB outages.
 //
-// Capacity: last 1000 entries. TTL: 25 hours (slightly longer than access token life).
+// Capacity: last 1000 entries. Eviction: oldest-first (insertion order).
+// TTL: access tokens are 15 minutes, so entries expire well before eviction.
 type RevocationCache struct {
 	mu      sync.RWMutex
 	entries map[string]time.Time // jti → expires_at
+	order   []string             // insertion-ordered keys for oldest-first eviction
 }
 
 const revocationCacheMax = 1000
@@ -21,31 +23,26 @@ const revocationCacheMax = 1000
 func NewRevocationCache() *RevocationCache {
 	return &RevocationCache{
 		entries: make(map[string]time.Time, revocationCacheMax),
+		order:   make([]string, 0, revocationCacheMax),
 	}
 }
 
 // Add records a JTI in the cache until its token expiry time.
+// When at capacity, the oldest entry is evicted to make room.
 func (c *RevocationCache) Add(jti string, expiresAt time.Time) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	if _, exists := c.entries[jti]; exists {
+		return // already present
+	}
 	if len(c.entries) >= revocationCacheMax {
-		// Evict one expired entry before adding; if none are expired, evict an arbitrary one.
-		now := time.Now()
-		for k, v := range c.entries {
-			if v.Before(now) {
-				delete(c.entries, k)
-				break
-			}
-		}
-		// If still at capacity, evict an arbitrary entry.
-		if len(c.entries) >= revocationCacheMax {
-			for k := range c.entries {
-				delete(c.entries, k)
-				break
-			}
-		}
+		// Evict the oldest entry (front of the insertion-order slice).
+		oldest := c.order[0]
+		c.order = c.order[1:]
+		delete(c.entries, oldest)
 	}
 	c.entries[jti] = expiresAt
+	c.order = append(c.order, jti)
 }
 
 // Contains returns true if the JTI is in the cache and has not yet expired.
@@ -64,9 +61,13 @@ func (c *RevocationCache) Cleanup() {
 	now := time.Now()
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	for k, v := range c.entries {
-		if v.Before(now) {
-			delete(c.entries, k)
+	kept := c.order[:0]
+	for _, jti := range c.order {
+		if exp, ok := c.entries[jti]; ok && exp.After(now) {
+			kept = append(kept, jti)
+		} else {
+			delete(c.entries, jti)
 		}
 	}
+	c.order = kept
 }

@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"time"
 
 	mindai "github.com/alexa9795/mindflow/internal/ai"
 )
@@ -42,7 +41,6 @@ type Service interface {
 	// aiError is true when Claude failed transiently; in that case neither message is saved.
 	// When AI is disabled by the user: returns (nil, nil, false, ErrAIDisabled).
 	AddMessage(ctx context.Context, entryID, userID, content string) (*Message, *Message, bool, error)
-	GetExport(ctx context.Context, userID string) (*ExportData, error)
 	DeleteAll(ctx context.Context, userID string) error
 }
 
@@ -179,30 +177,6 @@ func (s *service) AddMessage(ctx context.Context, entryID, userID, content strin
 		return nil, nil, false, fmt.Errorf("save messages: %w", err)
 	}
 	return userMsg, aiMsg, false, nil
-}
-
-func (s *service) GetExport(ctx context.Context, userID string) (*ExportData, error) {
-	user, err := s.repo.GetUserForExport(ctx, userID)
-	if err != nil {
-		return nil, fmt.Errorf("get user for export: %w", err)
-	}
-	entries, err := s.repo.ExportUserData(ctx, userID)
-	if err != nil {
-		return nil, fmt.Errorf("export user data: %w", err)
-	}
-	auditEvents, err := s.repo.GetAuditEventsForExport(ctx, userID)
-	if err != nil {
-		return nil, fmt.Errorf("export audit events: %w", err)
-	}
-	if auditEvents == nil {
-		auditEvents = []ExportAuditEvent{}
-	}
-	return &ExportData{
-		ExportedAt:  time.Now().UTC(),
-		User:        *user,
-		Entries:     entries,
-		AuditEvents: auditEvents,
-	}, nil
 }
 
 func (s *service) DeleteAll(ctx context.Context, userID string) error {

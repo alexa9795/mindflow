@@ -1,6 +1,6 @@
 import * as SecureStore from 'expo-secure-store';
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
-import { api, setToken, setRefreshToken, setUnauthorizedHandler, User } from '../services/api';
+import { api, setToken, setRefreshToken, setUnauthorizedHandler, setTokensRefreshedHandler, User } from '../services/api';
 
 const TOKEN_KEY = 'echo_jwt';
 const REFRESH_TOKEN_KEY = 'echo_refresh_jwt';
@@ -40,6 +40,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     setUnauthorizedHandler(() => void doLogout());
   }, [doLogout]);
+
+  // Persist rotated tokens to SecureStore so they survive app restarts.
+  useEffect(() => {
+    setTokensRefreshedHandler((tokens) => {
+      void SecureStore.setItemAsync(TOKEN_KEY, tokens.access_token);
+      void SecureStore.setItemAsync(REFRESH_TOKEN_KEY, tokens.refresh_token);
+    });
+  }, []);
 
   // Rehydrate auth state from secure store on cold start.
   // Uses /api/auth/me to get the full user object — avoids trusting client-side JWT decoding.

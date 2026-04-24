@@ -7,6 +7,7 @@ export const API_URL = BASE_URL;
 let authToken: string | null = null;
 let refreshToken: string | null = null;
 let onUnauthorized: (() => void) | null = null;
+let onTokensRefreshed: ((tokens: AuthTokens) => void) | null = null;
 
 export function setToken(token: string | null) {
   authToken = token;
@@ -18,6 +19,10 @@ export function setRefreshToken(token: string | null) {
 
 export function setUnauthorizedHandler(handler: () => void) {
   onUnauthorized = handler;
+}
+
+export function setTokensRefreshedHandler(handler: (tokens: AuthTokens) => void) {
+  onTokensRefreshed = handler;
 }
 
 /** Thrown when the device has no network connection. */
@@ -95,6 +100,7 @@ async function refreshAccessToken(): Promise<boolean> {
     const data = (await res.json()) as AuthTokens;
     authToken = data.access_token;
     refreshToken = data.refresh_token;
+    onTokensRefreshed?.(data);
     return true;
   } catch {
     return false;
