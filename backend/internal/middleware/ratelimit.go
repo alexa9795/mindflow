@@ -3,6 +3,7 @@ package middleware
 import (
 	"net/http"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/alexa9795/mindflow/internal/api"
@@ -11,9 +12,11 @@ import (
 )
 
 // limiterEntry wraps a rate.Limiter with a last-seen timestamp for TTL eviction.
+// lastSeen is stored as Unix nanoseconds via atomic.Int64 to avoid data races
+// when multiple goroutines touch the same entry concurrently.
 type limiterEntry struct {
 	limiter  *rate.Limiter
-	lastSeen time.Time
+	lastSeen atomic.Int64 // Unix nanoseconds; use .Store/.Load
 }
 
 // StartEviction launches a goroutine that removes entries from m that have not
@@ -29,7 +32,7 @@ func StartEviction(m *sync.Map, ttl time.Duration) (stop func()) {
 			case <-ticker.C:
 				cutoff := time.Now().Add(-ttl)
 				m.Range(func(k, v any) bool {
-					if v.(*limiterEntry).lastSeen.Before(cutoff) {
+					if time.Unix(0, v.(*limiterEntry).lastSeen.Load()).Before(cutoff) {
 						m.Delete(k)
 					}
 					return true
@@ -47,10 +50,11 @@ func StartEviction(m *sync.Map, ttl time.Duration) (stop func()) {
 // auditLogger may be nil (no audit events emitted).
 func RateLimitWithMap(m *sync.Map, rps rate.Limit, burst int, auditLogger *audit.Logger) func(http.Handler) http.Handler {
 	getLimiter := func(ip string) *rate.Limiter {
-		e := &limiterEntry{limiter: rate.NewLimiter(rps, burst), lastSeen: time.Now()}
+		e := &limiterEntry{limiter: rate.NewLimiter(rps, burst)}
+		e.lastSeen.Store(time.Now().UnixNano())
 		actual, _ := m.LoadOrStore(ip, e)
 		got := actual.(*limiterEntry)
-		got.lastSeen = time.Now()
+		got.lastSeen.Store(time.Now().UnixNano())
 		return got.limiter
 	}
 

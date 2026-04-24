@@ -25,7 +25,8 @@ const (
 	// No server-side session exists beyond the token TTL.
 	// Refresh token revocation IS audited (token.revoked action covers this).
 	ActionLogout       Action = "auth.logout"
-	ActionTokenRevoked Action = "auth.token.revoked"
+	ActionTokenRevoked   Action = "auth.token.revoked"
+	ActionTokenRefreshed Action = "auth.token.refreshed"
 	ActionRateLimitHit Action = "auth.rate_limit_hit"
 	ActionInvalidToken Action = "auth.invalid_token"
 

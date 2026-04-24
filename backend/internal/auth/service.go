@@ -338,6 +338,7 @@ func (s *service) generateTokenPair(ctx context.Context, userID, emailAddr strin
 		RefreshToken:          rawRefresh,
 		AccessTokenExpiresAt:  accessExpiry,
 		RefreshTokenExpiresAt: refreshExpiry,
+		UserID:                userID,
 	}, nil
 }
 

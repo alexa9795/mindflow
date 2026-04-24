@@ -1,6 +1,6 @@
 package ai
 
-import "log"
+import "log/slog"
 
 // LogTrigger emits a structured log line when a crisis/safety trigger phrase
 // is detected in a user message. Only the matched trigger keyword is logged —
@@ -11,5 +11,5 @@ import "log"
 // Legal basis: legitimate interest (user safety).
 // Retention: governed by Railway log retention policy (configurable in dashboard).
 func LogTrigger(userID string, triggerWord string) {
-	log.Printf("TRIGGER_EVENT user_id=%s trigger=%s", userID, triggerWord)
+	slog.Info("trigger_event", "user_id", userID, "trigger", triggerWord)
 }

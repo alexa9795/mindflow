@@ -24,6 +24,7 @@ type AuthTokens struct {
 	RefreshToken          string    `json:"refresh_token"`
 	AccessTokenExpiresAt  time.Time `json:"access_token_expires_at"`
 	RefreshTokenExpiresAt time.Time `json:"refresh_token_expires_at"`
+	UserID                string    `json:"-"` // not serialized; available for internal use (e.g. audit logging)
 }
 
 // AuthResponse is returned on successful register or login.

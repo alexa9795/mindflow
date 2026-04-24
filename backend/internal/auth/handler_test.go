@@ -28,6 +28,8 @@ type mockAuthSvc struct {
 	updateErr    error
 	refreshResp  *auth.AuthTokens
 	refreshErr   error
+	resetPwErr   error
+	aiToggleErr  error
 }
 
 func (m *mockAuthSvc) Register(_ context.Context, _ auth.RegisterRequest) (*auth.AuthResponse, error) {
@@ -46,12 +48,12 @@ func (m *mockAuthSvc) DeleteMe(_ context.Context, _ string) error           { re
 func (m *mockAuthSvc) ActivateTrial(_ context.Context, _ string) (time.Time, error) {
 	return time.Time{}, nil
 }
-func (m *mockAuthSvc) UpdateAIEnabled(_ context.Context, _ string, _ bool) error { return nil }
+func (m *mockAuthSvc) UpdateAIEnabled(_ context.Context, _ string, _ bool) error { return m.aiToggleErr }
 func (m *mockAuthSvc) GetAIEnabled(_ context.Context, _ string) (bool, error)    { return true, nil }
 func (m *mockAuthSvc) RevokeToken(_ context.Context, _ string, _ time.Time) error { return nil }
 func (m *mockAuthSvc) SetAIConsent(_ context.Context, _ string) error             { return nil }
 func (m *mockAuthSvc) RequestPasswordReset(_ context.Context, _ string) error     { return nil }
-func (m *mockAuthSvc) ResetPassword(_ context.Context, _, _ string) error         { return nil }
+func (m *mockAuthSvc) ResetPassword(_ context.Context, _, _ string) error         { return m.resetPwErr }
 func (m *mockAuthSvc) RefreshTokens(_ context.Context, _ string) (*auth.AuthTokens, error) {
 	return m.refreshResp, m.refreshErr
 }
@@ -314,6 +316,151 @@ func TestRefreshHandler(t *testing.T) {
 				}
 				if body["refresh_token"] == "" {
 					t.Error("response missing refresh_token")
+				}
+			}
+		})
+	}
+}
+
+// ---- POST /api/auth/reset-password/confirm ---------------------------------
+
+func TestConfirmPasswordResetHandler(t *testing.T) {
+	longPw := strings.Repeat("x", 73)
+	tests := []struct {
+		name       string
+		body       string
+		svcErr     error
+		wantStatus int
+	}{
+		{
+			name:       "valid token and password returns 200",
+			body:       `{"token":"valid-token","password":"newpass1"}`,
+			wantStatus: http.StatusOK,
+		},
+		{
+			name:       "invalid token returns 400",
+			body:       `{"token":"bad-token","password":"newpass1"}`,
+			svcErr:     auth.ErrInvalidResetToken,
+			wantStatus: http.StatusBadRequest,
+		},
+		{
+			name:       "missing token returns 400",
+			body:       `{"password":"newpass1"}`,
+			wantStatus: http.StatusBadRequest,
+		},
+		{
+			name:       "missing password returns 400",
+			body:       `{"token":"valid-token"}`,
+			wantStatus: http.StatusBadRequest,
+		},
+		{
+			name:       "password too short returns 400",
+			body:       `{"token":"valid-token","password":"short"}`,
+			wantStatus: http.StatusBadRequest,
+		},
+		{
+			name:       "password too long returns 400",
+			body:       `{"token":"valid-token","password":"` + longPw + `"}`,
+			wantStatus: http.StatusBadRequest,
+		},
+		{
+			name:       "malformed JSON returns 400",
+			body:       `{bad`,
+			wantStatus: http.StatusBadRequest,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			svc := &mockAuthSvc{resetPwErr: tc.svcErr}
+			h := newHandler(svc, &mockSubSvcForHandler{status: defaultSubStatus})
+
+			req := httptest.NewRequest(http.MethodPost, "/api/auth/reset-password/confirm", strings.NewReader(tc.body))
+			req.Header.Set("Content-Type", "application/json")
+			rr := httptest.NewRecorder()
+			h.ConfirmPasswordReset(rr, req)
+
+			if rr.Code != tc.wantStatus {
+				t.Errorf("status = %d, want %d (body: %s)", rr.Code, tc.wantStatus, rr.Body.String())
+			}
+		})
+	}
+}
+
+// ---- PATCH /api/auth/ai-toggle ---------------------------------------------
+
+func TestAIToggleHandler(t *testing.T) {
+	tests := []struct {
+		name        string
+		body        string
+		setUserID   bool
+		svcErr      error
+		wantStatus  int
+		wantEnabled *bool
+	}{
+		{
+			name:       "enable AI with valid userID returns 200",
+			body:       `{"ai_enabled":true}`,
+			setUserID:  true,
+			wantStatus: http.StatusOK,
+			wantEnabled: func() *bool { b := true; return &b }(),
+		},
+		{
+			name:       "disable AI with valid userID returns 200",
+			body:       `{"ai_enabled":false}`,
+			setUserID:  true,
+			wantStatus: http.StatusOK,
+			wantEnabled: func() *bool { b := false; return &b }(),
+		},
+		{
+			name:       "missing userID in context returns 401",
+			body:       `{"ai_enabled":true}`,
+			setUserID:  false,
+			wantStatus: http.StatusUnauthorized,
+		},
+		{
+			name:       "malformed JSON returns 400",
+			body:       `{bad`,
+			setUserID:  true,
+			wantStatus: http.StatusBadRequest,
+		},
+		{
+			name:       "service error returns 500",
+			body:       `{"ai_enabled":true}`,
+			setUserID:  true,
+			svcErr:     errors.New("db error"),
+			wantStatus: http.StatusInternalServerError,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			svc := &mockAuthSvc{aiToggleErr: tc.svcErr}
+			h := newHandler(svc, &mockSubSvcForHandler{status: defaultSubStatus})
+
+			req := httptest.NewRequest(http.MethodPatch, "/api/auth/ai-toggle", strings.NewReader(tc.body))
+			req.Header.Set("Content-Type", "application/json")
+			if tc.setUserID {
+				ctx := context.WithValue(req.Context(), middleware.UserIDKey, "uid-1")
+				req = req.WithContext(ctx)
+			}
+			rr := httptest.NewRecorder()
+			h.AIToggle(rr, req)
+
+			if rr.Code != tc.wantStatus {
+				t.Errorf("status = %d, want %d (body: %s)", rr.Code, tc.wantStatus, rr.Body.String())
+			}
+			if tc.wantEnabled != nil {
+				var body map[string]interface{}
+				if err := json.NewDecoder(rr.Body).Decode(&body); err != nil {
+					t.Fatalf("decode body: %v", err)
+				}
+				got, ok := body["ai_enabled"].(bool)
+				if !ok {
+					t.Fatalf("ai_enabled missing or not bool in response")
+				}
+				if got != *tc.wantEnabled {
+					t.Errorf("ai_enabled = %v, want %v", got, *tc.wantEnabled)
 				}
 			}
 		})

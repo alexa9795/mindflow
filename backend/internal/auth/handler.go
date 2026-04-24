@@ -373,6 +373,8 @@ func (h *Handler) Refresh(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	h.audit.Log(r.Context(), &tokens.UserID, audit.ActionTokenRefreshed, audit.IPFromRequest(r), nil)
+
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(tokens)
 }

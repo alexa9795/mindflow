@@ -20,10 +20,11 @@ func AIRateLimit(limiters *sync.Map, auditLogger *audit.Logger) func(http.Handle
 	)
 
 	getAILimiter := func(userID string) *rate.Limiter {
-		e := &limiterEntry{limiter: rate.NewLimiter(rps, burst), lastSeen: time.Now()}
+		e := &limiterEntry{limiter: rate.NewLimiter(rps, burst)}
+		e.lastSeen.Store(time.Now().UnixNano())
 		actual, _ := limiters.LoadOrStore(userID, e)
 		got := actual.(*limiterEntry)
-		got.lastSeen = time.Now()
+		got.lastSeen.Store(time.Now().UnixNano())
 		return got.limiter
 	}
 

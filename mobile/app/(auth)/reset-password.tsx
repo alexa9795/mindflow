@@ -29,8 +29,8 @@ export default function ResetPasswordScreen() {
       setError('Please enter your reset token');
       return;
     }
-    if (password.length < 8) {
-      setError('Password must be at least 8 characters');
+    if (password.length < 8 || password.length > 72) {
+      setError('Password must be 8–72 characters');
       return;
     }
     if (password !== confirm) {
