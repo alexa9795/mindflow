@@ -46,6 +46,7 @@ type User struct {
 	Email        string            `json:"email"`
 	Name         string            `json:"name"`
 	CreatedAt    time.Time         `json:"created_at"`
+	AIEnabled    bool              `json:"ai_enabled"`
 	Subscription *SubscriptionInfo `json:"subscription,omitempty"`
 }
 

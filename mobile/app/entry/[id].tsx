@@ -17,12 +17,14 @@ import ThemedView from '../../components/ThemedView';
 import { COMPANION_NAME } from '../../constants/config';
 import { FONTS } from '../../constants/fonts';
 import { useSettings } from '../../context/SettingsContext';
+import { useAuth } from '../../hooks/useAuth';
 import { api, ApiError, Entry, Message, NetworkError } from '../../services/api';
 
 export default function EntryDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { theme, entryFont } = useSettings();
+  const { currentUser } = useAuth();
   const scrollRef = useRef<ScrollView>(null);
 
   const [entry, setEntry] = useState<Entry | null>(null);
@@ -34,6 +36,8 @@ export default function EntryDetailScreen() {
   const [error, setError] = useState<string | null>(null);
   const [isOffline, setIsOffline] = useState(false);
 
+  const aiEnabled = currentUser?.ai_enabled ?? true;
+
   useEffect(() => {
     if (!id) return;
     void (async () => {
@@ -42,13 +46,19 @@ export default function EntryDetailScreen() {
         setEntry(fetched);
         if (fetched.messages && fetched.messages.length > 0) {
           setMessages(fetched.messages);
-        } else {
+        } else if (aiEnabled) {
+          // Only request an AI response if the user has AI enabled.
           setAiLoading(true);
           try {
-            const msg = await api.respond(id);
-            setMessages([msg]);
+            const result = await api.respond(id);
+            if ('ai_error' in result) {
+              setError(result.ai_error_message);
+            } else {
+              setMessages([result]);
+            }
           } catch (e: unknown) {
             if (e instanceof NetworkError) setIsOffline(true);
+            else if (e instanceof ApiError) setError(e.message);
           } finally {
             setAiLoading(false);
           }
@@ -60,6 +70,7 @@ export default function EntryDetailScreen() {
         setLoadingEntry(false);
       }
     })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   async function sendReply() {
@@ -68,10 +79,17 @@ export default function EntryDetailScreen() {
     setReply('');
     setSendLoading(true);
     setIsOffline(false);
+    setError(null);
     try {
       const res = await api.addMessage(id, text);
-      setMessages((prev) => [...prev, res.user_message, res.assistant_message]);
-      setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
+      const newMsgs: Message[] = [res.user_message];
+      if (res.assistant_message) {
+        newMsgs.push(res.assistant_message);
+      }
+      setMessages((prev) => [...prev, ...newMsgs]);
+      if (res.ai_error) {
+        setError(res.ai_error_message ?? 'Echo is unavailable right now. Your message was saved.');
+      }
     } catch (e: unknown) {
       if (e instanceof NetworkError) {
         setIsOffline(true);
@@ -136,6 +154,7 @@ export default function EntryDetailScreen() {
           ref={scrollRef}
           style={styles.flex}
           contentContainerStyle={styles.scrollContent}
+          onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}
         >
           {/* Timestamp — once at the top */}
           <Text style={[styles.timestamp, { color: theme.textSecondary, fontFamily: FONTS.modern }]}>
@@ -165,47 +184,51 @@ export default function EntryDetailScreen() {
           )}
 
           {error && (
-            <Text style={[styles.errorText, { color: theme.destructive, fontFamily: FONTS.modern }]}>
-              {error}
-            </Text>
+            <View style={[styles.aiBanner, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+              <Text style={[styles.aiBannerText, { color: theme.textSecondary, fontFamily: FONTS.modern }]}>
+                {error}
+              </Text>
+            </View>
           )}
         </ScrollView>
 
-        {/* Reply bar */}
-        <View style={[styles.replyBar, { backgroundColor: theme.surface, borderTopColor: theme.border }]}>
-          <TextInput
-            style={[
-              styles.replyInput,
-              {
-                backgroundColor: theme.background,
-                borderColor: theme.border,
-                color: theme.text,
-                fontFamily: FONTS.modern,
-              },
-            ]}
-            placeholder="Reply…"
-            placeholderTextColor={theme.textSecondary}
-            value={reply}
-            onChangeText={setReply}
-            multiline
-            maxLength={1000}
-          />
-          <Pressable
-            style={[
-              styles.sendBtn,
-              { backgroundColor: theme.accent },
-              (!reply.trim() || sendLoading) && styles.sendBtnDisabled,
-            ]}
-            onPress={() => void sendReply()}
-            disabled={!reply.trim() || sendLoading}
-          >
-            {sendLoading ? (
-              <ActivityIndicator color={theme.background} size="small" />
-            ) : (
-              <Text style={[styles.sendBtnText, { color: theme.background }]}>↑</Text>
-            )}
-          </Pressable>
-        </View>
+        {/* Reply bar — only shown when AI is enabled */}
+        {aiEnabled && (
+          <View style={[styles.replyBar, { backgroundColor: theme.surface, borderTopColor: theme.border }]}>
+            <TextInput
+              style={[
+                styles.replyInput,
+                {
+                  backgroundColor: theme.background,
+                  borderColor: theme.border,
+                  color: theme.text,
+                  fontFamily: FONTS.modern,
+                },
+              ]}
+              placeholder="Reply…"
+              placeholderTextColor={theme.textSecondary}
+              value={reply}
+              onChangeText={setReply}
+              multiline
+              maxLength={2000}
+            />
+            <Pressable
+              style={[
+                styles.sendBtn,
+                { backgroundColor: theme.accent },
+                (!reply.trim() || sendLoading) && styles.sendBtnDisabled,
+              ]}
+              onPress={() => void sendReply()}
+              disabled={!reply.trim() || sendLoading}
+            >
+              {sendLoading ? (
+                <ActivityIndicator color={theme.background} size="small" />
+              ) : (
+                <Text style={[styles.sendBtnText, { color: theme.background }]}>↑</Text>
+              )}
+            </Pressable>
+          </View>
+        )}
       </KeyboardAvoidingView>
     </ThemedView>
   );
@@ -248,6 +271,13 @@ const styles = StyleSheet.create({
     marginTop: 6,
     fontStyle: 'italic',
   },
+  aiBanner: {
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: 12,
+    marginTop: 4,
+  },
+  aiBannerText: { fontSize: 13 },
   errorText: { fontSize: 14, textAlign: 'center', marginTop: 8 },
   replyBar: {
     flexDirection: 'row',

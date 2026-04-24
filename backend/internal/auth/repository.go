@@ -16,6 +16,11 @@ type Repository interface {
 	DeleteUser(ctx context.Context, id string) error
 	GetSubscriptionType(ctx context.Context, userID string) (string, error)
 	ActivateTrial(ctx context.Context, userID string) (time.Time, error)
+	UpdateAIEnabled(ctx context.Context, userID string, enabled bool) error
+	GetAIEnabled(ctx context.Context, userID string) (bool, error)
+	RevokeToken(ctx context.Context, jti string, expiresAt time.Time) error
+	IsTokenRevoked(ctx context.Context, jti string) (bool, error)
+	UpdateLastActive(ctx context.Context, userID string) error
 }
 
 type repository struct {
@@ -55,9 +60,9 @@ func (r *repository) GetUserByEmail(ctx context.Context, email string) (id, name
 func (r *repository) GetUserByID(ctx context.Context, id string) (*User, error) {
 	var u User
 	err := r.db.QueryRowContext(ctx, `
-		SELECT id, email, name, created_at FROM users WHERE id = $1`,
+		SELECT id, email, name, created_at, ai_enabled FROM users WHERE id = $1`,
 		id,
-	).Scan(&u.ID, &u.Email, &u.Name, &u.CreatedAt)
+	).Scan(&u.ID, &u.Email, &u.Name, &u.CreatedAt, &u.AIEnabled)
 	if err != nil {
 		return nil, fmt.Errorf("get user by id: %w", err)
 	}
@@ -105,4 +110,58 @@ func (r *repository) ActivateTrial(ctx context.Context, userID string) (time.Tim
 		return time.Time{}, fmt.Errorf("activate trial: %w", err)
 	}
 	return expiresAt, nil
+}
+
+func (r *repository) UpdateAIEnabled(ctx context.Context, userID string, enabled bool) error {
+	_, err := r.db.ExecContext(ctx,
+		`UPDATE users SET ai_enabled = $1, updated_at = NOW() WHERE id = $2`,
+		enabled, userID,
+	)
+	if err != nil {
+		return fmt.Errorf("update ai enabled: %w", err)
+	}
+	return nil
+}
+
+func (r *repository) GetAIEnabled(ctx context.Context, userID string) (bool, error) {
+	var enabled bool
+	err := r.db.QueryRowContext(ctx,
+		`SELECT ai_enabled FROM users WHERE id = $1`, userID,
+	).Scan(&enabled)
+	if err != nil {
+		return false, fmt.Errorf("get ai enabled: %w", err)
+	}
+	return enabled, nil
+}
+
+func (r *repository) RevokeToken(ctx context.Context, jti string, expiresAt time.Time) error {
+	_, err := r.db.ExecContext(ctx,
+		`INSERT INTO revoked_tokens (jti, expires_at) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+		jti, expiresAt,
+	)
+	if err != nil {
+		return fmt.Errorf("revoke token: %w", err)
+	}
+	return nil
+}
+
+func (r *repository) IsTokenRevoked(ctx context.Context, jti string) (bool, error) {
+	var exists bool
+	err := r.db.QueryRowContext(ctx,
+		`SELECT EXISTS(SELECT 1 FROM revoked_tokens WHERE jti = $1)`, jti,
+	).Scan(&exists)
+	if err != nil {
+		return false, fmt.Errorf("is token revoked: %w", err)
+	}
+	return exists, nil
+}
+
+func (r *repository) UpdateLastActive(ctx context.Context, userID string) error {
+	_, err := r.db.ExecContext(ctx,
+		`UPDATE users SET last_active_at = NOW() WHERE id = $1`, userID,
+	)
+	if err != nil {
+		return fmt.Errorf("update last active: %w", err)
+	}
+	return nil
 }

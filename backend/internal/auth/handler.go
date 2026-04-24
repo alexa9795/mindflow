@@ -3,11 +3,14 @@ package auth
 import (
 	"encoding/json"
 	"errors"
-	"log"
+	"log/slog"
 	"net/http"
+	"net/mail"
 	"strings"
+	"time"
 
 	api "github.com/alexa9795/mindflow/internal/api"
+	"github.com/alexa9795/mindflow/internal/audit"
 	"github.com/alexa9795/mindflow/internal/middleware"
 	"github.com/alexa9795/mindflow/internal/subscription"
 )
@@ -16,11 +19,13 @@ import (
 type Handler struct {
 	svc    Service
 	subSvc subscription.Service
+	audit  *audit.Logger
 }
 
-// NewHandler returns a Handler backed by the given Service and subscription Service.
-func NewHandler(svc Service, subSvc subscription.Service) *Handler {
-	return &Handler{svc: svc, subSvc: subSvc}
+// NewHandler returns a Handler backed by the given Service, subscription Service,
+// and audit Logger (may be nil — no audit events emitted).
+func NewHandler(svc Service, subSvc subscription.Service, auditLogger *audit.Logger) *Handler {
+	return &Handler{svc: svc, subSvc: subSvc, audit: auditLogger}
 }
 
 func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
@@ -31,6 +36,10 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.Email == "" || req.Password == "" || req.Name == "" {
 		api.WriteError(w, api.ErrBadRequest.WithMessage("Email, password and name are required"))
+		return
+	}
+	if len(req.Email) > 254 {
+		api.WriteError(w, api.ErrBadRequest.WithMessage("Email address is too long"))
 		return
 	}
 	if !isValidEmail(req.Email) {
@@ -52,10 +61,18 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 			api.WriteError(w, api.ErrConflict.WithMessage("Email already exists"))
 			return
 		}
-		log.Printf("register error: %v", err)
+		slog.Error("register error", "error", err)
 		api.WriteError(w, api.ErrInternalServer)
 		return
 	}
+
+	// Log domain only — never the full email address.
+	domain := req.Email
+	if parts := strings.SplitN(req.Email, "@", 2); len(parts) == 2 {
+		domain = parts[1]
+	}
+	h.audit.Log(r.Context(), &resp.User.ID, audit.ActionRegister, audit.IPFromRequest(r),
+		map[string]any{"email_domain": domain})
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
@@ -91,10 +108,12 @@ func (h *Handler) PatchMe(w http.ResponseWriter, r *http.Request) {
 			api.WriteError(w, api.ErrNotFound)
 			return
 		}
-		log.Printf("patch me error: %v", err)
+		slog.Error("patch me error", "error", err)
 		api.WriteError(w, api.ErrInternalServer)
 		return
 	}
+
+	h.audit.Log(r.Context(), &userID, audit.ActionUpdateName, audit.IPFromRequest(r), nil)
 
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(user)
@@ -107,10 +126,23 @@ func (h *Handler) DeleteMe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	jti, _ := r.Context().Value(middleware.JTIKey).(string)
+	tokenExpiry, _ := r.Context().Value(middleware.TokenExpiryKey).(time.Time)
+
 	if err := h.svc.DeleteMe(r.Context(), userID); err != nil {
-		log.Printf("delete me error: %v", err)
+		slog.Error("delete me error", "error", err)
 		api.WriteError(w, api.ErrInternalServer)
 		return
+	}
+
+	h.audit.Log(r.Context(), &userID, audit.ActionDeleteAccount, audit.IPFromRequest(r), nil)
+
+	// Revoke the JWT so it cannot be replayed within its remaining 24-hour window.
+	if jti != "" && !tokenExpiry.IsZero() {
+		if err := h.svc.RevokeToken(r.Context(), jti, tokenExpiry); err != nil {
+			slog.Error("token revocation failed after account deletion", "jti", jti, "error", err)
+			// Non-fatal: the user row is already deleted; any replay returns 404.
+		}
 	}
 
 	w.WriteHeader(http.StatusNoContent)
@@ -129,14 +161,14 @@ func (h *Handler) Me(w http.ResponseWriter, r *http.Request) {
 			api.WriteError(w, api.ErrNotFound)
 			return
 		}
-		log.Printf("get me error: %v", err)
+		slog.Error("get me error", "error", err)
 		api.WriteError(w, api.ErrInternalServer)
 		return
 	}
 
 	subStatus, err := h.subSvc.CheckSubscription(r.Context(), userID)
 	if err != nil {
-		log.Printf("subscription check error in me: %v", err)
+		slog.Error("subscription check error in me", "error", err)
 		api.WriteError(w, api.ErrInternalServer)
 		return
 	}
@@ -169,10 +201,12 @@ func (h *Handler) Trial(w http.ResponseWriter, r *http.Request) {
 			api.WriteError(w, api.ErrNotFound)
 			return
 		}
-		log.Printf("activate trial error: %v", err)
+		slog.Error("activate trial error", "error", err)
 		api.WriteError(w, api.ErrInternalServer)
 		return
 	}
+
+	h.audit.Log(r.Context(), &userID, audit.ActionTrialActivated, audit.IPFromRequest(r), nil)
 
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]interface{}{
@@ -187,6 +221,10 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		api.WriteError(w, api.ErrBadRequest.WithMessage("Invalid request body"))
 		return
 	}
+	if len(req.Email) > 254 {
+		api.WriteError(w, api.ErrBadRequest.WithMessage("Email address is too long"))
+		return
+	}
 	if !isValidEmail(req.Email) {
 		api.WriteError(w, api.ErrBadRequest.WithMessage("Invalid email address"))
 		return
@@ -199,23 +237,62 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	resp, err := h.svc.Login(r.Context(), req)
 	if err != nil {
 		if errors.Is(err, ErrInvalidCredentials) {
+			// Do not distinguish wrong password vs unknown email in the audit log
+			// — distinguishing them leaks whether an email is registered.
+			h.audit.Log(r.Context(), nil, audit.ActionLoginFailure, audit.IPFromRequest(r), nil)
 			api.WriteError(w, api.ErrUnauthorized.WithMessage("Invalid credentials"))
 			return
 		}
-		log.Printf("login error: %v", err)
+		slog.Error("login error", "error", err)
 		api.WriteError(w, api.ErrInternalServer)
 		return
 	}
+
+	h.audit.Log(r.Context(), &resp.User.ID, audit.ActionLoginSuccess, audit.IPFromRequest(r), nil)
 
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(resp)
 }
 
-func isValidEmail(email string) bool {
-	at := strings.Index(email, "@")
-	if at < 1 {
-		return false
+// AIToggle handles PATCH /api/auth/ai-toggle.
+// It enables or disables AI responses for the authenticated user.
+// When disabled, journal entries are never sent to the Anthropic API.
+func (h *Handler) AIToggle(w http.ResponseWriter, r *http.Request) {
+	userID, ok := r.Context().Value(middleware.UserIDKey).(string)
+	if !ok || userID == "" {
+		api.WriteError(w, api.ErrUnauthorized)
+		return
 	}
-	dot := strings.LastIndex(email[at:], ".")
-	return dot > 1 && dot < len(email[at:])-1
+
+	var body struct {
+		AIEnabled bool `json:"ai_enabled"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		api.WriteError(w, api.ErrBadRequest.WithMessage("Invalid request body"))
+		return
+	}
+
+	if err := h.svc.UpdateAIEnabled(r.Context(), userID, body.AIEnabled); err != nil {
+		slog.Error("ai toggle error", "error", err)
+		api.WriteError(w, api.ErrInternalServer)
+		return
+	}
+
+	h.audit.Log(r.Context(), &userID, audit.ActionUpdateAIToggle, audit.IPFromRequest(r),
+		map[string]any{"ai_enabled": body.AIEnabled})
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]bool{"ai_enabled": body.AIEnabled})
+}
+
+// TODO: Password reset flow is required before public launch. It needs an email
+// sending infrastructure (SMTP / transactional email service). When implemented,
+// add POST /api/auth/forgot-password and POST /api/auth/reset-password endpoints
+// with time-limited, single-use tokens stored in a dedicated table.
+
+// isValidEmail checks that email is a valid RFC 5322 address and nothing more
+// (rejects display-name wrappers like "Name <email>").
+func isValidEmail(email string) bool {
+	a, err := mail.ParseAddress(email)
+	return err == nil && a.Address == email
 }

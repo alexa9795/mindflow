@@ -3,22 +3,25 @@ package entry
 import (
 	"encoding/json"
 	"errors"
-	"log"
+	"log/slog"
 	"net/http"
 	"strconv"
 
 	api "github.com/alexa9795/mindflow/internal/api"
+	"github.com/alexa9795/mindflow/internal/audit"
 	"github.com/alexa9795/mindflow/internal/middleware"
 )
 
 // Handler holds the HTTP handlers for entry endpoints.
 type Handler struct {
-	svc Service
+	svc   Service
+	audit *audit.Logger
 }
 
-// NewHandler returns a Handler backed by the given Service.
-func NewHandler(svc Service) *Handler {
-	return &Handler{svc: svc}
+// NewHandler returns a Handler backed by the given Service and audit Logger
+// (may be nil — no audit events emitted).
+func NewHandler(svc Service, auditLogger *audit.Logger) *Handler {
+	return &Handler{svc: svc, audit: auditLogger}
 }
 
 type createRequest struct {
@@ -50,7 +53,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 
 	e, err := h.svc.Create(r.Context(), userID, req.Content, req.MoodScore)
 	if err != nil {
-		log.Printf("create entry error: %v", err)
+		slog.Error("create entry error", "error", err)
 		api.WriteError(w, api.ErrInternalServer)
 		return
 	}
@@ -81,7 +84,7 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 
 	entries, total, err := h.svc.List(r.Context(), userID, page, limit)
 	if err != nil {
-		log.Printf("list entries error: %v", err)
+		slog.Error("list entries error", "error", err)
 		api.WriteError(w, api.ErrInternalServer)
 		return
 	}
@@ -109,7 +112,7 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 			api.WriteError(w, api.ErrNotFound)
 			return
 		}
-		log.Printf("get entry error: %v", err)
+		slog.Error("get entry error", "error", err)
 		api.WriteError(w, api.ErrInternalServer)
 		return
 	}
@@ -126,19 +129,36 @@ func (h *Handler) Respond(w http.ResponseWriter, r *http.Request) {
 	}
 	entryID := r.PathValue("id")
 
-	msg, err := h.svc.Respond(r.Context(), entryID, userID)
+	msg, isNew, err := h.svc.Respond(r.Context(), entryID, userID)
 	if err != nil {
 		if errors.Is(err, ErrNotFound) {
 			api.WriteError(w, api.ErrNotFound)
 			return
 		}
-		log.Printf("respond error: %v", err)
+		if errors.Is(err, ErrAIDisabled) {
+			api.WriteError(w, api.ErrAIDisabled)
+			return
+		}
+		if errors.Is(err, ErrAIUnavailable) {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
+				"ai_error":         true,
+				"ai_error_message": "AI is temporarily unavailable. Your entry has been saved.",
+			})
+			return
+		}
+		slog.Error("respond error", "error", err)
 		api.WriteError(w, api.ErrInternalServer.WithMessage("Failed to generate AI response"))
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
+	if isNew {
+		w.WriteHeader(http.StatusCreated)
+	} else {
+		w.WriteHeader(http.StatusOK)
+	}
 	_ = json.NewEncoder(w).Encode(msg)
 }
 
@@ -167,18 +187,31 @@ func (h *Handler) AddMessage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userMsg, aiMsg, err := h.svc.AddMessage(r.Context(), entryID, userID, req.Content)
+	userMsg, aiMsg, aiError, err := h.svc.AddMessage(r.Context(), entryID, userID, req.Content)
 	if err != nil {
 		if errors.Is(err, ErrNotFound) {
 			api.WriteError(w, api.ErrNotFound)
 			return
 		}
-		log.Printf("add message error: %v", err)
+		if errors.Is(err, ErrAIDisabled) {
+			api.WriteError(w, api.ErrAIDisabled)
+			return
+		}
+		slog.Error("add message error", "error", err)
 		api.WriteError(w, api.ErrInternalServer.WithMessage("Failed to generate AI response"))
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
+	if aiError {
+		w.WriteHeader(http.StatusOK)
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
+			"user_message":     userMsg,
+			"ai_error":         true,
+			"ai_error_message": "AI is temporarily unavailable. Your message has been saved.",
+		})
+		return
+	}
 	w.WriteHeader(http.StatusCreated)
 	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"user_message":      userMsg,
@@ -195,11 +228,12 @@ func (h *Handler) Export(w http.ResponseWriter, r *http.Request) {
 
 	data, err := h.svc.GetExport(r.Context(), userID)
 	if err != nil {
-		log.Printf("export error: %v", err)
+		slog.Error("export error", "error", err)
 		api.WriteError(w, api.ErrInternalServer)
 		return
 	}
 
+	h.audit.Log(r.Context(), &userID, audit.ActionDataExport, audit.IPFromRequest(r), nil)
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Content-Disposition", `attachment; filename="echo-export.json"`)
 	_ = json.NewEncoder(w).Encode(data)
@@ -213,10 +247,11 @@ func (h *Handler) DeleteAll(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.svc.DeleteAll(r.Context(), userID); err != nil {
-		log.Printf("delete all entries error: %v", err)
+		slog.Error("delete all entries error", "error", err)
 		api.WriteError(w, api.ErrInternalServer)
 		return
 	}
 
+	h.audit.Log(r.Context(), &userID, audit.ActionDeleteEntries, audit.IPFromRequest(r), nil)
 	w.WriteHeader(http.StatusNoContent)
 }

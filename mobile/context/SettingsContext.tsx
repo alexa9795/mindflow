@@ -26,32 +26,31 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
 
   // Load persisted settings on mount
   useEffect(() => {
-    void (async () => {
-      const [savedTheme, savedFont, savedMoodSet] = await Promise.all([
-        AsyncStorage.getItem(THEME_STORAGE_KEY),
-        AsyncStorage.getItem(FONT_STORAGE_KEY),
-        AsyncStorage.getItem(MOOD_SET_STORAGE_KEY),
-      ]);
+    Promise.all([
+      AsyncStorage.getItem(THEME_STORAGE_KEY),
+      AsyncStorage.getItem(FONT_STORAGE_KEY),
+      AsyncStorage.getItem(MOOD_SET_STORAGE_KEY),
+    ]).then(([savedTheme, savedFont, savedMoodSet]) => {
       if (savedTheme && THEMES[savedTheme]) setTheme(THEMES[savedTheme]);
       if (savedFont) setEntryFontState(savedFont as FontKey);
       if (savedMoodSet) setMoodSetIdState(savedMoodSet);
-    })();
+    }).catch((e) => console.error('Failed to load settings:', e));
   }, []);
 
   const setThemeById = useCallback(async (id: string) => {
     if (!THEMES[id]) return;
     setTheme(THEMES[id]);
-    await AsyncStorage.setItem(THEME_STORAGE_KEY, id);
+    await AsyncStorage.setItem(THEME_STORAGE_KEY, id).catch((e) => console.error('Failed to save theme:', e));
   }, []);
 
   const setEntryFont = useCallback(async (key: FontKey) => {
     setEntryFontState(key);
-    await AsyncStorage.setItem(FONT_STORAGE_KEY, key);
+    await AsyncStorage.setItem(FONT_STORAGE_KEY, key).catch((e) => console.error('Failed to save font:', e));
   }, []);
 
   const setMoodSetId = useCallback(async (id: string) => {
     setMoodSetIdState(id);
-    await AsyncStorage.setItem(MOOD_SET_STORAGE_KEY, id);
+    await AsyncStorage.setItem(MOOD_SET_STORAGE_KEY, id).catch((e) => console.error('Failed to save mood set:', e));
   }, []);
 
   return (

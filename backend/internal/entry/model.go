@@ -26,6 +26,7 @@ type ExportUser struct {
 	Name             string    `json:"name"`
 	CreatedAt        time.Time `json:"created_at"`
 	SubscriptionType string    `json:"subscription_type"`
+	AIEnabled        bool      `json:"ai_enabled"`
 }
 
 // ExportData is the GDPR Article 20 machine-readable export for one user.

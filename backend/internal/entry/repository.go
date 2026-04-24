@@ -4,6 +4,9 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log/slog"
+
+	"github.com/lib/pq"
 )
 
 // Repository is the data-access interface for journal entries and messages.
@@ -40,6 +43,10 @@ func (r *repository) Create(ctx context.Context, userID, content string, moodSco
 	).Scan(&e.ID, &e.UserID, &e.Content, &e.MoodScore, &e.CreatedAt)
 	if err != nil {
 		return nil, fmt.Errorf("create entry: %w", err)
+	}
+	// Keep last_active_at fresh on meaningful activity. Non-fatal if this fails.
+	if _, err := r.db.ExecContext(ctx, `UPDATE users SET last_active_at = NOW() WHERE id = $1`, userID); err != nil {
+		slog.Warn("failed to update last_active_at on entry create", "user_id", userID, "error", err)
 	}
 	return &e, nil
 }
@@ -162,26 +169,11 @@ func (r *repository) SaveMessagesInTx(ctx context.Context, entryID, userContent,
 }
 
 func (r *repository) DeleteAllByUserID(ctx context.Context, userID string) error {
-	tx, err := r.db.BeginTx(ctx, nil)
-	if err != nil {
-		return fmt.Errorf("begin tx: %w", err)
-	}
-	defer tx.Rollback() //nolint:errcheck
-
-	// Messages must be deleted before entries to satisfy the FK constraint.
-	if _, err := tx.ExecContext(ctx, `
-		DELETE FROM messages
-		WHERE entry_id IN (SELECT id FROM entries WHERE user_id = $1)`,
-		userID,
-	); err != nil {
-		return fmt.Errorf("delete messages for user: %w", err)
-	}
-
-	if _, err := tx.ExecContext(ctx, `DELETE FROM entries WHERE user_id = $1`, userID); err != nil {
+	// messages.entry_id has ON DELETE CASCADE so deleting entries cascades to messages.
+	if _, err := r.db.ExecContext(ctx, `DELETE FROM entries WHERE user_id = $1`, userID); err != nil {
 		return fmt.Errorf("delete all entries: %w", err)
 	}
-
-	return tx.Commit()
+	return nil
 }
 
 func (r *repository) LoadMessages(ctx context.Context, entryID string) ([]Message, error) {
@@ -212,10 +204,10 @@ func (r *repository) LoadMessages(ctx context.Context, entryID string) ([]Messag
 func (r *repository) GetUserForExport(ctx context.Context, userID string) (*ExportUser, error) {
 	var u ExportUser
 	err := r.db.QueryRowContext(ctx, `
-		SELECT id, email, name, created_at, subscription_type
+		SELECT id, email, name, created_at, subscription_type, ai_enabled
 		FROM users WHERE id = $1`,
 		userID,
-	).Scan(&u.ID, &u.Email, &u.Name, &u.CreatedAt, &u.SubscriptionType)
+	).Scan(&u.ID, &u.Email, &u.Name, &u.CreatedAt, &u.SubscriptionType, &u.AIEnabled)
 	if err != nil {
 		return nil, fmt.Errorf("get user for export: %w", err)
 	}
@@ -223,6 +215,7 @@ func (r *repository) GetUserForExport(ctx context.Context, userID string) (*Expo
 }
 
 // ExportUserData returns all entries with their full content and messages for GDPR Article 20.
+// Uses a single batch query for messages to avoid N+1 round trips.
 func (r *repository) ExportUserData(ctx context.Context, userID string) ([]Entry, error) {
 	rows, err := r.db.QueryContext(ctx, `
 		SELECT id, user_id, content, mood_score, created_at
@@ -237,23 +230,54 @@ func (r *repository) ExportUserData(ctx context.Context, userID string) ([]Entry
 	defer rows.Close()
 
 	entries := []Entry{}
+	entryIDs := []string{}
 	for rows.Next() {
 		var e Entry
 		if err := rows.Scan(&e.ID, &e.UserID, &e.Content, &e.MoodScore, &e.CreatedAt); err != nil {
 			return nil, fmt.Errorf("scan entry: %w", err)
 		}
 		entries = append(entries, e)
+		entryIDs = append(entryIDs, e.ID)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
 
-	for i := range entries {
-		msgs, err := r.LoadMessages(ctx, entries[i].ID)
-		if err != nil {
-			return nil, fmt.Errorf("load messages for export: %w", err)
+	if len(entryIDs) == 0 {
+		return entries, nil
+	}
+
+	// Batch-load all messages in a single query — avoids N+1.
+	msgRows, err := r.db.QueryContext(ctx, `
+		SELECT entry_id, id, role, content, created_at
+		FROM messages
+		WHERE entry_id = ANY($1)
+		ORDER BY created_at ASC`,
+		pq.Array(entryIDs),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("batch load messages for export: %w", err)
+	}
+	defer msgRows.Close()
+
+	msgsByEntry := make(map[string][]Message, len(entryIDs))
+	for msgRows.Next() {
+		var m Message
+		if err := msgRows.Scan(&m.EntryID, &m.ID, &m.Role, &m.Content, &m.CreatedAt); err != nil {
+			return nil, fmt.Errorf("scan export message: %w", err)
 		}
-		entries[i].Messages = msgs
+		msgsByEntry[m.EntryID] = append(msgsByEntry[m.EntryID], m)
+	}
+	if err := msgRows.Err(); err != nil {
+		return nil, err
+	}
+
+	for i := range entries {
+		if msgs, ok := msgsByEntry[entries[i].ID]; ok {
+			entries[i].Messages = msgs
+		} else {
+			entries[i].Messages = []Message{}
+		}
 	}
 	return entries, nil
 }

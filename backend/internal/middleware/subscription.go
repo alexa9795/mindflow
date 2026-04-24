@@ -1,7 +1,7 @@
 package middleware
 
 import (
-	"log"
+	"log/slog"
 	"net/http"
 
 	"github.com/alexa9795/mindflow/internal/api"
@@ -21,7 +21,7 @@ func CheckSubscription(subSvc subscription.Service) func(http.Handler) http.Hand
 
 			status, err := subSvc.CheckSubscription(r.Context(), userID)
 			if err != nil {
-				log.Printf("subscription check error for user %s: %v", userID, err)
+				slog.Error("subscription check error", "user_id", userID, "error", err)
 				api.WriteError(w, api.ErrInternalServer)
 				return
 			}

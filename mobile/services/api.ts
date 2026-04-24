@@ -15,6 +15,14 @@ export class NetworkError extends Error {
   }
 }
 
+/** Thrown when the request times out. */
+export class TimeoutError extends Error {
+  readonly isTimeoutError = true;
+  constructor() {
+    super('Request timed out');
+  }
+}
+
 /** Thrown when the server returns a non-2xx response. */
 export class ApiError extends Error {
   constructor(
@@ -43,11 +51,23 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     headers['Authorization'] = `Bearer ${authToken}`;
   }
 
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 30000);
+
   let res: Response;
   try {
-    res = await fetch(`${API_URL}${path}`, { ...options, headers });
-  } catch {
+    res = await fetch(`${API_URL}${path}`, {
+      ...options,
+      headers,
+      signal: controller.signal,
+    });
+  } catch (e) {
+    if (e instanceof Error && e.name === 'AbortError') {
+      throw new TimeoutError();
+    }
     throw new NetworkError();
+  } finally {
+    clearTimeout(timeout);
   }
 
   if (!res.ok) {
@@ -83,6 +103,7 @@ export interface User {
   email: string;
   name: string;
   created_at?: string;
+  ai_enabled: boolean;
   subscription?: SubscriptionInfo;
 }
 
@@ -105,6 +126,54 @@ export interface Message {
   role: 'user' | 'assistant';
   content: string;
   created_at: string;
+}
+
+/** Returned by the respond endpoint on success. */
+export type RespondResult = Message | { ai_error: true; ai_error_message: string };
+
+/** Returned by the addMessage endpoint. */
+export interface AddMessageResult {
+  user_message: Message;
+  assistant_message?: Message;
+  ai_error?: boolean;
+  ai_error_message?: string;
+}
+
+export interface ExportMessage {
+  role: string;
+  content: string;
+  created_at: string;
+}
+
+export interface ExportEntry {
+  id: string;
+  content: string;
+  mood_score: number | null;
+  created_at: string;
+  messages: ExportMessage[];
+}
+
+export interface ExportData {
+  exported_at: string;
+  user: {
+    id: string;
+    email: string;
+    name: string;
+    created_at: string;
+    subscription_type: string;
+    ai_enabled: boolean;
+  };
+  entries: ExportEntry[];
+}
+
+export interface Insights {
+  total_entries: number;
+  avg_mood_last_30: number | null;
+  most_common_mood: number | null;
+  current_streak: number;
+  longest_streak: number;
+  entries_this_month: number;
+  entries_last_month: number;
 }
 
 export const api = {
@@ -147,10 +216,10 @@ export const api = {
   getEntry: (id: string) => request<Entry>(`/api/entries/${id}`),
 
   respond: (entryId: string) =>
-    request<Message>(`/api/entries/${entryId}/respond`, { method: 'POST' }),
+    request<RespondResult>(`/api/entries/${entryId}/respond`, { method: 'POST' }),
 
   addMessage: (entryId: string, content: string) =>
-    request<{ user_message: Message; assistant_message: Message }>(
+    request<AddMessageResult>(
       `/api/entries/${entryId}/messages`,
       { method: 'POST', body: JSON.stringify({ content }) },
     ),
@@ -163,6 +232,12 @@ export const api = {
       body: JSON.stringify({ name }),
     }),
 
+  toggleAI: (enabled: boolean) =>
+    request<{ ai_enabled: boolean }>('/api/auth/ai-toggle', {
+      method: 'PATCH',
+      body: JSON.stringify({ ai_enabled: enabled }),
+    }),
+
   deleteEntries: () =>
     request<void>('/api/entries', { method: 'DELETE' }),
 
@@ -170,5 +245,8 @@ export const api = {
     request<void>('/api/auth/me', { method: 'DELETE' }),
 
   exportData: () =>
-    request<{ exported_at: string; entries: Entry[] }>('/api/export'),
+    request<ExportData>('/api/export'),
+
+  getInsights: () =>
+    request<Insights>('/api/insights'),
 };

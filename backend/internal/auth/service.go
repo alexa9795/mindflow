@@ -2,9 +2,11 @@ package auth
 
 import (
 	"context"
+	"crypto/rand"
 	"database/sql"
 	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/alexa9795/mindflow/internal/config"
@@ -34,6 +36,9 @@ type Service interface {
 	UpdateMe(ctx context.Context, userID, name string) (*User, error)
 	DeleteMe(ctx context.Context, userID string) error
 	ActivateTrial(ctx context.Context, userID string) (time.Time, error)
+	UpdateAIEnabled(ctx context.Context, userID string, enabled bool) error
+	GetAIEnabled(ctx context.Context, userID string) (bool, error)
+	RevokeToken(ctx context.Context, jti string, expiresAt time.Time) error
 }
 
 type service struct {
@@ -85,6 +90,11 @@ func (s *service) Login(ctx context.Context, req LoginRequest) (*AuthResponse, e
 
 	if err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(req.Password)); err != nil {
 		return nil, ErrInvalidCredentials
+	}
+
+	// Non-fatal — a failure here doesn't prevent login.
+	if err := s.repo.UpdateLastActive(ctx, userID); err != nil {
+		slog.Warn("failed to update last_active_at on login", "user_id", userID, "error", err)
 	}
 
 	token, err := generateToken(userID, req.Email)
@@ -148,14 +158,50 @@ func (s *service) ActivateTrial(ctx context.Context, userID string) (time.Time, 
 	return expiresAt, nil
 }
 
+func (s *service) UpdateAIEnabled(ctx context.Context, userID string, enabled bool) error {
+	return s.repo.UpdateAIEnabled(ctx, userID, enabled)
+}
+
+func (s *service) GetAIEnabled(ctx context.Context, userID string) (bool, error) {
+	enabled, err := s.repo.GetAIEnabled(ctx, userID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return false, ErrUserNotFound
+		}
+		return false, fmt.Errorf("get ai enabled: %w", err)
+	}
+	return enabled, nil
+}
+
+func (s *service) RevokeToken(ctx context.Context, jti string, expiresAt time.Time) error {
+	return s.repo.RevokeToken(ctx, jti, expiresAt)
+}
+
+// generateToken issues a 24-hour JWT with a unique jti claim.
+// The jti enables explicit revocation on account deletion.
 func generateToken(userID, email string) (string, error) {
+	jti, err := newJTI()
+	if err != nil {
+		return "", fmt.Errorf("generate jti: %w", err)
+	}
 	claims := jwt.MapClaims{
 		"sub":   userID,
 		"email": email,
-		"exp":   time.Now().Add(7 * 24 * time.Hour).Unix(),
+		"jti":   jti,
+		"exp":   time.Now().Add(24 * time.Hour).Unix(),
 		"iat":   time.Now().Unix(),
 	}
-
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return token.SignedString([]byte(config.JWTSecret()))
+}
+
+// newJTI generates a random UUID v4 string for use as a JWT ID claim.
+func newJTI() (string, error) {
+	var b [16]byte
+	if _, err := rand.Read(b[:]); err != nil {
+		return "", err
+	}
+	b[6] = (b[6] & 0x0f) | 0x40 // version 4
+	b[8] = (b[8] & 0x3f) | 0x80 // variant bits
+	return fmt.Sprintf("%x-%x-%x-%x-%x", b[0:4], b[4:6], b[6:8], b[8:10], b[10:16]), nil
 }

@@ -8,6 +8,7 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   View,
@@ -23,12 +24,13 @@ import { api, ApiError } from '../../services/api';
 export default function SettingsScreen() {
   const router = useRouter();
   const { theme, setThemeById, entryFont, setEntryFont, moodSetId, setMoodSetId } = useSettings();
-  const { currentUser, logout, updateUser } = useAuth();
+  const { currentUser, logout, updateUser, toggleAI } = useAuth();
 
   const [nameModalVisible, setNameModalVisible] = useState(false);
   const [nameInput, setNameInput] = useState('');
   const [nameLoading, setNameLoading] = useState(false);
   const [nameError, setNameError] = useState<string | null>(null);
+  const [aiToggleLoading, setAiToggleLoading] = useState(false);
 
   async function handleLogout() {
     Alert.alert('Sign out', 'Are you sure?', [
@@ -69,6 +71,17 @@ export default function SettingsScreen() {
     }
   }
 
+  async function handleAIToggle(enabled: boolean) {
+    setAiToggleLoading(true);
+    try {
+      await toggleAI(enabled);
+    } catch {
+      Alert.alert('Error', 'Could not update AI setting. Please try again.');
+    } finally {
+      setAiToggleLoading(false);
+    }
+  }
+
   function handleDeleteEntries() {
     Alert.alert(
       'Delete all entries',
@@ -96,15 +109,24 @@ export default function SettingsScreen() {
       const data = await api.exportData();
       const json = JSON.stringify(data, null, 2);
       const path = `${FileSystem.cacheDirectory}echo-export.json`;
-      await FileSystem.writeAsStringAsync(path, json, { encoding: FileSystem.EncodingType.UTF8 });
+      try {
+        await FileSystem.writeAsStringAsync(path, json, { encoding: FileSystem.EncodingType.UTF8 });
+      } catch {
+        Alert.alert('Error', 'Could not write export file. Check device storage.');
+        return;
+      }
       const canShare = await Sharing.isAvailableAsync();
       if (canShare) {
         await Sharing.shareAsync(path, { mimeType: 'application/json', dialogTitle: 'Export journal data' });
       } else {
         Alert.alert('Export saved', `Your data has been saved to:\n${path}`);
       }
-    } catch {
-      Alert.alert('Error', 'Could not export data. Please try again.');
+    } catch (e: unknown) {
+      if (e instanceof ApiError) {
+        Alert.alert('Error', e.message);
+      } else {
+        Alert.alert('Error', 'Could not export data. Please try again.');
+      }
     }
   }
 
@@ -140,6 +162,32 @@ export default function SettingsScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
+
+        {/* ── Privacy ────────────────────────────────────────── */}
+        <Text style={[styles.sectionLabel, { color: theme.textSecondary, fontFamily: FONTS.modern }]}>
+          PRIVACY
+        </Text>
+
+        <View style={[styles.infoBlock, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+          <View style={styles.toggleRow}>
+            <View style={styles.toggleLabelCol}>
+              <Text style={[styles.infoLabel, { color: theme.text, fontFamily: FONTS.modern }]}>
+                AI Reflections
+              </Text>
+              <Text style={[styles.toggleSub, { color: theme.textSecondary, fontFamily: FONTS.modern }]}>
+                When off, your entries are never sent to any AI service.
+              </Text>
+            </View>
+            <Switch
+              value={currentUser?.ai_enabled ?? true}
+              onValueChange={(v) => void handleAIToggle(v)}
+              disabled={aiToggleLoading}
+              trackColor={{ false: theme.border, true: theme.accent }}
+              thumbColor={theme.background}
+            />
+          </View>
+        </View>
+
         {/* ── Appearance ─────────────────────────────────────── */}
         <Text style={[styles.sectionLabel, { color: theme.textSecondary, fontFamily: FONTS.modern }]}>
           APPEARANCE
@@ -404,6 +452,16 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     overflow: 'hidden',
   },
+  toggleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    gap: 12,
+  },
+  toggleLabelCol: { flex: 1 },
+  toggleSub: { fontSize: 12, marginTop: 2 },
   infoRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',

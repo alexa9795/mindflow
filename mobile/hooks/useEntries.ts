@@ -28,7 +28,8 @@ export function useEntries(): EntriesState {
       const res = await api.getEntries(1);
       setEntries(res.entries);
       setPage(1);
-      setHasMore(res.entries.length === res.limit);
+      // hasMore is correct when loaded count < total, not when == limit
+      setHasMore(res.entries.length < res.total);
     } catch (e: unknown) {
       if (e instanceof NetworkError) {
         setIsOffline(true);
@@ -46,9 +47,12 @@ export function useEntries(): EntriesState {
     try {
       const nextPage = page + 1;
       const res = await api.getEntries(nextPage);
-      setEntries((prev) => [...prev, ...res.entries]);
+      setEntries((prev) => {
+        const combined = [...prev, ...res.entries];
+        setHasMore(combined.length < res.total);
+        return combined;
+      });
       setPage(nextPage);
-      setHasMore(res.entries.length === res.limit);
     } catch (e: unknown) {
       if (e instanceof NetworkError) setIsOffline(true);
     } finally {

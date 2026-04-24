@@ -44,6 +44,9 @@ func (m *mockAuthSvc) DeleteMe(_ context.Context, _ string) error { return nil }
 func (m *mockAuthSvc) ActivateTrial(_ context.Context, _ string) (time.Time, error) {
 	return time.Time{}, nil
 }
+func (m *mockAuthSvc) UpdateAIEnabled(_ context.Context, _ string, _ bool) error { return nil }
+func (m *mockAuthSvc) GetAIEnabled(_ context.Context, _ string) (bool, error)    { return true, nil }
+func (m *mockAuthSvc) RevokeToken(_ context.Context, _ string, _ time.Time) error { return nil }
 
 type mockSubSvcForHandler struct {
 	status *subscription.SubscriptionStatus
@@ -64,7 +67,7 @@ var defaultSubStatus = &subscription.SubscriptionStatus{
 }
 
 func newHandler(svc auth.Service, subSvc subscription.Service) *auth.Handler {
-	return auth.NewHandler(svc, subSvc)
+	return auth.NewHandler(svc, subSvc, nil)
 }
 
 // ---- POST /api/auth/register -----------------------------------------------
@@ -180,7 +183,7 @@ func TestLoginHandler(t *testing.T) {
 // ---- GET /api/auth/me ------------------------------------------------------
 
 func TestMeHandler(t *testing.T) {
-	user := &auth.User{ID: "uid-1", Email: "me@example.com", Name: "Me"}
+	user := &auth.User{ID: "uid-1", Email: "me@example.com", Name: "Me", AIEnabled: true}
 
 	tests := []struct {
 		name       string
@@ -226,6 +229,9 @@ func TestMeHandler(t *testing.T) {
 				}
 				if _, ok := body["subscription"]; !ok {
 					t.Error("response missing 'subscription' field")
+				}
+				if _, ok := body["ai_enabled"]; !ok {
+					t.Error("response missing 'ai_enabled' field")
 				}
 			}
 		})

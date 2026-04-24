@@ -24,7 +24,7 @@ export default function NewEntryScreen() {
   const router = useRouter();
   const { theme, entryFont } = useSettings();
   const { createEntry, isOffline } = useEntries();
-  const { isSubscriptionLimitReached } = useAuth();
+  const { isSubscriptionLimitReached, currentUser } = useAuth();
 
   const [content, setContent] = useState('');
   const [mood, setMood] = useState<number | undefined>();
@@ -32,6 +32,7 @@ export default function NewEntryScreen() {
   const [error, setError] = useState<string | null>(null);
 
   const limitReached = isSubscriptionLimitReached();
+  const aiEnabled = currentUser?.ai_enabled ?? true;
   const MAX_ENTRY_LENGTH = 10000;
   const charsLeft = MAX_ENTRY_LENGTH - content.length;
 
@@ -138,6 +139,11 @@ export default function NewEntryScreen() {
         </ScrollView>
 
         <View style={[styles.footer, { backgroundColor: theme.background }]}>
+          {!aiEnabled && (
+            <Text style={[styles.aiOffNote, { color: theme.textSecondary, fontFamily: FONTS.modern }]}>
+              AI reflections are off. Turn them on in Settings.
+            </Text>
+          )}
           <Pressable
             style={[
               styles.saveBtn,
@@ -203,6 +209,7 @@ const styles = StyleSheet.create({
   },
   limitText: { fontSize: 13 },
   upgradeLink: { fontSize: 13, fontWeight: '600' },
+  aiOffNote: { fontSize: 12, textAlign: 'center', marginBottom: 8 },
   footer: {
     padding: 20,
     paddingBottom: 32,

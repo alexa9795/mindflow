@@ -20,6 +20,11 @@ import { FONTS } from '../../constants/fonts';
 import { ApiError, NetworkError } from '../../services/api';
 import EchoLogo from '../../components/EchoLogo';
 
+function isValidEmail(email: string): boolean {
+  // Basic RFC-style check: local@domain.tld
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+}
+
 export default function RegisterScreen() {
   const router = useRouter();
   const { register } = useAuth();
@@ -28,16 +33,28 @@ export default function RegisterScreen() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [confirmError, setConfirmError] = useState<string | null>(null);
 
   async function submit() {
+    setError(null);
+    setConfirmError(null);
+
     if (!name.trim() || !email.trim() || !password) {
       setError('Please fill in all fields');
       return;
     }
+    if (!isValidEmail(email)) {
+      setError('Please enter a valid email address');
+      return;
+    }
+    if (password !== confirmPassword) {
+      setConfirmError("Passwords don't match");
+      return;
+    }
     setLoading(true);
-    setError(null);
     try {
       await register(email.trim(), password, name.trim());
     } catch (e: unknown) {
@@ -124,6 +141,19 @@ export default function RegisterScreen() {
             autoComplete="new-password"
           />
 
+          <TextInput
+            style={[styles.input, confirmError ? styles.inputError : null]}
+            placeholder="confirm password"
+            placeholderTextColor="#B0A89E"
+            value={confirmPassword}
+            onChangeText={(v) => { setConfirmPassword(v); setConfirmError(null); }}
+            secureTextEntry
+            autoComplete="new-password"
+          />
+          {confirmError !== null && (
+            <Text style={styles.inlineError}>{confirmError}</Text>
+          )}
+
           <Pressable
             style={[styles.btn, loading && styles.btnDisabled]}
             onPress={submit}
@@ -196,6 +226,13 @@ const styles = StyleSheet.create({
     // (photo background). #C0392B matches warmNeutral destructive.
     color: '#C0392B',
   },
+  inlineError: {
+    fontFamily: FONTS.modern,
+    fontSize: 12,
+    color: '#C0392B',
+    marginTop: -14,
+    marginBottom: 12,
+  },
   input: {
     alignSelf: 'stretch',
     borderBottomWidth: 1,
@@ -209,6 +246,9 @@ const styles = StyleSheet.create({
   },
   inputPassword: {
     marginBottom: 8,
+  },
+  inputError: {
+    borderBottomColor: '#C0392B',
   },
   btn: {
     alignSelf: 'stretch',

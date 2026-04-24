@@ -8,10 +8,12 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   currentUser: User | null;
+  profileWarning: string | null;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, name: string) => Promise<void>;
   logout: () => Promise<void>;
   updateUser: (user: User) => void;
+  toggleAI: (enabled: boolean) => Promise<void>;
   isSubscriptionLimitReached: () => boolean;
 }
 
@@ -20,6 +22,7 @@ const AuthContext = createContext<AuthContextType | null>(null);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [profileWarning, setProfileWarning] = useState<string | null>(null);
 
   // Rehydrate auth state from secure store on cold start.
   // Uses /api/auth/me to get the full user object — avoids trusting client-side JWT decoding.
@@ -52,12 +55,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const res = await api.login(email, password);
     await SecureStore.setItemAsync(TOKEN_KEY, res.token);
     setToken(res.token);
-    // Fetch full user profile (includes subscription) — auth response doesn't include it.
+    // Fetch full user profile (includes subscription and ai_enabled).
     try {
       const user = await api.getMe();
       setCurrentUser(user);
+      setProfileWarning(null);
     } catch {
-      setCurrentUser(res.user);
+      // Fallback to auth response user — missing subscription/ai_enabled fields.
+      // Show a non-blocking warning so the user knows some features may be limited.
+      setCurrentUser({ ...res.user, ai_enabled: true });
+      setProfileWarning('Could not load full profile. Some features may be limited.');
     }
   }, []);
 
@@ -65,12 +72,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const res = await api.register(email, password, name);
     await SecureStore.setItemAsync(TOKEN_KEY, res.token);
     setToken(res.token);
-    // Fetch full user profile (includes subscription) — auth response doesn't include it.
+    // Fetch full user profile (includes subscription and ai_enabled).
     try {
       const user = await api.getMe();
       setCurrentUser(user);
+      setProfileWarning(null);
     } catch {
-      setCurrentUser(res.user);
+      setCurrentUser({ ...res.user, ai_enabled: true });
+      setProfileWarning('Could not load full profile. Some features may be limited.');
     }
   }, []);
 
@@ -78,10 +87,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await SecureStore.deleteItemAsync(TOKEN_KEY);
     setToken(null);
     setCurrentUser(null);
+    setProfileWarning(null);
   }, []);
 
   const updateUser = useCallback((user: User) => {
     setCurrentUser(user);
+  }, []);
+
+  const toggleAI = useCallback(async (enabled: boolean) => {
+    await api.toggleAI(enabled);
+    setCurrentUser((prev) => (prev ? { ...prev, ai_enabled: enabled } : prev));
   }, []);
 
   const isSubscriptionLimitReached = useCallback((): boolean => {
@@ -92,7 +107,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return React.createElement(
     AuthContext.Provider,
-    { value: { isAuthenticated: currentUser !== null, isLoading, currentUser, login, register, logout, updateUser, isSubscriptionLimitReached } },
+    {
+      value: {
+        isAuthenticated: currentUser !== null,
+        isLoading,
+        currentUser,
+        profileWarning,
+        login,
+        register,
+        logout,
+        updateUser,
+        toggleAI,
+        isSubscriptionLimitReached,
+      },
+    },
     children,
   );
 }
@@ -102,4 +130,3 @@ export function useAuth(): AuthContextType {
   if (!ctx) throw new Error('useAuth must be used within AuthProvider');
   return ctx;
 }
-

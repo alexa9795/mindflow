@@ -39,7 +39,7 @@ func newMockAuthRepo() *mockAuthRepo {
 }
 
 func (m *mockAuthRepo) addUser(id, email, name, hash string) {
-	m.users[id] = &User{ID: id, Email: email, Name: name, CreatedAt: time.Now()}
+	m.users[id] = &User{ID: id, Email: email, Name: name, CreatedAt: time.Now(), AIEnabled: true}
 	m.byEmail[email] = mockEmailEntry{id, name, hash}
 }
 
@@ -48,7 +48,7 @@ func (m *mockAuthRepo) CreateUser(_ context.Context, email, name, passwordHash s
 		return "", m.createErr
 	}
 	id := "new-user-id"
-	m.users[id] = &User{ID: id, Email: email, Name: name, CreatedAt: time.Now()}
+	m.users[id] = &User{ID: id, Email: email, Name: name, CreatedAt: time.Now(), AIEnabled: true}
 	m.byEmail[email] = mockEmailEntry{id, name, passwordHash}
 	return id, nil
 }
@@ -91,6 +91,25 @@ func (m *mockAuthRepo) GetSubscriptionType(_ context.Context, userID string) (st
 func (m *mockAuthRepo) ActivateTrial(_ context.Context, _ string) (time.Time, error) {
 	return m.trialAt, nil
 }
+
+func (m *mockAuthRepo) UpdateAIEnabled(_ context.Context, userID string, enabled bool) error {
+	if u, ok := m.users[userID]; ok {
+		u.AIEnabled = enabled
+		return nil
+	}
+	return sql.ErrNoRows
+}
+
+func (m *mockAuthRepo) GetAIEnabled(_ context.Context, userID string) (bool, error) {
+	if u, ok := m.users[userID]; ok {
+		return u.AIEnabled, nil
+	}
+	return false, sql.ErrNoRows
+}
+
+func (m *mockAuthRepo) RevokeToken(_ context.Context, _ string, _ time.Time) error { return nil }
+func (m *mockAuthRepo) IsTokenRevoked(_ context.Context, _ string) (bool, error)   { return false, nil }
+func (m *mockAuthRepo) UpdateLastActive(_ context.Context, _ string) error         { return nil }
 
 // ---- Register tests --------------------------------------------------------
 
