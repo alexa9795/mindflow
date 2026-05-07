@@ -156,9 +156,9 @@ func main() {
 	// POST /api/entries also enforces the subscription limit.
 	mux.Handle("POST /api/entries", chain(
 		http.HandlerFunc(entryHandler.Create),
-		adapt(middleware.MaxBodySize),
-		subCheck,
 		adapt(authMW),
+		subCheck,
+		adapt(middleware.MaxBodySize),
 	))
 	mux.HandleFunc("GET /api/entries", authMW(entryHandler.List))
 	mux.HandleFunc("GET /api/export", authMW(exportHandler.Export))
@@ -167,15 +167,15 @@ func main() {
 	// AI endpoints — auth + per-user rate limit + body size.
 	mux.Handle("POST /api/entries/{id}/respond", chain(
 		http.HandlerFunc(entryHandler.Respond),
-		adapt(middleware.MaxBodySize),
-		aiLimit,
 		adapt(authMW),
+		aiLimit,
+		adapt(middleware.MaxBodySize),
 	))
 	mux.Handle("POST /api/entries/{id}/messages", chain(
 		http.HandlerFunc(entryHandler.AddMessage),
-		adapt(middleware.MaxBodySize),
-		aiLimit,
 		adapt(authMW),
+		aiLimit,
+		adapt(middleware.MaxBodySize),
 	))
 
 	// Insights route.
