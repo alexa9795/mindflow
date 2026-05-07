@@ -12,6 +12,7 @@ import {
   View,
 } from 'react-native';
 import AIMessage from '../../components/AIMessage';
+import EchoConsentModal from '../../components/EchoConsentModal';
 import OfflineBanner from '../../components/OfflineBanner';
 import ThemedView from '../../components/ThemedView';
 import { COMPANION_NAME } from '../../constants/config';
@@ -24,7 +25,7 @@ export default function EntryDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { theme, entryFont } = useSettings();
-  const { currentUser } = useAuth();
+  const { currentUser, toggleAI } = useAuth();
   const scrollRef = useRef<ScrollView>(null);
 
   const [entry, setEntry] = useState<Entry | null>(null);
@@ -35,8 +36,11 @@ export default function EntryDetailScreen() {
   const [sendLoading, setSendLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isOffline, setIsOffline] = useState(false);
+  const [showConsentModal, setShowConsentModal] = useState(false);
+  const [enablingConsent, setEnablingConsent] = useState(false);
 
-  const aiEnabled = currentUser?.ai_enabled ?? true;
+  const aiEnabled = currentUser?.ai_enabled ?? false;
+  const needsConsentModal = currentUser?.ai_enabled === false && currentUser?.ai_consent_given_at == null;
 
   useEffect(() => {
     if (!id) return;
@@ -62,6 +66,9 @@ export default function EntryDetailScreen() {
           } finally {
             setAiLoading(false);
           }
+        } else if (needsConsentModal) {
+          // User has never consented — prompt them to opt in.
+          setShowConsentModal(true);
         }
       } catch (e: unknown) {
         if (e instanceof NetworkError) setIsOffline(true);
@@ -101,6 +108,33 @@ export default function EntryDetailScreen() {
       setReply(text);
     } finally {
       setSendLoading(false);
+    }
+  }
+
+  async function handleConsentEnable() {
+    if (!id) return;
+    setEnablingConsent(true);
+    try {
+      await toggleAI(true);
+      setShowConsentModal(false);
+      setAiLoading(true);
+      try {
+        const result = await api.respond(id);
+        if ('ai_error' in result) {
+          setError(result.ai_error_message);
+        } else {
+          setMessages([result]);
+        }
+      } catch (e: unknown) {
+        if (e instanceof NetworkError) setIsOffline(true);
+        else if (e instanceof ApiError) setError(e.message);
+      } finally {
+        setAiLoading(false);
+      }
+    } catch {
+      setError('Could not enable Echo. Please try again.');
+    } finally {
+      setEnablingConsent(false);
     }
   }
 
@@ -230,6 +264,13 @@ export default function EntryDetailScreen() {
           </View>
         )}
       </KeyboardAvoidingView>
+
+      <EchoConsentModal
+        visible={showConsentModal}
+        enabling={enablingConsent}
+        onEnable={() => void handleConsentEnable()}
+        onDismiss={() => setShowConsentModal(false)}
+      />
     </ThemedView>
   );
 }

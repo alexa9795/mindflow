@@ -172,16 +172,7 @@ func (s *service) ActivateTrial(ctx context.Context, userID string) (time.Time, 
 }
 
 func (s *service) UpdateAIEnabled(ctx context.Context, userID string, enabled bool) error {
-	if err := s.repo.UpdateAIEnabled(ctx, userID, enabled); err != nil {
-		return err
-	}
-	// Record consent timestamp when enabling for the first time.
-	if enabled {
-		if err := s.repo.SetAIConsent(ctx, userID); err != nil {
-			slog.Warn("failed to set ai_consent_given_at", "user_id", userID, "error", err)
-		}
-	}
-	return nil
+	return s.repo.UpdateAIEnabled(ctx, userID, enabled)
 }
 
 func (s *service) GetAIEnabled(ctx context.Context, userID string) (bool, error) {

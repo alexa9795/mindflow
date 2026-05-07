@@ -129,7 +129,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const toggleAI = useCallback(async (enabled: boolean) => {
     await api.toggleAI(enabled);
-    setCurrentUser((prev) => (prev ? { ...prev, ai_enabled: enabled } : prev));
+    if (enabled) {
+      // Fetch the full user so ai_consent_given_at is populated in local state.
+      try {
+        const user = await api.getMe();
+        setCurrentUser(user);
+      } catch {
+        setCurrentUser((prev) => (prev ? { ...prev, ai_enabled: true } : prev));
+      }
+    } else {
+      setCurrentUser((prev) => (prev ? { ...prev, ai_enabled: false } : prev));
+    }
   }, []);
 
   const isSubscriptionLimitReached = useCallback((): boolean => {

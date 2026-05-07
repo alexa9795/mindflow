@@ -148,8 +148,15 @@ func (r *repository) ActivateTrial(ctx context.Context, userID string) (time.Tim
 }
 
 func (r *repository) UpdateAIEnabled(ctx context.Context, userID string, enabled bool) error {
-	_, err := r.db.ExecContext(ctx,
-		`UPDATE users SET ai_enabled = $1, updated_at = NOW() WHERE id = $2`,
+	_, err := r.db.ExecContext(ctx, `
+		UPDATE users
+		SET ai_enabled = $1,
+		    ai_consent_given_at = CASE
+		        WHEN $1 = true AND ai_consent_given_at IS NULL THEN NOW()
+		        ELSE ai_consent_given_at
+		    END,
+		    updated_at = NOW()
+		WHERE id = $2`,
 		enabled, userID,
 	)
 	if err != nil {

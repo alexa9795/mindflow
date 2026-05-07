@@ -194,7 +194,7 @@ export default function SettingsScreen() {
               </Text>
             </View>
             <Switch
-              value={currentUser?.ai_enabled ?? true}
+              value={currentUser?.ai_enabled ?? false}
               onValueChange={(v) => void handleAIToggle(v)}
               disabled={aiToggleLoading}
               trackColor={{ false: theme.border, true: theme.accent }}

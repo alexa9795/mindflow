@@ -32,7 +32,7 @@ export default function NewEntryScreen() {
   const [error, setError] = useState<string | null>(null);
 
   const limitReached = isSubscriptionLimitReached();
-  const aiEnabled = currentUser?.ai_enabled ?? true;
+  const aiEnabled = currentUser?.ai_enabled ?? false;
   const MAX_ENTRY_LENGTH = 10000;
   const charsLeft = MAX_ENTRY_LENGTH - content.length;
 
