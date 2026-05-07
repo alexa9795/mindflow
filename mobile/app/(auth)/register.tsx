@@ -5,7 +5,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
-  SafeAreaView,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -76,39 +76,46 @@ export default function RegisterScreen() {
   return (
     <KeyboardAvoidingView
       style={styles.root}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <StatusBar style="light" />
-
-      {/* Zone 1 — Hero image */}
-      <View style={{ height: zone1Height }}>
-        <ImageBackground
-          source={require('../../assets/stones.jpeg')}
-          resizeMode="cover"
-          style={StyleSheet.absoluteFill}
-        />
-        <LinearGradient
-          colors={['transparent', 'transparent', '#EDE8E000', '#EDE8E0']}
-          locations={[0, 0.4, 0.7, 1]}
-          style={StyleSheet.absoluteFill}
-        />
-      </View>
-
-      {/* Zone 2 — Identity */}
-      <View style={[styles.identityZone, { height: zone2Height }]}>
-        <View style={styles.logoRow}>
-          <EchoLogo color="#2C2418" width={220} hideText />
-          <Text style={styles.wordmark}>Echo</Text>
+      <ScrollView
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={{ flexGrow: 1 }}
+        bounces={false}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Zone 1 — Hero image */}
+        <View style={{ height: zone1Height }}>
+          <ImageBackground
+            source={require('../../assets/stones.jpeg')}
+            resizeMode="cover"
+            style={StyleSheet.absoluteFill}
+          />
+          <LinearGradient
+            colors={['transparent', 'transparent', '#EDE8E000', '#EDE8E0']}
+            locations={[0, 0.4, 0.7, 1]}
+            style={StyleSheet.absoluteFill}
+          />
         </View>
-        <Text style={styles.tagline}>your private space to think</Text>
-      </View>
 
-      {/* Zone 3 — Form */}
-      <SafeAreaView style={styles.formZone}>
-        <View style={styles.form}>
-          {error !== null && (
-            <Text style={styles.errorText}>{error}</Text>
-          )}
+        {/* Zone 2 — Identity */}
+        <View style={[styles.identityZone, { height: zone2Height }]}>
+          <View style={styles.logoRow}>
+            <EchoLogo color="#2C2418" width={220} hideText />
+            <Text style={styles.wordmark}>Echo</Text>
+          </View>
+          <Text style={styles.tagline}>your private space to think</Text>
+        </View>
+
+        {/* Zone 3 — Form */}
+        <View style={styles.formZone}>
+          {/* Reserved space for error — prevents layout shift */}
+          <View style={styles.errorContainer}>
+            {error !== null && (
+              <Text style={styles.errorText}>{error}</Text>
+            )}
+          </View>
 
           <TextInput
             style={styles.input}
@@ -167,13 +174,13 @@ export default function RegisterScreen() {
           </Pressable>
 
           <Pressable onPress={() => router.replace('/(auth)/login')}>
-            <Text style={styles.toggleLink}>
+            <Text style={[styles.toggleLink, styles.bottomLink]}>
               Already have an account?{'  '}
               <Text style={styles.toggleLinkBold}>Sign in</Text>
             </Text>
           </Pressable>
         </View>
-      </SafeAreaView>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
@@ -209,19 +216,20 @@ const styles = StyleSheet.create({
   formZone: {
     flex: 1,
     backgroundColor: '#EDE8E0',
-  },
-  form: {
-    flex: 1,
     paddingHorizontal: 28,
     paddingTop: 8,
-    paddingBottom: 16,
+    paddingBottom: 32,
+    justifyContent: 'center',
+  },
+  errorContainer: {
+    minHeight: 20,
+    marginBottom: 12,
     justifyContent: 'center',
   },
   errorText: {
     fontFamily: FONTS.modern,
     fontSize: 13,
     textAlign: 'center',
-    marginBottom: 12,
     // Intentional hardcode — login/register screens are unthemed
     // (photo background). #C0392B matches warmNeutral destructive.
     color: '#C0392B',
@@ -278,5 +286,8 @@ const styles = StyleSheet.create({
   toggleLinkBold: {
     fontWeight: '600',
     color: '#6B6157',
+  },
+  bottomLink: {
+    marginBottom: 32,
   },
 });
