@@ -14,7 +14,7 @@ MindFlow is a personal AI journaling application. The data controller is:
 
 **Alexandra Tomulescu**  
 Valencia, Spain (EU)  
-Email: [CONTACT_EMAIL]
+Email: privacy@mindflowjournal.app
 
 As a sole trader operating within the European Union, Alexandra Tomulescu is the data controller responsible for your personal data under the EU General Data Protection Regulation (GDPR) (Regulation 2016/679).
 
@@ -141,17 +141,17 @@ We share data with the following processors under written agreements. They act o
 
 ## 7. Your Rights Under GDPR
 
-You have the following rights. All are exercisable directly within the app or by emailing [CONTACT_EMAIL].
+You have the following rights. All are exercisable directly within the app or by emailing privacy@mindflowjournal.app.
 
-| Right | How to exercise |
-|---|---|
-| **Art. 15 — Right of access** | Request a copy of all data we hold about you |
-| **Art. 20 — Right to data portability** | Settings → Export Data → downloads a JSON file containing your entries, messages, audit events, profile, and consent timestamp |
+| Right | How to exercise                                                                                                                                          |
+|---|----------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Art. 15 — Right of access** | Request a copy of all data we hold about you                                                                                                             |
+| **Art. 20 — Right to data portability** | Settings → Export Data → downloads a JSON file containing your entries, messages, audit events, profile, and consent timestamp                           |
 | **Art. 17 — Right to erasure** | Settings → Delete Account → permanently deletes your account and all associated personal data. Audit records are anonymised, not deleted (see Section 4) |
-| **Art. 21 — Right to object (AI processing)** | Settings → Privacy → AI Processing toggle — disables AI processing of your content |
-| **Art. 7(3) — Right to withdraw consent** | Same as Art. 21 above — withdraw AI consent at any time without affecting your account |
-| **Art. 16 — Right to rectification** | Email [CONTACT_EMAIL] to correct inaccurate data |
-| **Art. 18 — Right to restriction** | Email [CONTACT_EMAIL] to request restriction of processing |
+| **Art. 21 — Right to object (AI processing)** | Settings → Privacy → AI Processing toggle — disables AI processing of your content                                                                       |
+| **Art. 7(3) — Right to withdraw consent** | Same as Art. 21 above — withdraw AI consent at any time without affecting your account                                                                   |
+| **Art. 16 — Right to rectification** | Email privacy@mindflowjournal.app to correct inaccurate data                                                                                             |
+| **Art. 18 — Right to restriction** | Email privacy@mindflowjournal.app to request restriction of processing                                                                                               |
 
 **Response time:** We will respond to rights requests within **30 days** as required by GDPR Art. 12.
 
@@ -173,7 +173,7 @@ If you are in distress or experiencing a mental health crisis, please seek profe
 
 ## 9. Children
 
-MindFlow is not intended for use by persons under the age of 16. We do not knowingly collect personal data from children. If you believe a child has registered an account, please contact [CONTACT_EMAIL] and we will delete the account promptly.
+MindFlow is not intended for use by persons under the age of 16. We do not knowingly collect personal data from children. If you believe a child has registered an account, please contact privacy@mindflowjournal.app and we will delete the account promptly.
 
 ---
 
@@ -194,7 +194,7 @@ We implement the following technical and organisational measures to protect your
 
 If we make material changes to this policy, we will notify you by email and/or an in-app notice at least 30 days before the changes take effect. Continued use of MindFlow after the effective date constitutes acceptance of the updated policy.
 
-The current version of this policy is always available within the app and at [PLACEHOLDER — public URL where policy will be hosted].
+The current version of this policy is always available within the app and at https://mindflowjournal.app/privacy.
 
 ---
 
@@ -203,8 +203,7 @@ The current version of this policy is always available within the app and at [PL
 For any questions about this policy or to exercise your rights:
 
 **Alexandra Tomulescu**  
-Email: [CONTACT_EMAIL]  
-Location: Valencia, Spain
+Email: privacy@mindflowjournal.app  
 
 ---
 

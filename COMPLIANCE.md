@@ -73,8 +73,10 @@ Anthropic acts as a data processor for AI inference. The DPA includes Standard C
 
 ## Outstanding Before EU Public Launch
 
-- [ ] Privacy policy written and published at a live URL (draft in PRIVACY_POLICY.md — legal review ~€150)
-- [ ] Contact email set up (requires domain purchase — needed for privacy policy and Resend sender)
+- [x] Domain purchased: mindflowjournal.app (Porkbun, expires 2027-05-25)
+- [x] Resend verified sender: noreply@mindflowjournal.app (Ireland eu-west-1)
+- [ ] Privacy policy published at https://mindflowjournal.app/privacy
+- [ ] Contact email privacy@mindflowjournal.app set up
 - [ ] Cookie/tracking policy (only if analytics are added later)
 - [ ] Anthropic DPA: monitor for self-serve DPA option on higher API plans
 
