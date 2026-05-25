@@ -46,7 +46,7 @@ type Service interface {
 	SetAIConsent(ctx context.Context, userID string) error
 	// Password reset.
 	RequestPasswordReset(ctx context.Context, emailAddr string) error
-	ResetPassword(ctx context.Context, token, newPassword string) error
+	ResetPassword(ctx context.Context, token, newPassword string) (string, error)
 	// Refresh token rotation.
 	RefreshTokens(ctx context.Context, rawRefreshToken string) (*AuthTokens, error)
 }
@@ -233,22 +233,23 @@ func (s *service) RequestPasswordReset(ctx context.Context, emailAddr string) er
 }
 
 // ResetPassword validates a reset token and updates the password.
-func (s *service) ResetPassword(ctx context.Context, token, newPassword string) error {
+// Returns the user ID of the account whose password was reset.
+func (s *service) ResetPassword(ctx context.Context, token, newPassword string) (string, error) {
 	tokenHash := sha256Hex(token)
 	u, err := s.repo.GetUserByResetToken(ctx, tokenHash)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return ErrInvalidResetToken
+			return "", ErrInvalidResetToken
 		}
-		return fmt.Errorf("get user by reset token: %w", err)
+		return "", fmt.Errorf("get user by reset token: %w", err)
 	}
 
 	hashed, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
 	if err != nil {
-		return fmt.Errorf("hash password: %w", err)
+		return "", fmt.Errorf("hash password: %w", err)
 	}
 	if err := s.repo.UpdatePassword(ctx, u.ID, string(hashed)); err != nil {
-		return fmt.Errorf("update password: %w", err)
+		return "", fmt.Errorf("update password: %w", err)
 	}
 
 	if err := s.repo.ClearResetToken(ctx, u.ID); err != nil {
@@ -259,7 +260,7 @@ func (s *service) ResetPassword(ctx context.Context, token, newPassword string) 
 		slog.Warn("failed to revoke refresh tokens after password reset", "user_id", u.ID, "error", err)
 	}
 
-	return nil
+	return u.ID, nil
 }
 
 // RefreshTokens validates a refresh token, rotates it, and returns new tokens.

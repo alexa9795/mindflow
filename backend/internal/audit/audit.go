@@ -27,8 +27,9 @@ const (
 	ActionLogout       Action = "auth.logout"
 	ActionTokenRevoked   Action = "auth.token.revoked"
 	ActionTokenRefreshed Action = "auth.token.refreshed"
-	ActionRateLimitHit Action = "auth.rate_limit_hit"
-	ActionInvalidToken Action = "auth.invalid_token"
+	ActionPasswordReset  Action = "auth.password_reset"
+	ActionRateLimitHit   Action = "auth.rate_limit_hit"
+	ActionInvalidToken   Action = "auth.invalid_token"
 
 	// Account actions.
 	ActionUpdateName     Action = "account.update_name"

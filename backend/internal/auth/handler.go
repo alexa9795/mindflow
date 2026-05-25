@@ -334,7 +334,8 @@ func (h *Handler) ConfirmPasswordReset(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.svc.ResetPassword(r.Context(), body.Token, body.Password); err != nil {
+	userID, err := h.svc.ResetPassword(r.Context(), body.Token, body.Password)
+	if err != nil {
 		if errors.Is(err, ErrInvalidResetToken) {
 			api.WriteError(w, api.ErrBadRequest.WithMessage("Invalid or expired reset token"))
 			return
@@ -343,6 +344,9 @@ func (h *Handler) ConfirmPasswordReset(w http.ResponseWriter, r *http.Request) {
 		api.WriteError(w, api.ErrInternalServer)
 		return
 	}
+
+	h.audit.Log(r.Context(), &userID, audit.ActionPasswordReset, audit.IPFromRequest(r),
+		map[string]any{"method": "password_reset_confirm"})
 
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]string{"message": "Password reset successfully."})

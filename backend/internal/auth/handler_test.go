@@ -53,7 +53,9 @@ func (m *mockAuthSvc) GetAIEnabled(_ context.Context, _ string) (bool, error)   
 func (m *mockAuthSvc) RevokeToken(_ context.Context, _ string, _ time.Time) error { return nil }
 func (m *mockAuthSvc) SetAIConsent(_ context.Context, _ string) error             { return nil }
 func (m *mockAuthSvc) RequestPasswordReset(_ context.Context, _ string) error     { return nil }
-func (m *mockAuthSvc) ResetPassword(_ context.Context, _, _ string) error         { return m.resetPwErr }
+func (m *mockAuthSvc) ResetPassword(_ context.Context, _, _ string) (string, error) {
+	return "test-user-id", m.resetPwErr
+}
 func (m *mockAuthSvc) RefreshTokens(_ context.Context, _ string) (*auth.AuthTokens, error) {
 	return m.refreshResp, m.refreshErr
 }
