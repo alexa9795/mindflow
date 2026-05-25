@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
+  <!-- Transparent background — splash screen bg color is set in app.json -->
+
+  <!-- Waveform: 9 bars scaled to 200x200 canvas -->
+  <!-- Scale factor from 1024: ~0.195 -->
+  <!-- Bar width: ~9px, gap: ~3px, total width ~108px, start x ~46 -->
+  <!-- Heights scaled: 23, 39, 31, 62, 51, 74, 39, 55, 27 -->
+  <!-- All bars centered at y=100 -->
+
+  <!-- Bar 1: height=23 -->
+  <rect x="46" y="88" width="9" height="23" rx="2" fill="#2C2C2C"/>
+
+  <!-- Bar 2: height=39 -->
+  <rect x="58" y="80" width="9" height="39" rx="2" fill="#2C2C2C"/>
+
+  <!-- Bar 3: height=31 -->
+  <rect x="70" y="84" width="9" height="31" rx="2" fill="#2C2C2C"/>
+
+  <!-- Bar 4: height=62 -->
+  <rect x="82" y="69" width="9" height="62" rx="2" fill="#2C2C2C"/>
+
+  <!-- Bar 5: height=51 -->
+  <rect x="94" y="74" width="9" height="51" rx="2" fill="#2C2C2C"/>
+
+  <!-- Bar 6: height=74 (tallest) -->
+  <rect x="106" y="63" width="9" height="74" rx="2" fill="#2C2C2C"/>
+
+  <!-- Bar 7: height=39 -->
+  <rect x="118" y="80" width="9" height="39" rx="2" fill="#2C2C2C"/>
+
+  <!-- Bar 8: height=55 -->
+  <rect x="130" y="72" width="9" height="55" rx="2" fill="#2C2C2C"/>
+
+  <!-- Bar 9: height=27 -->
+  <rect x="142" y="86" width="9" height="27" rx="2" fill="#2C2C2C"/>
+</svg>

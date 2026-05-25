@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!-- Background -->
+  <rect width="1024" height="1024" fill="#EDE8E0"/>
+
+  <!-- Waveform: 9 bars, each 48px wide, 16px gaps, total width = 9*48 + 8*16 = 432+128 = 560px -->
+  <!-- Start x = (1024 - 560) / 2 = 232, bars centered at y=512 -->
+  <!-- Bar heights (L→R): 120, 200, 160, 320, 260, 380, 200, 280, 140 -->
+  <!-- Tallest bar (380) is at position 6 (1-indexed), off-center to the right -->
+
+  <!-- Bar 1: height=120, x=232 -->
+  <rect x="232" y="452" width="48" height="120" rx="12" fill="#2C2C2C"/>
+
+  <!-- Bar 2: height=200, x=296 -->
+  <rect x="296" y="412" width="48" height="200" rx="12" fill="#2C2C2C"/>
+
+  <!-- Bar 3: height=160, x=360 -->
+  <rect x="360" y="432" width="48" height="160" rx="12" fill="#2C2C2C"/>
+
+  <!-- Bar 4: height=320, x=424 -->
+  <rect x="424" y="352" width="48" height="320" rx="12" fill="#2C2C2C"/>
+
+  <!-- Bar 5: height=260, x=488 -->
+  <rect x="488" y="382" width="48" height="260" rx="12" fill="#2C2C2C"/>
+
+  <!-- Bar 6: height=380 (tallest), x=552 -->
+  <rect x="552" y="322" width="48" height="380" rx="12" fill="#2C2C2C"/>
+
+  <!-- Bar 7: height=200, x=616 -->
+  <rect x="616" y="412" width="48" height="200" rx="12" fill="#2C2C2C"/>
+
+  <!-- Bar 8: height=280, x=680 -->
+  <rect x="680" y="372" width="48" height="280" rx="12" fill="#2C2C2C"/>
+
+  <!-- Bar 9: height=140, x=744 -->
+  <rect x="744" y="442" width="48" height="140" rx="12" fill="#2C2C2C"/>
+</svg>
