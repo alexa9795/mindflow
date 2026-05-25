@@ -5,6 +5,7 @@ import {
   Platform,
   Pressable,
   SafeAreaView,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -43,10 +44,15 @@ export default function ForgotPasswordScreen() {
   return (
     <KeyboardAvoidingView
       style={styles.root}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <StatusBar style="dark" />
       <SafeAreaView style={styles.safe}>
+        <ScrollView
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
         <View style={styles.container}>
           <Pressable style={styles.backBtn} onPress={() => router.back()}>
             <Text style={styles.backText}>← Back</Text>
@@ -98,6 +104,7 @@ export default function ForgotPasswordScreen() {
             </>
           )}
         </View>
+        </ScrollView>
       </SafeAreaView>
     </KeyboardAvoidingView>
   );
@@ -109,10 +116,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#EDE8E0',
   },
   safe: { flex: 1 },
+  scrollContent: { flexGrow: 1 },
   container: {
     flex: 1,
     paddingHorizontal: 28,
     paddingTop: 20,
+    paddingBottom: 32,
   },
   backBtn: { marginBottom: 32 },
   backText: {

@@ -2,6 +2,7 @@ import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -41,6 +42,7 @@ export default function NewEntryScreen() {
       setError('Write something first');
       return;
     }
+    Keyboard.dismiss();
     setError(null);
     setSaving(true);
     try {
