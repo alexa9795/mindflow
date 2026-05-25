@@ -22,6 +22,7 @@ import (
 	"github.com/alexa9795/mindflow/internal/export"
 	"github.com/alexa9795/mindflow/internal/insights"
 	"github.com/alexa9795/mindflow/internal/middleware"
+	"github.com/alexa9795/mindflow/internal/patterns"
 	"github.com/alexa9795/mindflow/internal/retention"
 	"github.com/alexa9795/mindflow/internal/subscription"
 	"github.com/joho/godotenv"
@@ -187,6 +188,10 @@ func main() {
 
 	// Retention job: scans inactive accounts daily.
 	retention.StartRetentionJob(appCtx, retention.NewJob(db.DB, auditLogger, emailClient))
+
+	// Pattern job: computes statistical patterns for active users weekly.
+	// Runs once after a 30-second startup delay, then every 7 days.
+	patterns.StartPatternJob(appCtx, patterns.NewJob(db.DB, slog.Default()))
 
 	// Background job: clean up expired revoked token entries every hour.
 	go func() {

@@ -1,9 +1,12 @@
+import * as LocalAuthentication from 'expo-local-authentication';
 import * as SecureStore from 'expo-secure-store';
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { Alert } from 'react-native';
 import { api, setToken, setRefreshToken, setUnauthorizedHandler, setTokensRefreshedHandler, User } from '../services/api';
 
 const TOKEN_KEY = 'echo_jwt';
 const REFRESH_TOKEN_KEY = 'echo_refresh_jwt';
+export const BIOMETRIC_ENABLED_KEY = 'biometric_enabled';
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -50,8 +53,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   // Rehydrate auth state from secure store on cold start.
+  //
+  // Happy path (biometric):
+  //   1. No valid access token found (expired/missing).
+  //   2. biometric_enabled=true and a refresh token exist in SecureStore.
+  //   3. Face ID prompt shown — user authenticates.
+  //   4. Stored refresh token used to obtain new access tokens silently.
+  //   5. /me called → user logged in, login screen never shown.
+  //
+  // Fallback paths:
+  //   - Face ID cancelled / failed → fall through to login screen (currentUser stays null).
+  //   - Refresh token expired (>7 days) → refresh API call fails → doLogout → login screen.
+  //   - No refresh token → skip biometric, go straight to login screen.
+  //   - Biometric not available / not enrolled → skip biometric, go straight to login screen.
+  //
   // Uses /api/auth/me to get the full user object — avoids trusting client-side JWT decoding.
-  // If /me fails for any reason (expired token, network, 401): clear stored tokens and stay logged out.
   useEffect(() => {
     void (async () => {
       try {
@@ -59,7 +75,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           SecureStore.getItemAsync(TOKEN_KEY),
           SecureStore.getItemAsync(REFRESH_TOKEN_KEY),
         ]);
+
         if (token) {
+          // Access token present — try to use it directly.
           setToken(token);
           if (rToken) setRefreshToken(rToken);
           try {
@@ -70,14 +88,81 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             // half-authenticated state.
             await doLogout();
           }
+          return;
+        }
+
+        // No access token — check if biometric login can silently restore the session.
+        // Requirement: biometric flag set AND a refresh token stored to exchange.
+        const [biometricEnabled, storedRefreshToken] = await Promise.all([
+          SecureStore.getItemAsync(BIOMETRIC_ENABLED_KEY),
+          SecureStore.getItemAsync(REFRESH_TOKEN_KEY),
+        ]);
+
+        if (biometricEnabled === 'true' && storedRefreshToken) {
+          const [hasHardware, isEnrolled] = await Promise.all([
+            LocalAuthentication.hasHardwareAsync(),
+            LocalAuthentication.isEnrolledAsync(),
+          ]);
+
+          if (hasHardware && isEnrolled) {
+            const result = await LocalAuthentication.authenticateAsync({
+              promptMessage: 'Sign in to MindFlow',
+              fallbackLabel: 'Use password',
+              cancelLabel: 'Cancel',
+            });
+
+            if (result.success) {
+              // Biometric passed — exchange the stored refresh token for new tokens.
+              setRefreshToken(storedRefreshToken);
+              try {
+                const tokens = await api.refresh(storedRefreshToken);
+                await Promise.allSettled([
+                  SecureStore.setItemAsync(TOKEN_KEY, tokens.access_token),
+                  SecureStore.setItemAsync(REFRESH_TOKEN_KEY, tokens.refresh_token),
+                ]);
+                setToken(tokens.access_token);
+                setRefreshToken(tokens.refresh_token);
+                const user = await api.getMe();
+                setCurrentUser(user);
+              } catch {
+                // Refresh token expired or network error — clear state and show login screen.
+                await doLogout();
+              }
+            }
+            // result.success === false: cancelled or failed → fall through, currentUser stays
+            // null, router will show login screen naturally.
+          }
         }
       } catch {
-        // SecureStore unavailable (e.g. simulator without biometrics) — stay logged out
+        // SecureStore unavailable (e.g. simulator without biometrics) — stay logged out.
       } finally {
         setIsLoading(false);
       }
     })();
   }, [doLogout]);
+
+  // Offer biometric enrolment once after a successful credential-based login/register.
+  // Only shown if hardware is available and the flag hasn't been set yet (either direction).
+  const offerBiometricEnrolment = useCallback(async () => {
+    const [hasHardware, isEnrolled, alreadySet] = await Promise.all([
+      LocalAuthentication.hasHardwareAsync(),
+      LocalAuthentication.isEnrolledAsync(),
+      SecureStore.getItemAsync(BIOMETRIC_ENABLED_KEY),
+    ]);
+    if (!hasHardware || !isEnrolled || alreadySet !== null) return;
+
+    Alert.alert(
+      'Use Face ID?',
+      'Sign in faster next time using Face ID.',
+      [
+        { text: 'Not now', style: 'cancel' },
+        {
+          text: 'Enable',
+          onPress: () => void SecureStore.setItemAsync(BIOMETRIC_ENABLED_KEY, 'true'),
+        },
+      ],
+    );
+  }, []);
 
   const login = useCallback(async (email: string, password: string) => {
     const res = await api.login(email, password);
@@ -98,7 +183,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setCurrentUser({ ...res.user, ai_enabled: false });
       setProfileWarning('Could not load full profile. Some features may be limited.');
     }
-  }, []);
+    void offerBiometricEnrolment();
+  }, [offerBiometricEnrolment]);
 
   const register = useCallback(async (email: string, password: string, name: string) => {
     const res = await api.register(email, password, name);
@@ -117,7 +203,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setCurrentUser({ ...res.user, ai_enabled: false });
       setProfileWarning('Could not load full profile. Some features may be limited.');
     }
-  }, []);
+    void offerBiometricEnrolment();
+  }, [offerBiometricEnrolment]);
 
   const logout = useCallback(async () => {
     await doLogout();

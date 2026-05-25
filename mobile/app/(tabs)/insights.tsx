@@ -13,6 +13,54 @@ import { MOOD_EMOJIS } from '../../constants/moods';
 import { useSettings } from '../../context/SettingsContext';
 import { api, Insights } from '../../services/api';
 
+const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+const WEEKDAY_SHORT = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+function peakWritingLabel(hour: number): string {
+  if (hour < 12) return 'morning';
+  if (hour < 18) return 'afternoon';
+  if (hour < 22) return 'evening';
+  return 'night';
+}
+
+function moodTrendLabel(trend: string): string {
+  switch (trend) {
+    case 'improving': return 'Your mood has been improving lately';
+    case 'declining': return 'Your mood has dipped recently';
+    case 'stable':    return 'Your mood has been steady lately';
+    default:          return '';
+  }
+}
+
+function WeekdayChart({
+  data,
+  theme,
+}: {
+  data: Record<string, number>;
+  theme: { accent: string; textSecondary: string };
+}) {
+  const counts = WEEKDAYS.map((d) => data[d] ?? 0);
+  const maxCount = Math.max(...counts, 1);
+  const BAR_HEIGHT = 36;
+
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 6, marginTop: 8, height: BAR_HEIGHT + 18 }}>
+      {WEEKDAYS.map((day, i) => {
+        const count = counts[i];
+        const barH = count > 0 ? Math.max(Math.round((count / maxCount) * BAR_HEIGHT), 4) : 0;
+        return (
+          <View key={day} style={{ flex: 1, alignItems: 'center', justifyContent: 'flex-end', height: BAR_HEIGHT + 18 }}>
+            <View style={{ width: '100%', height: barH, backgroundColor: theme.accent, borderRadius: 2 }} />
+            <Text style={{ fontSize: 9, color: theme.textSecondary, fontFamily: FONTS.modern, marginTop: 3 }}>
+              {WEEKDAY_SHORT[i]}
+            </Text>
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
 export default function InsightsScreen() {
   const { theme, moodSetId } = useSettings();
   const [insights, setInsights] = useState<Insights | null>(null);
@@ -151,6 +199,60 @@ export default function InsightsScreen() {
                 </Text>
               </Text>
             </View>
+          </View>
+        )}
+
+        {/* ── Pattern cards — only shown after weekly job has run ── */}
+
+        {/* Most active day */}
+        {insights.most_active_day != null && (
+          <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+            <Text style={[styles.cardLabel, { color: theme.textSecondary, fontFamily: FONTS.modern }]}>
+              Most active day
+            </Text>
+            <Text style={[styles.cardBig, { color: theme.text, fontFamily: FONTS.modern }]}>
+              {insights.most_active_day}
+            </Text>
+            <Text style={[styles.cardSub, { color: theme.textSecondary, fontFamily: FONTS.modern }]}>
+              You write most on {insights.most_active_day}
+            </Text>
+          </View>
+        )}
+
+        {/* Peak writing time */}
+        {insights.peak_writing_hour != null && (
+          <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+            <Text style={[styles.cardLabel, { color: theme.textSecondary, fontFamily: FONTS.modern }]}>
+              Peak writing time
+            </Text>
+            <Text style={[styles.cardBig, { color: theme.text, fontFamily: FONTS.modern }]}>
+              {peakWritingLabel(insights.peak_writing_hour)}
+            </Text>
+            <Text style={[styles.cardSub, { color: theme.textSecondary, fontFamily: FONTS.modern }]}>
+              You tend to write in the {peakWritingLabel(insights.peak_writing_hour)}
+            </Text>
+          </View>
+        )}
+
+        {/* Mood trend — insufficient_data is never shown */}
+        {insights.mood_trend != null && insights.mood_trend !== 'insufficient_data' && (
+          <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+            <Text style={[styles.cardLabel, { color: theme.textSecondary, fontFamily: FONTS.modern }]}>
+              Mood trend
+            </Text>
+            <Text style={[styles.cardBig, { color: theme.text, fontFamily: FONTS.modern }]}>
+              {moodTrendLabel(insights.mood_trend)}
+            </Text>
+          </View>
+        )}
+
+        {/* Writing consistency mini bar chart */}
+        {insights.entries_per_weekday != null && (
+          <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+            <Text style={[styles.cardLabel, { color: theme.textSecondary, fontFamily: FONTS.modern }]}>
+              Writing consistency
+            </Text>
+            <WeekdayChart data={insights.entries_per_weekday} theme={theme} />
           </View>
         )}
       </ScrollView>

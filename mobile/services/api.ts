@@ -240,6 +240,13 @@ export interface Insights {
   longest_streak: number;
   entries_this_month: number;
   entries_last_month: number;
+  // Pattern fields — absent until the weekly pattern job has run for this user.
+  most_active_day?: string;
+  least_active_day?: string;
+  peak_writing_hour?: number;
+  mood_trend?: 'improving' | 'declining' | 'stable' | 'insufficient_data';
+  avg_mood_by_day?: Record<string, number>;
+  entries_per_weekday?: Record<string, number>;
 }
 
 export const api = {

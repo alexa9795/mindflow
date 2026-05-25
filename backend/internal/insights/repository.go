@@ -3,6 +3,8 @@ package insights
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -10,8 +12,7 @@ import (
 )
 
 // Insights contains aggregated journaling statistics for a user.
-// Stats are computed live from the entries table. The insights DB table
-// is reserved for Phase 2 pattern detection (weekly summaries, word clouds).
+// Pattern fields (MostActiveDay etc.) are nil until the weekly pattern job runs.
 type Insights struct {
 	TotalEntries     int      `json:"total_entries"`
 	AvgMoodLast30    *float64 `json:"avg_mood_last_30"`
@@ -20,6 +21,25 @@ type Insights struct {
 	LongestStreak    int      `json:"longest_streak"`
 	EntriesThisMonth int      `json:"entries_this_month"`
 	EntriesLastMonth int      `json:"entries_last_month"`
+
+	// Pattern fields — populated from user_patterns after the weekly job runs.
+	// All omitted from JSON when nil/empty.
+	MostActiveDay     *string            `json:"most_active_day,omitempty"`
+	LeastActiveDay    *string            `json:"least_active_day,omitempty"`
+	PeakWritingHour   *int               `json:"peak_writing_hour,omitempty"`
+	MoodTrend         *string            `json:"mood_trend,omitempty"`
+	AvgMoodByDay      map[string]float64 `json:"avg_mood_by_day,omitempty"`
+	EntriesPerWeekday map[string]int     `json:"entries_per_weekday,omitempty"`
+}
+
+// UserPatterns holds the pre-computed pattern data read from user_patterns.
+type UserPatterns struct {
+	MostActiveDay     *string
+	LeastActiveDay    *string
+	PeakWritingHour   *int
+	MoodTrend         *string
+	AvgMoodByDay      map[string]float64
+	EntriesPerWeekday map[string]int
 }
 
 // InsightsData is the raw result of the single-CTE repository query.
@@ -36,6 +56,9 @@ type InsightsData struct {
 type Repository interface {
 	// GetInsightsData returns all aggregated stats in a single DB round trip.
 	GetInsightsData(ctx context.Context, userID string) (*InsightsData, error)
+	// GetPatterns returns pre-computed pattern data from user_patterns, or nil if
+	// the weekly pattern job has not yet run for this user.
+	GetPatterns(ctx context.Context, userID string) (*UserPatterns, error)
 }
 
 type repository struct {
@@ -132,4 +155,58 @@ func (r *repository) GetInsightsData(ctx context.Context, userID string) (*Insig
 	}
 
 	return &d, nil
+}
+
+// GetPatterns fetches pre-computed pattern data for the user from user_patterns.
+// Returns nil, nil when no row exists (job hasn't run yet for this user).
+func (r *repository) GetPatterns(ctx context.Context, userID string) (*UserPatterns, error) {
+	row := r.db.QueryRowContext(ctx, `
+		SELECT most_active_day, least_active_day, avg_mood_by_day,
+		       peak_writing_hour, entries_per_weekday, mood_trend
+		FROM user_patterns
+		WHERE user_id = $1`,
+		userID,
+	)
+
+	var mostActive, leastActive, moodTrend sql.NullString
+	var peakHour                            sql.NullInt64
+	var avgMoodRaw, entriesRaw             []byte
+
+	if err := row.Scan(
+		&mostActive, &leastActive, &avgMoodRaw,
+		&peakHour, &entriesRaw, &moodTrend,
+	); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("get patterns: %w", err)
+	}
+
+	p := &UserPatterns{}
+
+	if mostActive.Valid {
+		p.MostActiveDay = &mostActive.String
+	}
+	if leastActive.Valid {
+		p.LeastActiveDay = &leastActive.String
+	}
+	if moodTrend.Valid {
+		p.MoodTrend = &moodTrend.String
+	}
+	if peakHour.Valid {
+		v := int(peakHour.Int64)
+		p.PeakWritingHour = &v
+	}
+	if len(avgMoodRaw) > 0 {
+		if err := json.Unmarshal(avgMoodRaw, &p.AvgMoodByDay); err != nil {
+			return nil, fmt.Errorf("unmarshal avg_mood_by_day: %w", err)
+		}
+	}
+	if len(entriesRaw) > 0 {
+		if err := json.Unmarshal(entriesRaw, &p.EntriesPerWeekday); err != nil {
+			return nil, fmt.Errorf("unmarshal entries_per_weekday: %w", err)
+		}
+	}
+
+	return p, nil
 }

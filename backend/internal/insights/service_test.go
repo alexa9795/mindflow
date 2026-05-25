@@ -16,6 +16,10 @@ func (m *mockRepo) GetInsightsData(_ context.Context, _ string) (*InsightsData, 
 	return m.data, m.err
 }
 
+func (m *mockRepo) GetPatterns(_ context.Context, _ string) (*UserPatterns, error) {
+	return nil, nil
+}
+
 func emptyData() *InsightsData {
 	return &InsightsData{}
 }

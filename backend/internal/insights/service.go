@@ -26,10 +26,15 @@ func (s *service) GetInsights(ctx context.Context, userID string) (*Insights, er
 		return nil, fmt.Errorf("get insights: %w", err)
 	}
 
+	patterns, err := s.repo.GetPatterns(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("get patterns: %w", err)
+	}
+
 	today := time.Now().UTC().Truncate(24 * time.Hour)
 	current, longest := computeStreaks(data.EntryDates, today)
 
-	return &Insights{
+	ins := &Insights{
 		TotalEntries:     data.TotalEntries,
 		AvgMoodLast30:    data.AvgMood,
 		MostCommonMood:   data.CommonMood,
@@ -37,7 +42,18 @@ func (s *service) GetInsights(ctx context.Context, userID string) (*Insights, er
 		LongestStreak:    longest,
 		EntriesThisMonth: data.ThisMonth,
 		EntriesLastMonth: data.LastMonth,
-	}, nil
+	}
+
+	if patterns != nil {
+		ins.MostActiveDay     = patterns.MostActiveDay
+		ins.LeastActiveDay    = patterns.LeastActiveDay
+		ins.PeakWritingHour   = patterns.PeakWritingHour
+		ins.MoodTrend         = patterns.MoodTrend
+		ins.AvgMoodByDay      = patterns.AvgMoodByDay
+		ins.EntriesPerWeekday = patterns.EntriesPerWeekday
+	}
+
+	return ins, nil
 }
 
 // computeStreaks calculates the current and longest journaling streaks from a

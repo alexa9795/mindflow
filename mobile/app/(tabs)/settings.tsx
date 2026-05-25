@@ -1,7 +1,9 @@
 import * as FileSystem from 'expo-file-system/legacy';
+import * as LocalAuthentication from 'expo-local-authentication';
+import * as SecureStore from 'expo-secure-store';
 import { useRouter } from 'expo-router';
 import * as Sharing from 'expo-sharing';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Alert,
   Modal,
@@ -18,7 +20,7 @@ import { FONT_OPTIONS, FONTS, FontKey } from '../../constants/fonts';
 import { MOOD_EMOJIS, MOOD_SETS } from '../../constants/moods';
 import { THEMES } from '../../constants/themes';
 import { useSettings } from '../../context/SettingsContext';
-import { useAuth } from '../../hooks/useAuth';
+import { useAuth, BIOMETRIC_ENABLED_KEY } from '../../hooks/useAuth';
 import { api, ApiError } from '../../services/api';
 
 export default function SettingsScreen() {
@@ -32,6 +34,27 @@ export default function SettingsScreen() {
   const [nameError, setNameError] = useState<string | null>(null);
   const [aiToggleLoading, setAiToggleLoading] = useState(false);
   const [trialLoading, setTrialLoading] = useState(false);
+
+  // Biometric state — only show the toggle if hardware + enrolled face/fingerprint exists.
+  const [biometricAvailable, setBiometricAvailable] = useState(false);
+  const [biometricEnabled, setBiometricEnabled] = useState(false);
+
+  useEffect(() => {
+    void (async () => {
+      const [hasHardware, isEnrolled, stored] = await Promise.all([
+        LocalAuthentication.hasHardwareAsync(),
+        LocalAuthentication.isEnrolledAsync(),
+        SecureStore.getItemAsync(BIOMETRIC_ENABLED_KEY),
+      ]);
+      setBiometricAvailable(hasHardware && isEnrolled);
+      setBiometricEnabled(stored === 'true');
+    })();
+  }, []);
+
+  async function handleBiometricToggle(enabled: boolean) {
+    await SecureStore.setItemAsync(BIOMETRIC_ENABLED_KEY, enabled ? 'true' : 'false');
+    setBiometricEnabled(enabled);
+  }
 
   async function handleLogout() {
     Alert.alert('Sign out', 'Are you sure?', [
@@ -177,6 +200,33 @@ export default function SettingsScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
+
+        {/* ── Security ───────────────────────────────────────── */}
+        {biometricAvailable && (
+          <>
+            <Text style={[styles.sectionLabel, { color: theme.textSecondary, fontFamily: FONTS.modern }]}>
+              SECURITY
+            </Text>
+            <View style={[styles.infoBlock, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+              <View style={styles.toggleRow}>
+                <View style={styles.toggleLabelCol}>
+                  <Text style={[styles.infoLabel, { color: theme.text, fontFamily: FONTS.modern }]}>
+                    Sign in with Face ID
+                  </Text>
+                  <Text style={[styles.toggleSub, { color: theme.textSecondary, fontFamily: FONTS.modern }]}>
+                    Skip the password screen on next sign-in.
+                  </Text>
+                </View>
+                <Switch
+                  value={biometricEnabled}
+                  onValueChange={(v) => void handleBiometricToggle(v)}
+                  trackColor={{ false: theme.border, true: theme.accent }}
+                  thumbColor={theme.background}
+                />
+              </View>
+            </View>
+          </>
+        )}
 
         {/* ── Privacy ────────────────────────────────────────── */}
         <Text style={[styles.sectionLabel, { color: theme.textSecondary, fontFamily: FONTS.modern }]}>
