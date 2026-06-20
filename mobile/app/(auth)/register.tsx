@@ -34,6 +34,8 @@ export default function RegisterScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [consent, setConsent] = useState(false);
+  const [acceptTerms, setAcceptTerms] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmError, setConfirmError] = useState<string | null>(null);
@@ -54,9 +56,17 @@ export default function RegisterScreen() {
       setConfirmError("Passwords don't match");
       return;
     }
+    if (!consent) {
+      setError('Please agree to storage of your journal entries to continue');
+      return;
+    }
+    if (!acceptTerms) {
+      setError('Please accept the Terms of Service to continue');
+      return;
+    }
     setLoading(true);
     try {
-      await register(email.trim(), password, name.trim());
+      await register(email.trim(), password, name.trim(), consent, acceptTerms);
     } catch (e: unknown) {
       if (e instanceof NetworkError) {
         setError("You're offline or the server is unreachable");
@@ -161,6 +171,42 @@ export default function RegisterScreen() {
             <Text style={styles.inlineError}>{confirmError}</Text>
           )}
 
+          {/* GDPR Art. 9(2)(a) explicit consent to store sensitive content. */}
+          <Pressable
+            style={styles.consentRow}
+            onPress={() => setConsent((c) => !c)}
+            hitSlop={8}
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: consent }}
+          >
+            <View style={[styles.checkbox, consent && styles.checkboxChecked]}>
+              {consent && <Text style={styles.checkboxMark}>✓</Text>}
+            </View>
+            <Text style={styles.consentText}>
+              I agree that my journal entries — which may include sensitive
+              information about my wellbeing — are stored so I can use MindFlow.
+              See our{' '}
+              <Text style={styles.consentLink}>Privacy Policy</Text>.
+            </Text>
+          </Pressable>
+
+          {/* Terms of Service acceptance — kept separate from the Art. 9 consent. */}
+          <Pressable
+            style={styles.consentRow}
+            onPress={() => setAcceptTerms((c) => !c)}
+            hitSlop={8}
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: acceptTerms }}
+          >
+            <View style={[styles.checkbox, acceptTerms && styles.checkboxChecked]}>
+              {acceptTerms && <Text style={styles.checkboxMark}>✓</Text>}
+            </View>
+            <Text style={styles.consentText}>
+              I have read and accept the{' '}
+              <Text style={styles.consentLink}>Terms of Service</Text>.
+            </Text>
+          </Pressable>
+
           <Pressable
             style={[styles.btn, loading && styles.btnDisabled]}
             onPress={submit}
@@ -257,6 +303,44 @@ const styles = StyleSheet.create({
   },
   inputError: {
     borderBottomColor: '#C0392B',
+  },
+  consentRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    marginTop: 4,
+    marginBottom: 4,
+  },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: '#9A8F84',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 1,
+  },
+  checkboxChecked: {
+    backgroundColor: '#2C2418',
+    borderColor: '#2C2418',
+  },
+  checkboxMark: {
+    color: '#F5F0E8',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  consentText: {
+    flex: 1,
+    fontFamily: FONTS.modern,
+    fontSize: 12,
+    lineHeight: 17,
+    color: '#7A6F63',
+  },
+  consentLink: {
+    color: '#6B6157',
+    fontWeight: '600',
+    textDecorationLine: 'underline',
   },
   btn: {
     alignSelf: 'stretch',

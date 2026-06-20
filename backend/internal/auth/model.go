@@ -10,6 +10,12 @@ type RegisterRequest struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
 	Name     string `json:"name"`
+	// ConsentToStorage records the user's explicit GDPR Art. 9(2)(a) consent to
+	// store special-category journal content. Must be true to register.
+	ConsentToStorage bool `json:"consent_to_storage"`
+	// AcceptTerms records acceptance of the Terms of Service (contract,
+	// Art. 6(1)(b)). Kept separate from ConsentToStorage. Must be true.
+	AcceptTerms bool `json:"accept_terms"`
 }
 
 // LoginRequest is the payload for POST /api/auth/login.
@@ -51,13 +57,15 @@ type SubscriptionInfo struct {
 
 // User is the response shape for GET /api/auth/me.
 type User struct {
-	ID                string            `json:"id"`
-	Email             string            `json:"email"`
-	Name              string            `json:"name"`
-	CreatedAt         time.Time         `json:"created_at"`
-	AIEnabled         bool              `json:"ai_enabled"`
-	AIConsentGivenAt  *time.Time        `json:"ai_consent_given_at,omitempty"`
-	Subscription      *SubscriptionInfo `json:"subscription,omitempty"`
+	ID                       string            `json:"id"`
+	Email                    string            `json:"email"`
+	Name                     string            `json:"name"`
+	CreatedAt                time.Time         `json:"created_at"`
+	AIEnabled                bool              `json:"ai_enabled"`
+	AIConsentGivenAt         *time.Time        `json:"ai_consent_given_at,omitempty"`
+	JournalingConsentGivenAt *time.Time        `json:"journaling_consent_given_at,omitempty"`
+	TermsAcceptedAt          *time.Time        `json:"terms_accepted_at,omitempty"`
+	Subscription             *SubscriptionInfo `json:"subscription,omitempty"`
 }
 
 // RefreshToken is a stored refresh token record.

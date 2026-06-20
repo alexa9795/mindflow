@@ -26,18 +26,26 @@ func NewRepository(db *sql.DB) Repository {
 // GetUserForExport fetches the user profile fields needed for a GDPR Article 20 export.
 func (r *repository) GetUserForExport(ctx context.Context, userID string) (*ExportUser, error) {
 	var u ExportUser
-	var aiConsentGivenAt sql.NullTime
+	var aiConsentGivenAt, journalingConsentGivenAt, termsAcceptedAt sql.NullTime
 	err := r.db.QueryRowContext(ctx, `
-		SELECT id, email, name, created_at, last_active_at, subscription_type, ai_enabled, ai_consent_given_at
+		SELECT id, email, name, created_at, last_active_at, subscription_type, ai_enabled, ai_consent_given_at, journaling_consent_given_at, terms_accepted_at
 		FROM users WHERE id = $1`,
 		userID,
-	).Scan(&u.ID, &u.Email, &u.Name, &u.CreatedAt, &u.LastActiveAt, &u.SubscriptionType, &u.AIEnabled, &aiConsentGivenAt)
+	).Scan(&u.ID, &u.Email, &u.Name, &u.CreatedAt, &u.LastActiveAt, &u.SubscriptionType, &u.AIEnabled, &aiConsentGivenAt, &journalingConsentGivenAt, &termsAcceptedAt)
 	if err != nil {
 		return nil, fmt.Errorf("get user for export: %w", err)
 	}
 	if aiConsentGivenAt.Valid {
 		t := aiConsentGivenAt.Time
 		u.AIConsentGivenAt = &t
+	}
+	if journalingConsentGivenAt.Valid {
+		t := journalingConsentGivenAt.Time
+		u.JournalingConsentGivenAt = &t
+	}
+	if termsAcceptedAt.Valid {
+		t := termsAcceptedAt.Time
+		u.TermsAcceptedAt = &t
 	}
 	return &u, nil
 }

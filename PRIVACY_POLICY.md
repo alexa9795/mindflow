@@ -1,22 +1,40 @@
-> ⚠️ DRAFT — requires legal review before publication. Estimated legal review cost: ~€150.
+> ⚠️ DRAFT — not yet publishable. Two blockers remain: (1) legal-entity
+> decision (individual vs Spanish SL) determines the data controller named
+> below; (2) final paid legal review (~€150). See open TODOs marked
+> **[TODO]** and the handoff in legal.md. Estimated legal review cost: ~€150.
 
 # Privacy Policy — MindFlow
 
-**Last updated:** 2026-05-07  
-**Effective date:** [PLACEHOLDER — set to publication date]  
-**Version:** 1.0 (pre-release draft)
+> **App name:** MindFlow (this is the name users see in the App Store and
+> Google Play). **Echo** is the name of the in-app AI companion feature —
+> it is not a separate product or company.
+
+**Last updated:** 2026-06-20
+**Effective date:** [PLACEHOLDER — set to publication date]
+**Version:** 1.1 (pre-release draft)
 
 ---
 
 ## 1. Who We Are
 
-MindFlow is a personal AI journaling application. The data controller is:
+MindFlow is a personal AI journaling application.
 
-**Alexandra Tomulescu**  
-Valencia, Spain (EU)  
-Email: hello@mindflowjournal.app
+> **[TODO — ENTITY DECISION PENDING]** The data controller is either
+> Alexandra Tomulescu (sole trader / autónomo) **or** a Spanish Sociedad
+> Limitada (SL) to be incorporated. This section must be finalised once the
+> entity is chosen, because it determines who is legally the controller,
+> the liability position, and the contact/registration details below.
+> See legal.md for the pros/cons analysis.
 
-As a sole trader operating within the European Union, Alexandra Tomulescu is the data controller responsible for your personal data under the EU General Data Protection Regulation (GDPR) (Regulation 2016/679).
+The data controller is:
+
+**[Alexandra Tomulescu — sole trader] / [MindFlow SL — to be confirmed]**
+Valencia, Spain (EU)
+Email: privacy@mindflowjournal.app
+
+As a data controller established within the European Union, we are
+responsible for your personal data under the EU General Data Protection
+Regulation (GDPR) (Regulation 2016/679).
 
 ---
 
@@ -37,16 +55,36 @@ This policy explains what personal data MindFlow collects, why, how it is used, 
 | Password (hashed, never stored in plain text) | Authentication | Contract (Art. 6(1)(b)) |
 | Account creation timestamp | Account management | Contract (Art. 6(1)(b)) |
 
-### 3.2 Journal Content
+**Biometric login (Face ID / Touch ID / Android biometrics):** If you enable
+biometric unlock, authentication is performed entirely by your device's
+operating system (e.g. Apple's Secure Enclave). Your biometric data **never
+leaves your device, is never transmitted to us, and is never stored on our
+servers.** We only receive a confirmation from the device that authentication
+succeeded.
+
+### 3.2 Journal Content (Special Category Data)
 
 | Data | Purpose | Legal Basis |
 |---|---|---|
-| Journal entries (text) | Core app functionality — personal journaling | Contract (Art. 6(1)(b)) |
-| Mood scores | Mood tracking and trends | Contract (Art. 6(1)(b)) |
-| Echo AI conversation messages | AI companion responses | Contract (Art. 6(1)(b)) |
+| Journal entries (text) | Core app functionality — personal journaling | **Explicit consent (Art. 9(2)(a))** + Contract (Art. 6(1)(b)) |
+| Mood scores | Mood tracking and trends | **Explicit consent (Art. 9(2)(a))** + Contract (Art. 6(1)(b)) |
+| Echo AI conversation messages | AI companion responses | **Explicit consent (Art. 9(2)(a))** + Contract (Art. 6(1)(b)) |
+| Journaling consent timestamp | Record of your consent to store sensitive content | Legal obligation / consent record (Art. 6(1)(c)) |
 | AI consent timestamp (`ai_consent_given_at`) | Record that you consented to AI processing | Legal obligation / consent record (Art. 6(1)(c)) |
 
-**Important:** Journal entries may contain information about your mental health, emotional state, and personal wellbeing. This is special category data under GDPR Art. 9. See Section 5 below.
+**Important:** Journal entries and mood scores may contain information about
+your mental health, emotional state, and personal wellbeing. This is special
+category data under GDPR Art. 9. Because of this, **we store and process this
+content only on the basis of your explicit consent**, which you give when you
+create your account / write your first entry, separately from your consent to
+AI processing. See Section 5.
+
+> **[IMPLEMENTED 2026-06-20 — pending review]** Explicit storage consent is
+> now captured at registration: a required checkbox on the signup screen,
+> enforced server-side (registration is rejected without it), recorded as
+> `users.journaling_consent_given_at` and in the audit trail
+> (`account.journaling_consent`), and included in the data export. Migration
+> 024. Still to verify in the paid legal review.
 
 ### 3.3 Subscription and Usage Data
 
@@ -54,8 +92,36 @@ This policy explains what personal data MindFlow collects, why, how it is used, 
 |---|---|---|
 | Subscription tier (free / premium) | Enforce feature limits | Contract (Art. 6(1)(b)) |
 | Monthly usage counts (AI messages, entries) | Enforce plan quotas | Contract (Art. 6(1)(b)) |
+| Purchase/subscription status from the app store | Activate and manage your subscription | Contract (Art. 6(1)(b)) |
 
-### 3.4 Security Audit Logs
+Subscriptions are sold and processed exclusively through **Apple In-App
+Purchase** (iOS) and **Google Play Billing** (Android). **We never receive,
+process, or store your payment card details.** Payment is handled entirely by
+Apple or Google under their own privacy policies. We receive only your
+subscription status (active / lapsed / tier) to unlock features.
+
+### 3.4 Automated Analysis of Your Content (Profiling)
+
+To provide the app's insights and safety features, we perform automated
+analysis of your journal content:
+
+| Processing | Purpose | Legal Basis |
+|---|---|---|
+| Mood trend and pattern detection | Show you trends and recurring themes in your entries (Insights screen) | **Explicit consent (Art. 9(2)(a))** |
+| Word/theme frequency analysis | Surface common themes in your journaling | **Explicit consent (Art. 9(2)(a))** |
+| Trigger-word detection (crisis-support signals) | Detect language that may indicate distress, so we can surface crisis-support resources. Only metadata is logged — never your entry content | **Explicit consent (Art. 9(2)(a))** / vital interests where applicable |
+
+This analysis is used **only to provide features to you**. It does **not**
+produce any decision that has legal or similarly significant effects on you
+within the meaning of GDPR Art. 22, and it is never used for advertising,
+credit, insurance, or sharing with third parties.
+
+> **[TODO — VERIFY]** Confirm the live behaviour of pattern detection and
+> trigger-word detection matches this description before publishing
+> (purpose, that only metadata — not content — is logged, and that no
+> Art. 22 automated decision is made). See legal.md.
+
+### 3.5 Security Audit Logs
 
 | Data | Purpose | Legal Basis |
 |---|---|---|
@@ -84,19 +150,33 @@ MindFlow implements automatic data deletion for inactive accounts:
 
 When an account is deleted (either by you or by the inactivity policy):
 - All journal entries, messages, mood data, and profile data are permanently deleted.
-- Audit log records are **anonymised** (your user ID is removed) rather than deleted, to preserve security audit integrity.
+- Audit log records are **anonymised** (your user ID is removed) rather than deleted, to preserve security audit integrity. We retain only data fields that cannot, alone or in combination, re-identify you.
 
 ---
 
 ## 5. Special Category Data — Mental Health and Wellbeing (Art. 9)
 
-Journal entries may contain information about your mental health, emotional state, personal wellbeing, or other sensitive topics. Under GDPR Art. 9, this is classified as special category data requiring explicit consent for AI processing.
+Journal entries and mood scores may contain information about your mental
+health, emotional state, personal wellbeing, or other sensitive topics. Under
+GDPR Art. 9, this is special category data requiring explicit consent.
 
-**We process this data by AI only with your explicit consent.**
+**We rely on your explicit consent (Art. 9(2)(a)) at two points:**
 
-When you first interact with Echo (the AI companion), you are shown a consent modal explaining that your journal content will be sent to Anthropic's Claude API for AI responses. You must actively consent before any AI processing occurs. Your consent timestamp is recorded.
+1. **To store and process your sensitive journal content at all** — given
+   when you create your account / write your first entry.
+2. **To process that content with AI** — given separately when you first
+   interact with Echo (the AI companion).
 
-**You can withdraw this consent at any time** via Settings → Privacy → AI Processing. Withdrawing consent stops new entries from being sent to the AI. It does not delete previously generated AI responses.
+When you first interact with Echo, you are shown a consent modal explaining
+that your journal content will be sent to Anthropic's Claude API for AI
+responses. You must actively consent before any AI processing occurs. Your
+consent timestamp is recorded.
+
+**You can withdraw either consent at any time** via Settings → Privacy.
+Withdrawing AI consent stops new entries from being sent to the AI; it does
+not delete previously generated AI responses. Withdrawing your consent to
+store sensitive content means we can no longer provide the journaling service,
+and you may export and/or delete your data.
 
 **We will never:**
 - Sell your journal content
@@ -119,7 +199,14 @@ We share data with the following processors under written agreements. They act o
 
 **DPA reference:** https://www.anthropic.com/legal/dpa
 
-**Anthropic's data use:** Anthropic processes your content solely to provide the API response. Refer to Anthropic's privacy policy for their data retention practices on API inputs.
+**Anthropic's data use:** Anthropic processes your content solely to provide
+the API response. Under Anthropic's Commercial Terms, API inputs and outputs
+are **not used to train their models**.
+
+> **[TODO — CONFIRM RETENTION]** State Anthropic's concrete API retention
+> window (default retention, and any longer retention for trust & safety),
+> and whether zero-data-retention is available on the current API plan.
+> Given this is special-category data, be specific rather than linking out.
 
 ### 6.2 Railway (Hosting and Database)
 
@@ -137,11 +224,34 @@ We share data with the following processors under written agreements. They act o
 
 **DPA status:** Binding on Terms of Service acceptance. Pre-signed DPA includes EU SCCs and UK Addendum. Data stored in the United States.
 
+### 6.4 Apple and Google (Payment Processing)
+
+**What is shared:** Subscription purchase and status information. Payment card
+details are collected and processed **directly by Apple and Google** — we
+never receive them.
+
+**Purpose:** Processing in-app subscription purchases via Apple In-App
+Purchase and Google Play Billing.
+
+**Privacy policies:** Apple (https://www.apple.com/legal/privacy/) and Google
+(https://policies.google.com/privacy).
+
+### International Transfers — General
+
+Anthropic, Railway, and Resend process data in the United States. Transfers
+rely on Standard Contractual Clauses (and, where applicable, the EU–US Data
+Privacy Framework). We have assessed these transfers and apply the safeguards
+described in each processor's DPA.
+
+> **[TODO]** Complete and document a short Transfer Impact Assessment (TIA)
+> for US transfers of special-category data, and confirm whether each
+> processor is DPF-certified (and reference it if so). See legal.md.
+
 ---
 
 ## 7. Your Rights Under GDPR
 
-You have the following rights. All are exercisable directly within the app or by emailing hello@mindflowjournal.app.
+You have the following rights. All are exercisable directly within the app or by emailing privacy@mindflowjournal.app.
 
 | Right | How to exercise                                                                                                                                          |
 |---|----------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -149,17 +259,27 @@ You have the following rights. All are exercisable directly within the app or by
 | **Art. 20 — Right to data portability** | Settings → Export Data → downloads a JSON file containing your entries, messages, audit events, profile, and consent timestamp                           |
 | **Art. 17 — Right to erasure** | Settings → Delete Account → permanently deletes your account and all associated personal data. Audit records are anonymised, not deleted (see Section 4) |
 | **Art. 21 — Right to object (AI processing)** | Settings → Privacy → AI Processing toggle — disables AI processing of your content                                                                       |
-| **Art. 7(3) — Right to withdraw consent** | Same as Art. 21 above — withdraw AI consent at any time without affecting your account                                                                   |
-| **Art. 16 — Right to rectification** | Email hello@mindflowjournal.app to correct inaccurate data                                                                                             |
-| **Art. 18 — Right to restriction** | Email hello@mindflowjournal.app to request restriction of processing                                                                                               |
+| **Art. 7(3) — Right to withdraw consent** | Settings → Privacy — withdraw journaling and/or AI consent at any time                                                                   |
+| **Art. 16 — Right to rectification** | Email privacy@mindflowjournal.app to correct inaccurate data                                                                                             |
+| **Art. 18 — Right to restriction** | Email privacy@mindflowjournal.app to request restriction of processing                                                                                               |
+| **Art. 22 — Automated decisions** | We do not make decisions with legal or similarly significant effects about you by automated means (see Section 3.4)                                       |
 
 **Response time:** We will respond to rights requests within **30 days** as required by GDPR Art. 12.
 
-**Supervisory authority:** If you believe we have not handled your data lawfully, you have the right to lodge a complaint with the Spanish data protection authority:
+**Supervisory authority (EU):** If you believe we have not handled your data
+lawfully, you may lodge a complaint with your local EU supervisory authority,
+or with the Spanish authority where we are established:
 
-**Agencia Española de Protección de Datos (AEPD)**  
-Website: https://www.aepd.es  
+**Agencia Española de Protección de Datos (AEPD)**
+Website: https://www.aepd.es
 Address: C/ Jorge Juan, 6, 28001 Madrid, Spain
+
+**Supervisory authority (UK):** UK users may complain to the Information
+Commissioner's Office (ICO), https://ico.org.uk.
+
+> **[TODO — UK]** If MindFlow targets UK users (our DPAs include UK
+> Addendums, which suggests yes), assess whether a UK Article 27
+> representative is required and appoint one if so. See legal.md.
 
 ---
 
@@ -173,7 +293,14 @@ If you are in distress or experiencing a mental health crisis, please seek profe
 
 ## 9. Children
 
-MindFlow is not intended for use by persons under the age of 16. We do not knowingly collect personal data from children. If you believe a child has registered an account, please contact hello@mindflowjournal.app and we will delete the account promptly.
+MindFlow is not intended for use by persons under the age of 16. We do not
+knowingly collect personal data from children. If you believe a child has
+registered an account, please contact privacy@mindflowjournal.app and we will
+delete the account promptly.
+
+> **[TODO — STORE RATING]** Ensure the App Store and Google Play age
+> ratings are set to 16+ (or higher) to match this clause, and that the app
+> is not listed in any children/family category.
 
 ---
 
@@ -202,8 +329,11 @@ The current version of this policy is always available within the app and at htt
 
 For any questions about this policy or to exercise your rights:
 
-**Alexandra Tomulescu**  
-Email: hello@mindflowjournal.app  
+**[Data controller — see Section 1 TODO]**
+Email: privacy@mindflowjournal.app
+
+> **[TODO]** Set up and monitor privacy@mindflowjournal.app before
+> publishing (currently not yet configured per COMPLIANCE.md).
 
 ---
 

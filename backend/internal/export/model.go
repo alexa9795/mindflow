@@ -14,8 +14,10 @@ type ExportUser struct {
 	CreatedAt        time.Time  `json:"created_at"`
 	LastActiveAt     time.Time  `json:"last_active_at"`
 	SubscriptionType string     `json:"subscription_type"`
-	AIEnabled        bool       `json:"ai_enabled"`
-	AIConsentGivenAt *time.Time `json:"ai_consent_given_at,omitempty"`
+	AIEnabled                bool       `json:"ai_enabled"`
+	AIConsentGivenAt         *time.Time `json:"ai_consent_given_at,omitempty"`
+	JournalingConsentGivenAt *time.Time `json:"journaling_consent_given_at,omitempty"`
+	TermsAcceptedAt          *time.Time `json:"terms_accepted_at,omitempty"`
 }
 
 // ExportAuditEvent is an audit log entry included in a GDPR data export.

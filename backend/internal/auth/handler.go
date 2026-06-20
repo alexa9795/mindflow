@@ -56,6 +56,17 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 		api.WriteError(w, api.ErrBadRequest.WithMessage("Password must be 72 characters or less"))
 		return
 	}
+	// GDPR Art. 9(2)(a): explicit consent to store special-category journal
+	// content is required before an account can be created.
+	if !req.ConsentToStorage {
+		api.WriteError(w, api.ErrBadRequest.WithMessage("Consent to storage of journal content is required"))
+		return
+	}
+	// Acceptance of the Terms of Service (contract) is required to register.
+	if !req.AcceptTerms {
+		api.WriteError(w, api.ErrBadRequest.WithMessage("Acceptance of the Terms of Service is required"))
+		return
+	}
 
 	resp, err := h.svc.Register(r.Context(), req)
 	if err != nil {
@@ -75,6 +86,12 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 	}
 	h.audit.Log(r.Context(), &resp.User.ID, audit.ActionRegister, audit.IPFromRequest(r),
 		map[string]any{"email_domain": domain})
+	// Separate audit record evidencing the Art. 9 storage consent.
+	h.audit.Log(r.Context(), &resp.User.ID, audit.ActionJournalingConsent, audit.IPFromRequest(r),
+		map[string]any{"consent": "storage", "basis": "art_9_2_a"})
+	// Audit record evidencing acceptance of the Terms of Service.
+	h.audit.Log(r.Context(), &resp.User.ID, audit.ActionTermsAccepted, audit.IPFromRequest(r),
+		map[string]any{"accepted": true})
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)

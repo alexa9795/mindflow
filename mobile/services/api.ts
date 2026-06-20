@@ -155,6 +155,8 @@ export interface User {
   created_at?: string;
   ai_enabled: boolean;
   ai_consent_given_at?: string | null;
+  journaling_consent_given_at?: string | null;
+  terms_accepted_at?: string | null;
   subscription?: SubscriptionInfo;
 }
 
@@ -252,10 +254,25 @@ export interface Insights {
 }
 
 export const api = {
-  register: (email: string, password: string, name: string) =>
+  // consentToStorage: explicit GDPR Art. 9(2)(a) consent to store sensitive
+  // journal content. acceptTerms: acceptance of the Terms of Service. The
+  // backend rejects registration without both.
+  register: (
+    email: string,
+    password: string,
+    name: string,
+    consentToStorage: boolean,
+    acceptTerms: boolean,
+  ) =>
     request<AuthResponse>('/api/auth/register', {
       method: 'POST',
-      body: JSON.stringify({ email, password, name }),
+      body: JSON.stringify({
+        email,
+        password,
+        name,
+        consent_to_storage: consentToStorage,
+        accept_terms: acceptTerms,
+      }),
     }),
 
   login: (email: string, password: string) =>

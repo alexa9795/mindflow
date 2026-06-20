@@ -45,9 +45,12 @@ func NewRepository(db *sql.DB) Repository {
 
 func (r *repository) CreateUser(ctx context.Context, email, name, passwordHash string) (string, error) {
 	var id string
+	// journaling_consent_given_at (Art. 9(2)(a) storage consent) and
+	// terms_accepted_at (Art. 6(1)(b) contract) are stamped at creation time —
+	// the handler verifies both were given before registration is reached.
 	err := r.db.QueryRowContext(ctx, `
-		INSERT INTO users (email, name, password_hash)
-		VALUES ($1, $2, $3)
+		INSERT INTO users (email, name, password_hash, journaling_consent_given_at, terms_accepted_at)
+		VALUES ($1, $2, $3, NOW(), NOW())
 		RETURNING id`,
 		email, name, passwordHash,
 	).Scan(&id)
@@ -70,18 +73,26 @@ func (r *repository) GetUserByEmail(ctx context.Context, email string) (id, name
 
 func (r *repository) GetUserByID(ctx context.Context, id string) (*User, error) {
 	var u User
-	var aiConsentGivenAt sql.NullTime
+	var aiConsentGivenAt, journalingConsentGivenAt, termsAcceptedAt sql.NullTime
 	err := r.db.QueryRowContext(ctx, `
-		SELECT id, email, name, created_at, ai_enabled, ai_consent_given_at
+		SELECT id, email, name, created_at, ai_enabled, ai_consent_given_at, journaling_consent_given_at, terms_accepted_at
 		FROM users WHERE id = $1`,
 		id,
-	).Scan(&u.ID, &u.Email, &u.Name, &u.CreatedAt, &u.AIEnabled, &aiConsentGivenAt)
+	).Scan(&u.ID, &u.Email, &u.Name, &u.CreatedAt, &u.AIEnabled, &aiConsentGivenAt, &journalingConsentGivenAt, &termsAcceptedAt)
 	if err != nil {
 		return nil, fmt.Errorf("get user by id: %w", err)
 	}
 	if aiConsentGivenAt.Valid {
 		t := aiConsentGivenAt.Time
 		u.AIConsentGivenAt = &t
+	}
+	if journalingConsentGivenAt.Valid {
+		t := journalingConsentGivenAt.Time
+		u.JournalingConsentGivenAt = &t
+	}
+	if termsAcceptedAt.Valid {
+		t := termsAcceptedAt.Time
+		u.TermsAcceptedAt = &t
 	}
 	return &u, nil
 }
@@ -244,19 +255,27 @@ func (r *repository) SetResetToken(ctx context.Context, userID, token string, ex
 
 func (r *repository) GetUserByResetToken(ctx context.Context, token string) (*User, error) {
 	var u User
-	var aiConsentGivenAt sql.NullTime
+	var aiConsentGivenAt, journalingConsentGivenAt, termsAcceptedAt sql.NullTime
 	err := r.db.QueryRowContext(ctx, `
-		SELECT id, email, name, created_at, ai_enabled, ai_consent_given_at
+		SELECT id, email, name, created_at, ai_enabled, ai_consent_given_at, journaling_consent_given_at, terms_accepted_at
 		FROM users
 		WHERE reset_token = $1 AND reset_token_expires_at > NOW()`,
 		token,
-	).Scan(&u.ID, &u.Email, &u.Name, &u.CreatedAt, &u.AIEnabled, &aiConsentGivenAt)
+	).Scan(&u.ID, &u.Email, &u.Name, &u.CreatedAt, &u.AIEnabled, &aiConsentGivenAt, &journalingConsentGivenAt, &termsAcceptedAt)
 	if err != nil {
 		return nil, fmt.Errorf("get user by reset token: %w", err)
 	}
 	if aiConsentGivenAt.Valid {
 		t := aiConsentGivenAt.Time
 		u.AIConsentGivenAt = &t
+	}
+	if journalingConsentGivenAt.Valid {
+		t := journalingConsentGivenAt.Time
+		u.JournalingConsentGivenAt = &t
+	}
+	if termsAcceptedAt.Valid {
+		t := termsAcceptedAt.Time
+		u.TermsAcceptedAt = &t
 	}
 	return &u, nil
 }
