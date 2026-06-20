@@ -24,7 +24,7 @@ const (
 	// Logout is client-side only (token discarded from SecureStore).
 	// No server-side session exists beyond the token TTL.
 	// Refresh token revocation IS audited (token.revoked action covers this).
-	ActionLogout       Action = "auth.logout"
+	ActionLogout         Action = "auth.logout"
 	ActionTokenRevoked   Action = "auth.token.revoked"
 	ActionTokenRefreshed Action = "auth.token.refreshed"
 	ActionPasswordReset  Action = "auth.password_reset"
@@ -32,10 +32,12 @@ const (
 	ActionInvalidToken   Action = "auth.invalid_token"
 
 	// Account actions.
-	ActionUpdateName     Action = "account.update_name"
-	ActionUpdateAIToggle Action = "account.update_ai_toggle"
-	ActionDeleteAccount  Action = "account.delete"
-	ActionDeleteEntries  Action = "account.delete_entries"
+	ActionUpdateName        Action = "account.update_name"
+	ActionUpdateAIToggle    Action = "account.update_ai_toggle"
+	ActionJournalingConsent Action = "account.journaling_consent"
+	ActionTermsAccepted     Action = "account.terms_accepted"
+	ActionDeleteAccount     Action = "account.delete"
+	ActionDeleteEntries     Action = "account.delete_entries"
 
 	// Subscription actions.
 	ActionTrialActivated Action = "subscription.trial_activated"

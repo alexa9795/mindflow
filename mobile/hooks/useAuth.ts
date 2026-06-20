@@ -16,7 +16,7 @@ interface AuthContextType {
   /** True right after a successful sign-up, until the welcome screen is dismissed. */
   justRegistered: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string, name: string) => Promise<void>;
+  register: (email: string, password: string, name: string, consentToStorage: boolean, acceptTerms: boolean) => Promise<void>;
   logout: () => Promise<void>;
   updateUser: (user: User) => void;
   toggleAI: (enabled: boolean) => Promise<void>;
@@ -190,8 +190,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     void offerBiometricEnrolment();
   }, [offerBiometricEnrolment]);
 
-  const register = useCallback(async (email: string, password: string, name: string) => {
-    const res = await api.register(email, password, name);
+  const register = useCallback(async (email: string, password: string, name: string, consentToStorage: boolean, acceptTerms: boolean) => {
+    const res = await api.register(email, password, name, consentToStorage, acceptTerms);
     await Promise.allSettled([
       SecureStore.setItemAsync(TOKEN_KEY, res.access_token),
       SecureStore.setItemAsync(REFRESH_TOKEN_KEY, res.refresh_token),

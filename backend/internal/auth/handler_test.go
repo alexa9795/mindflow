@@ -103,22 +103,32 @@ func TestRegisterHandler(t *testing.T) {
 	}{
 		{
 			name:       "valid body returns 201",
-			body:       `{"email":"a@b.com","password":"password1","name":"Alice"}`,
+			body:       `{"email":"a@b.com","password":"password1","name":"Alice","consent_to_storage":true,"accept_terms":true}`,
 			wantStatus: http.StatusCreated,
 		},
 		{
 			name:       "missing email returns 400",
-			body:       `{"password":"password1","name":"Alice"}`,
+			body:       `{"password":"password1","name":"Alice","consent_to_storage":true,"accept_terms":true}`,
 			wantStatus: http.StatusBadRequest,
 		},
 		{
 			name:       "missing password returns 400",
-			body:       `{"email":"a@b.com","name":"Alice"}`,
+			body:       `{"email":"a@b.com","name":"Alice","consent_to_storage":true,"accept_terms":true}`,
+			wantStatus: http.StatusBadRequest,
+		},
+		{
+			name:       "missing storage consent returns 400",
+			body:       `{"email":"a@b.com","password":"password1","name":"Alice","accept_terms":true}`,
+			wantStatus: http.StatusBadRequest,
+		},
+		{
+			name:       "missing terms acceptance returns 400",
+			body:       `{"email":"a@b.com","password":"password1","name":"Alice","consent_to_storage":true}`,
 			wantStatus: http.StatusBadRequest,
 		},
 		{
 			name:       "duplicate email returns 409",
-			body:       `{"email":"a@b.com","password":"password1","name":"Alice"}`,
+			body:       `{"email":"a@b.com","password":"password1","name":"Alice","consent_to_storage":true,"accept_terms":true}`,
 			svcErr:     auth.ErrEmailExists,
 			wantStatus: http.StatusConflict,
 		},
@@ -129,7 +139,7 @@ func TestRegisterHandler(t *testing.T) {
 		},
 		{
 			name:       "password over 72 chars returns 400",
-			body:       `{"email":"a@b.com","password":"` + strings.Repeat("x", 73) + `","name":"Alice"}`,
+			body:       `{"email":"a@b.com","password":"` + strings.Repeat("x", 73) + `","name":"Alice","consent_to_storage":true,"accept_terms":true}`,
 			wantStatus: http.StatusBadRequest,
 		},
 	}
