@@ -192,7 +192,7 @@ export default function SettingsScreen() {
   }
 
   return (
-    <ThemedView safe>
+    <ThemedView safe edges={['top', 'left', 'right']}>
       <View style={[styles.header, { backgroundColor: theme.surface, borderBottomColor: theme.border }]}>
         <Text style={[styles.title, { color: theme.text, fontFamily: FONTS.modern }]}>
           Settings

@@ -7,8 +7,11 @@ import {
   Text,
   View,
 } from 'react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import ThemedView from '../../components/ThemedView';
 import { FONTS } from '../../constants/fonts';
+import { DURATION } from '../../constants/tokens';
+import { notifySuccess } from '../../constants/haptics';
 import { MOOD_EMOJIS } from '../../constants/moods';
 import { useSettings } from '../../context/SettingsContext';
 import { api, Insights } from '../../services/api';
@@ -72,7 +75,13 @@ export default function InsightsScreen() {
       setLoading(true);
       setError(null);
       api.getInsights()
-        .then((data) => setInsights(data))
+        .then((data) => {
+          setInsights(data);
+          // Celebrate weekly streak milestones (7, 14, 21…) when the screen opens.
+          if (data.current_streak > 0 && data.current_streak % 7 === 0) {
+            notifySuccess();
+          }
+        })
         .catch(() => setError('Could not load insights'))
         .finally(() => setLoading(false));
     }, []),
@@ -80,7 +89,7 @@ export default function InsightsScreen() {
 
   if (loading) {
     return (
-      <ThemedView safe style={styles.center}>
+      <ThemedView safe edges={['top', 'left', 'right']} style={styles.center}>
         <ActivityIndicator color={theme.accent} />
       </ThemedView>
     );
@@ -88,7 +97,7 @@ export default function InsightsScreen() {
 
   if (error || !insights) {
     return (
-      <ThemedView safe style={styles.center}>
+      <ThemedView safe edges={['top', 'left', 'right']} style={styles.center}>
         <Text style={[styles.errorText, { color: theme.textSecondary, fontFamily: FONTS.modern }]}>
           {error ?? 'Something went wrong'}
         </Text>
@@ -98,7 +107,7 @@ export default function InsightsScreen() {
 
   if (insights.total_entries === 0) {
     return (
-      <ThemedView safe style={styles.center}>
+      <ThemedView safe edges={['top', 'left', 'right']} style={styles.center}>
         <Text style={styles.emptyIcon}>📓</Text>
         <Text style={[styles.emptyText, { color: theme.text, fontFamily: FONTS.modern }]}>
           Start journaling to see your insights.
@@ -122,25 +131,30 @@ export default function InsightsScreen() {
   const deltaColor =
     monthDelta > 0 ? theme.accent : monthDelta < 0 ? theme.destructive : theme.textSecondary;
 
+  // Staggered slide-up entrance, sequenced only over the cards that actually render.
+  let cardIndex = 0;
+  const stagger = () =>
+    FadeInDown.delay(Math.min(cardIndex++, 8) * 45).duration(DURATION.base);
+
   return (
-    <ThemedView safe>
+    <ThemedView safe edges={['top', 'left', 'right']}>
       <ScrollView contentContainerStyle={styles.scroll}>
         <Text style={[styles.title, { color: theme.text, fontFamily: FONTS.modern }]}>
           Your insights
         </Text>
 
         {/* Total entries */}
-        <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+        <Animated.View entering={stagger()} style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
           <Text style={[styles.cardLabel, { color: theme.textSecondary, fontFamily: FONTS.modern }]}>
             Total entries
           </Text>
           <Text style={[styles.cardBig, { color: theme.text, fontFamily: FONTS.modern }]}>
             {insights.total_entries}
           </Text>
-        </View>
+        </Animated.View>
 
         {/* This month */}
-        <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+        <Animated.View entering={stagger()} style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
           <Text style={[styles.cardLabel, { color: theme.textSecondary, fontFamily: FONTS.modern }]}>
             This month
           </Text>
@@ -150,10 +164,10 @@ export default function InsightsScreen() {
           <Text style={[styles.cardSub, { color: deltaColor, fontFamily: FONTS.modern }]}>
             {deltaLabel}
           </Text>
-        </View>
+        </Animated.View>
 
         {/* Streaks row */}
-        <View style={styles.row}>
+        <Animated.View entering={stagger()} style={styles.row}>
           <View style={[styles.cardHalf, { backgroundColor: theme.surface, borderColor: theme.border }]}>
             <Text style={[styles.cardLabel, { color: theme.textSecondary, fontFamily: FONTS.modern }]}>
               Current streak
@@ -180,11 +194,11 @@ export default function InsightsScreen() {
               {insights.longest_streak === 1 ? 'day' : 'days'}
             </Text>
           </View>
-        </View>
+        </Animated.View>
 
         {/* Average mood — only shown when data exists */}
         {avgMoodScore != null && (
-          <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+          <Animated.View entering={stagger()} style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
             <Text style={[styles.cardLabel, { color: theme.textSecondary, fontFamily: FONTS.modern }]}>
               Average mood (last 30 days)
             </Text>
@@ -199,14 +213,14 @@ export default function InsightsScreen() {
                 </Text>
               </Text>
             </View>
-          </View>
+          </Animated.View>
         )}
 
         {/* ── Pattern cards — only shown after weekly job has run ── */}
 
         {/* Most active day */}
         {insights.most_active_day != null && (
-          <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+          <Animated.View entering={stagger()} style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
             <Text style={[styles.cardLabel, { color: theme.textSecondary, fontFamily: FONTS.modern }]}>
               Most active day
             </Text>
@@ -216,12 +230,12 @@ export default function InsightsScreen() {
             <Text style={[styles.cardSub, { color: theme.textSecondary, fontFamily: FONTS.modern }]}>
               You write most on {insights.most_active_day}
             </Text>
-          </View>
+          </Animated.View>
         )}
 
         {/* Peak writing time */}
         {insights.peak_writing_hour != null && (
-          <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+          <Animated.View entering={stagger()} style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
             <Text style={[styles.cardLabel, { color: theme.textSecondary, fontFamily: FONTS.modern }]}>
               Peak writing time
             </Text>
@@ -231,29 +245,29 @@ export default function InsightsScreen() {
             <Text style={[styles.cardSub, { color: theme.textSecondary, fontFamily: FONTS.modern }]}>
               You tend to write in the {peakWritingLabel(insights.peak_writing_hour)}
             </Text>
-          </View>
+          </Animated.View>
         )}
 
         {/* Mood trend — insufficient_data is never shown */}
         {insights.mood_trend != null && insights.mood_trend !== 'insufficient_data' && (
-          <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+          <Animated.View entering={stagger()} style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
             <Text style={[styles.cardLabel, { color: theme.textSecondary, fontFamily: FONTS.modern }]}>
               Mood trend
             </Text>
             <Text style={[styles.cardBig, { color: theme.text, fontFamily: FONTS.modern }]}>
               {moodTrendLabel(insights.mood_trend)}
             </Text>
-          </View>
+          </Animated.View>
         )}
 
         {/* Writing consistency mini bar chart */}
         {insights.entries_per_weekday != null && (
-          <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+          <Animated.View entering={stagger()} style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
             <Text style={[styles.cardLabel, { color: theme.textSecondary, fontFamily: FONTS.modern }]}>
               Writing consistency
             </Text>
             <WeekdayChart data={insights.entries_per_weekday} theme={theme} />
-          </View>
+          </Animated.View>
         )}
       </ScrollView>
     </ThemedView>

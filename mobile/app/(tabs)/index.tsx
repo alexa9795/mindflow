@@ -3,15 +3,16 @@ import React, { useCallback } from 'react';
 import {
   ActivityIndicator,
   FlatList,
-  Pressable,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
 import EntryCard from '../../components/EntryCard';
 import OfflineBanner from '../../components/OfflineBanner';
+import PressableScale from '../../components/PressableScale';
 import ThemedView from '../../components/ThemedView';
 import { FONTS } from '../../constants/fonts';
+import { ELEVATION } from '../../constants/tokens';
 import { useSettings } from '../../context/SettingsContext';
 import { useEntries } from '../../hooks/useEntries';
 import { useFocusEffect } from 'expo-router';
@@ -28,7 +29,7 @@ export default function HomeScreen() {
   );
 
   return (
-    <ThemedView safe>
+    <ThemedView safe edges={['top', 'left', 'right']}>
       <OfflineBanner visible={isOffline} />
 
       <View style={[styles.header, { backgroundColor: theme.surface, borderBottomColor: theme.border }]}>
@@ -59,7 +60,7 @@ export default function HomeScreen() {
               </Text>
             </View>
           }
-          renderItem={({ item }) => <EntryCard entry={item} />}
+          renderItem={({ item, index }) => <EntryCard entry={item} index={index} />}
           onEndReached={hasMore ? () => void loadMore() : undefined}
           onEndReachedThreshold={0.3}
           ListFooterComponent={
@@ -73,13 +74,14 @@ export default function HomeScreen() {
         />
       )}
 
-      <Pressable
+      <PressableScale
         style={[styles.fab, { backgroundColor: theme.accent }]}
         onPress={() => router.push('/entry/new')}
         accessibilityLabel="New entry"
+        haptic
       >
         <Text style={[styles.fabText, { color: theme.background }]}>＋</Text>
-      </Pressable>
+      </PressableScale>
     </ThemedView>
   );
 }
@@ -108,11 +110,7 @@ const styles = StyleSheet.create({
     borderRadius: 28,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 6,
+    ...ELEVATION.floating,
   },
   fabText: { fontSize: 28, lineHeight: 32 },
 });

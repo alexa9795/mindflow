@@ -1,13 +1,18 @@
 import { useRouter } from 'expo-router';
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSettings } from '../context/SettingsContext';
 import { MOOD_EMOJIS } from '../constants/moods';
 import { FONTS } from '../constants/fonts';
+import { DURATION } from '../constants/tokens';
+import PressableScale from './PressableScale';
 import type { Entry } from '../services/api';
 
 interface EntryCardProps {
   entry: Entry;
+  /** Position in the list — drives the staggered entrance animation. */
+  index?: number;
 }
 
 function formatDate(iso: string) {
@@ -18,30 +23,34 @@ function formatDate(iso: string) {
   });
 }
 
-export default function EntryCard({ entry }: EntryCardProps) {
+export default function EntryCard({ entry, index = 0 }: EntryCardProps) {
   const router = useRouter();
   const { theme, moodSetId, entryFont } = useSettings();
   const moodEmojis = MOOD_EMOJIS[moodSetId] ?? MOOD_EMOJIS.basic;
   const moodEmoji = entry.mood_score ? moodEmojis[entry.mood_score - 1] : null;
 
   return (
-    <Pressable
-      style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}
-      onPress={() => router.push(`/entry/${entry.id}`)}
+    <Animated.View
+      entering={FadeInDown.delay(Math.min(index, 8) * 45).duration(DURATION.base)}
     >
-      <View style={styles.row}>
-        <Text style={[styles.date, { color: theme.textSecondary, fontFamily: FONTS.modern }]}>
-          {formatDate(entry.created_at)}
-        </Text>
-        {moodEmoji && <Text style={styles.moodEmoji}>{moodEmoji}</Text>}
-      </View>
-      <Text
-        numberOfLines={2}
-        style={[styles.preview, { color: theme.text, fontFamily: FONTS[entryFont] }]}
+      <PressableScale
+        style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}
+        onPress={() => router.push(`/entry/${entry.id}`)}
       >
-        {entry.content.slice(0, 80)}
-      </Text>
-    </Pressable>
+        <View style={styles.row}>
+          <Text style={[styles.date, { color: theme.textSecondary, fontFamily: FONTS.modern }]}>
+            {formatDate(entry.created_at)}
+          </Text>
+          {moodEmoji && <Text style={styles.moodEmoji}>{moodEmoji}</Text>}
+        </View>
+        <Text
+          numberOfLines={2}
+          style={[styles.preview, { color: theme.text, fontFamily: FONTS[entryFont] }]}
+        >
+          {entry.content.slice(0, 80)}
+        </Text>
+      </PressableScale>
+    </Animated.View>
   );
 }
 

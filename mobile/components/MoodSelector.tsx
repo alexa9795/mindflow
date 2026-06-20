@@ -1,8 +1,10 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { MOOD_EMOJIS, MOOD_SETS } from '../constants/moods';
 import { FONTS } from '../constants/fonts';
+import { tapLight } from '../constants/haptics';
 import { useSettings } from '../context/SettingsContext';
+import PressableScale from './PressableScale';
 
 interface MoodSelectorProps {
   selected: number | undefined;
@@ -18,23 +20,32 @@ export default function MoodSelector({ selected, onSelect }: MoodSelectorProps) 
     <View style={styles.row}>
       {moodSet.moods.map((mood, index) => {
         const isActive = selected === mood.score;
+        const moodColor = theme.mood[mood.score as 1 | 2 | 3 | 4 | 5];
         return (
-          <Pressable
+          <PressableScale
             key={mood.score}
+            activeScale={0.9}
             style={[
               styles.btn,
               { backgroundColor: theme.surface, borderColor: theme.border },
-              isActive && { borderColor: theme.accent, transform: [{ scale: 1.15 }] },
+              isActive && {
+                borderColor: moodColor,
+                backgroundColor: moodColor + '22',
+                transform: [{ scale: 1.12 }],
+              },
             ]}
-            onPress={() => onSelect(isActive ? undefined : mood.score)}
+            onPress={() => {
+              tapLight();
+              onSelect(isActive ? undefined : mood.score);
+            }}
             accessibilityLabel={mood.label}
           >
             {/* Phase 2: when mood.imageSource is set, render <Image> instead of emoji */}
             <Text style={styles.emoji}>{emojis[index]}</Text>
-            <Text style={[styles.label, { color: isActive ? theme.accent : theme.textSecondary, fontFamily: FONTS.modern }]}>
+            <Text style={[styles.label, { color: isActive ? moodColor : theme.textSecondary, fontFamily: FONTS.modern }]}>
               {mood.label}
             </Text>
-          </Pressable>
+          </PressableScale>
         );
       })}
     </View>

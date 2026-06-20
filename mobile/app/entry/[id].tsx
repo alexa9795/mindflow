@@ -14,9 +14,12 @@ import {
 import AIMessage from '../../components/AIMessage';
 import EchoConsentModal from '../../components/EchoConsentModal';
 import OfflineBanner from '../../components/OfflineBanner';
+import PressableScale from '../../components/PressableScale';
 import ThemedView from '../../components/ThemedView';
+import TypingDots from '../../components/TypingDots';
 import { COMPANION_NAME } from '../../constants/config';
 import { FONTS } from '../../constants/fonts';
+import { tapMedium } from '../../constants/haptics';
 import { useSettings } from '../../context/SettingsContext';
 import { useAuth } from '../../hooks/useAuth';
 import { api, ApiError, Entry, Message, NetworkError } from '../../services/api';
@@ -83,6 +86,7 @@ export default function EntryDetailScreen() {
   async function sendReply() {
     if (!reply.trim() || !id) return;
     const text = reply.trim();
+    tapMedium();
     setReply('');
     setSendLoading(true);
     setIsOffline(false);
@@ -210,7 +214,7 @@ export default function EntryDetailScreen() {
           {/* AI thinking indicator */}
           {aiLoading && (
             <View style={[styles.thinkingBubble, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-              <ActivityIndicator color={theme.accent} style={{ alignSelf: 'flex-start' }} />
+              <TypingDots color={theme.accent} />
               <Text style={[styles.thinkingText, { color: theme.textSecondary, fontFamily: FONTS.modern }]}>
                 {COMPANION_NAME} is thinking…
               </Text>
@@ -246,7 +250,7 @@ export default function EntryDetailScreen() {
               multiline
               maxLength={2000}
             />
-            <Pressable
+            <PressableScale
               style={[
                 styles.sendBtn,
                 { backgroundColor: theme.accent },
@@ -260,7 +264,7 @@ export default function EntryDetailScreen() {
               ) : (
                 <Text style={[styles.sendBtnText, { color: theme.background }]}>↑</Text>
               )}
-            </Pressable>
+            </PressableScale>
           </View>
         )}
       </KeyboardAvoidingView>

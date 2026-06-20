@@ -14,8 +14,10 @@ import {
 } from 'react-native';
 import MoodSelector from '../../components/MoodSelector';
 import OfflineBanner from '../../components/OfflineBanner';
+import PressableScale from '../../components/PressableScale';
 import ThemedView from '../../components/ThemedView';
 import { FONTS } from '../../constants/fonts';
+import { notifySuccess } from '../../constants/haptics';
 import { useSettings } from '../../context/SettingsContext';
 import { useAuth } from '../../hooks/useAuth';
 import { useEntries } from '../../hooks/useEntries';
@@ -47,6 +49,7 @@ export default function NewEntryScreen() {
     setSaving(true);
     try {
       const entry = await createEntry(content.trim(), mood);
+      notifySuccess();
       router.replace(`/entry/${entry.id}`);
     } catch (e: unknown) {
       setSaving(false);
@@ -146,7 +149,7 @@ export default function NewEntryScreen() {
               AI reflections are off. Turn them on in Settings.
             </Text>
           )}
-          <Pressable
+          <PressableScale
             style={[
               styles.saveBtn,
               { backgroundColor: theme.accent },
@@ -162,7 +165,7 @@ export default function NewEntryScreen() {
                 Save entry →
               </Text>
             )}
-          </Pressable>
+          </PressableScale>
         </View>
       </KeyboardAvoidingView>
     </ThemedView>

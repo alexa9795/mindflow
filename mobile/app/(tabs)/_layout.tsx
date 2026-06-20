@@ -1,6 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
 import React from 'react';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { FONTS } from '../../constants/fonts';
 import { useSettings } from '../../context/SettingsContext';
 
 function TabIcon({ name, focused, color }: {
@@ -13,6 +15,7 @@ function TabIcon({ name, focused, color }: {
 
 export default function TabLayout() {
   const { theme } = useSettings();
+  const insets = useSafeAreaInsets();
 
   return (
     <Tabs
@@ -20,11 +23,23 @@ export default function TabLayout() {
         headerShown: false,
         tabBarStyle: {
           backgroundColor: theme.surface,
-          borderTopColor: theme.border,
+          // Soft upward shadow instead of a hard hairline border for a
+          // cleaner, more unified separation from the content.
+          borderTopWidth: 0,
+          elevation: 12,
+          shadowColor: '#000',
+          shadowOpacity: 0.08,
+          shadowRadius: 12,
+          shadowOffset: { width: 0, height: -3 },
+          // Safe-area-aware sizing so the bar sits correctly on every device.
+          height: 60 + insets.bottom,
+          paddingBottom: insets.bottom + 4,
+          paddingTop: 8,
         },
         tabBarActiveTintColor: theme.accent,
         tabBarInactiveTintColor: theme.textSecondary,
-        tabBarLabelStyle: { fontSize: 11 },
+        tabBarLabelStyle: { fontSize: 11, fontFamily: FONTS.modern, marginTop: 2 },
+        tabBarItemStyle: { paddingTop: 4 },
       }}
     >
       <Tabs.Screen

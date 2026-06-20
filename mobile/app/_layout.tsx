@@ -21,11 +21,17 @@ import { Slot, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect } from 'react';
 import { ActivityIndicator, View } from 'react-native';
-import { SettingsProvider } from '../context/SettingsContext';
+import { SettingsProvider, useSettings } from '../context/SettingsContext';
 import { AuthProvider, useAuth } from '../hooks/useAuth';
+
+/** Brand launch colours — match the native splash (app.json) so the JS
+ *  loading state is a seamless continuation rather than a white flash. */
+const SPLASH_BG = '#EDE8E0';
+const SPLASH_SPINNER = '#2C2418';
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
+  const { theme } = useSettings();
   const segments = useSegments();
   const router = useRouter();
 
@@ -41,8 +47,8 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
 
   if (isLoading) {
     return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator size="large" />
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.background }}>
+        <ActivityIndicator size="large" color={theme.accent} />
       </View>
     );
   }
@@ -59,9 +65,10 @@ export default function RootLayout() {
   const fontsReady = playfairLoaded && interLoaded && robotoSerifLoaded && caveatLoaded;
 
   if (!fontsReady) {
+    // Rendered before providers exist, so use the fixed brand colours.
     return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator size="large" />
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: SPLASH_BG }}>
+        <ActivityIndicator size="large" color={SPLASH_SPINNER} />
       </View>
     );
   }
