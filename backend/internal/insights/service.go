@@ -35,13 +35,14 @@ func (s *service) GetInsights(ctx context.Context, userID string) (*Insights, er
 	current, longest := computeStreaks(data.EntryDates, today)
 
 	ins := &Insights{
-		TotalEntries:     data.TotalEntries,
-		AvgMoodLast30:    data.AvgMood,
-		MostCommonMood:   data.CommonMood,
-		CurrentStreak:    current,
-		LongestStreak:    longest,
-		EntriesThisMonth: data.ThisMonth,
-		EntriesLastMonth: data.LastMonth,
+		TotalEntries:      data.TotalEntries,
+		AvgMoodLast30:     data.AvgMood,
+		MostCommonMood:    data.CommonMood,
+		CurrentStreak:     current,
+		LongestStreak:     longest,
+		EntriesThisMonth:  data.ThisMonth,
+		EntriesLastMonth:  data.LastMonth,
+		CalendarThisMonth: data.CalendarThisMonth,
 	}
 
 	if patterns != nil {

@@ -13,12 +13,15 @@ interface AuthContextType {
   isLoading: boolean;
   currentUser: User | null;
   profileWarning: string | null;
+  /** True right after a successful sign-up, until the welcome screen is dismissed. */
+  justRegistered: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, name: string) => Promise<void>;
   logout: () => Promise<void>;
   updateUser: (user: User) => void;
   toggleAI: (enabled: boolean) => Promise<void>;
   isSubscriptionLimitReached: () => boolean;
+  clearJustRegistered: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -27,6 +30,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [profileWarning, setProfileWarning] = useState<string | null>(null);
+  const [justRegistered, setJustRegistered] = useState(false);
 
   const doLogout = useCallback(async () => {
     await Promise.allSettled([
@@ -203,11 +207,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setCurrentUser({ ...res.user, ai_enabled: false });
       setProfileWarning('Could not load full profile. Some features may be limited.');
     }
+    setJustRegistered(true);
     void offerBiometricEnrolment();
   }, [offerBiometricEnrolment]);
 
+  const clearJustRegistered = useCallback(() => {
+    setJustRegistered(false);
+  }, []);
+
   const logout = useCallback(async () => {
     await doLogout();
+    setJustRegistered(false);
   }, [doLogout]);
 
   const updateUser = useCallback((user: User) => {
@@ -243,12 +253,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isLoading,
         currentUser,
         profileWarning,
+        justRegistered,
         login,
         register,
         logout,
         updateUser,
         toggleAI,
         isSubscriptionLimitReached,
+        clearJustRegistered,
       },
     },
     children,

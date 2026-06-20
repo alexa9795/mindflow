@@ -30,6 +30,16 @@ type Insights struct {
 	MoodTrend         *string            `json:"mood_trend,omitempty"`
 	AvgMoodByDay      map[string]float64 `json:"avg_mood_by_day,omitempty"`
 	EntriesPerWeekday map[string]int     `json:"entries_per_weekday,omitempty"`
+
+	// CalendarThisMonth lists every day in the current month with at least one
+	// entry, along with that day's average mood (null if no mood was logged).
+	CalendarThisMonth []CalendarDay `json:"calendar_this_month,omitempty"`
+}
+
+// CalendarDay is one day-with-entries in the current-month calendar view.
+type CalendarDay struct {
+	Date string   `json:"date"`
+	Mood *float64 `json:"mood"`
 }
 
 // UserPatterns holds the pre-computed pattern data read from user_patterns.
@@ -44,12 +54,13 @@ type UserPatterns struct {
 
 // InsightsData is the raw result of the single-CTE repository query.
 type InsightsData struct {
-	TotalEntries int
-	ThisMonth    int
-	LastMonth    int
-	AvgMood      *float64
-	CommonMood   *int
-	EntryDates   []time.Time
+	TotalEntries      int
+	ThisMonth         int
+	LastMonth         int
+	AvgMood           *float64
+	CommonMood        *int
+	EntryDates        []time.Time
+	CalendarThisMonth []CalendarDay
 }
 
 // Repository is the data-access interface for insights queries.
@@ -105,6 +116,12 @@ func (r *repository) GetInsightsData(ctx context.Context, userID string) (*Insig
 					  AND mood_score IS NOT NULL
 				) AS common_mood
 			FROM base
+		),
+		month_days AS (
+			SELECT entry_date, AVG(mood_score) AS avg_mood
+			FROM base
+			WHERE entry_date >= DATE_TRUNC('month', NOW())::date
+			GROUP BY entry_date
 		)
 		SELECT
 			t.total_entries,
@@ -116,7 +133,14 @@ func (r *repository) GetInsightsData(ctx context.Context, userID string) (*Insig
 				SELECT DISTINCT entry_date::text
 				FROM base
 				ORDER BY entry_date DESC
-			) AS entry_dates
+			) AS entry_dates,
+			COALESCE(
+				(SELECT json_agg(
+					json_build_object('date', entry_date::text, 'mood', avg_mood)
+					ORDER BY entry_date
+				) FROM month_days),
+				'[]'
+			) AS calendar_this_month
 		FROM totals t, monthly m, mood_stats ms`,
 		userID,
 	)
@@ -125,6 +149,7 @@ func (r *repository) GetInsightsData(ctx context.Context, userID string) (*Insig
 	var avgMood sql.NullFloat64
 	var commonMood sql.NullInt64
 	var rawDates []string
+	var rawCalendar []byte
 
 	if err := row.Scan(
 		&d.TotalEntries,
@@ -133,8 +158,13 @@ func (r *repository) GetInsightsData(ctx context.Context, userID string) (*Insig
 		&avgMood,
 		&commonMood,
 		pq.Array(&rawDates),
+		&rawCalendar,
 	); err != nil {
 		return nil, fmt.Errorf("get insights data: %w", err)
+	}
+
+	if err := json.Unmarshal(rawCalendar, &d.CalendarThisMonth); err != nil {
+		return nil, fmt.Errorf("unmarshal calendar_this_month: %w", err)
 	}
 
 	if avgMood.Valid {

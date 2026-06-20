@@ -30,7 +30,7 @@ const SPLASH_BG = '#EDE8E0';
 const SPLASH_SPINNER = '#2C2418';
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, justRegistered } = useAuth();
   const { theme } = useSettings();
   const segments = useSegments();
   const router = useRouter();
@@ -38,12 +38,19 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (isLoading) return;
     const inAuthGroup = segments[0] === '(auth)';
-    if (!isAuthenticated && !inAuthGroup) {
-      router.replace('/(auth)/login');
-    } else if (isAuthenticated && inAuthGroup) {
+    const onWelcome = segments[0] === 'welcome';
+
+    if (!isAuthenticated) {
+      if (!inAuthGroup) router.replace('/(auth)/login');
+      return;
+    }
+
+    if (justRegistered) {
+      if (!onWelcome) router.replace('/welcome');
+    } else if (inAuthGroup || onWelcome) {
       router.replace('/(tabs)');
     }
-  }, [isAuthenticated, isLoading, segments, router]);
+  }, [isAuthenticated, isLoading, justRegistered, segments, router]);
 
   if (isLoading) {
     return (

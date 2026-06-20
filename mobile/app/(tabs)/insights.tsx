@@ -1,23 +1,30 @@
 import { useFocusEffect } from 'expo-router';
 import React, { useCallback, useState } from 'react';
 import {
-  ActivityIndicator,
   ScrollView,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeInDown } from 'react-native-reanimated';
+import MonthCalendar from '../../components/MonthCalendar';
+import MoodLineChart from '../../components/MoodLineChart';
+import { Skeleton, SkeletonCard } from '../../components/Skeleton';
 import ThemedView from '../../components/ThemedView';
 import { FONTS } from '../../constants/fonts';
-import { DURATION } from '../../constants/tokens';
 import { notifySuccess } from '../../constants/haptics';
 import { MOOD_EMOJIS } from '../../constants/moods';
+import { DURATION, RADIUS, SPACING } from '../../constants/tokens';
+import type { Theme } from '../../constants/themes';
 import { useSettings } from '../../context/SettingsContext';
 import { api, Insights } from '../../services/api';
 
 const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 const WEEKDAY_SHORT = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
 
 function peakWritingLabel(hour: number): string {
   if (hour < 12) return 'morning';
@@ -28,11 +35,72 @@ function peakWritingLabel(hour: number): string {
 
 function moodTrendLabel(trend: string): string {
   switch (trend) {
-    case 'improving': return 'Your mood has been improving lately';
-    case 'declining': return 'Your mood has dipped recently';
-    case 'stable':    return 'Your mood has been steady lately';
+    case 'improving': return 'Trending up lately';
+    case 'declining': return 'Dipped recently';
+    case 'stable':    return 'Steady lately';
     default:          return '';
   }
+}
+
+/** Best/worst weekday by average mood, for a more detailed trend sub-line. */
+function moodTrendDetail(data?: Record<string, number>): string | undefined {
+  if (data == null) return undefined;
+  const entries = Object.entries(data);
+  if (entries.length < 2) return undefined;
+  const [bestDay] = entries.reduce((a, b) => (b[1] > a[1] ? b : a));
+  const [worstDay] = entries.reduce((a, b) => (b[1] < a[1] ? b : a));
+  if (bestDay === worstDay) return undefined;
+  return `Best on ${bestDay}, lowest on ${worstDay}`;
+}
+
+/** Color-coded icon stat card. */
+function StatCard({
+  icon,
+  color,
+  label,
+  value,
+  sub,
+  subColor,
+  theme,
+  delay,
+  flex,
+}: {
+  icon: IoniconName;
+  color: string;
+  label: string;
+  value: string | number;
+  sub?: string;
+  subColor?: string;
+  theme: Theme;
+  delay: number;
+  /** When true, the card takes equal share of a row instead of full width. */
+  flex?: boolean;
+}) {
+  return (
+    <Animated.View
+      entering={FadeInDown.delay(delay).duration(DURATION.base)}
+      style={[styles.card, flex && styles.cardFlex, { backgroundColor: theme.surface, borderColor: theme.border }]}
+    >
+      <View style={styles.cardRow}>
+        <View style={[styles.iconCircle, { backgroundColor: color + '1F' }]}>
+          <Ionicons name={icon} size={20} color={color} />
+        </View>
+        <View style={styles.cardTextCol}>
+          <Text style={[styles.cardLabel, { color: theme.textSecondary, fontFamily: FONTS.modern }]}>
+            {label}
+          </Text>
+          <Text style={[styles.cardValue, { color: theme.text, fontFamily: FONTS.modern }]}>
+            {value}
+          </Text>
+          {sub != null && (
+            <Text style={[styles.cardSub, { color: subColor ?? theme.textSecondary, fontFamily: FONTS.modern }]}>
+              {sub}
+            </Text>
+          )}
+        </View>
+      </View>
+    </Animated.View>
+  );
 }
 
 function WeekdayChart({
@@ -40,7 +108,7 @@ function WeekdayChart({
   theme,
 }: {
   data: Record<string, number>;
-  theme: { accent: string; textSecondary: string };
+  theme: Theme;
 }) {
   const counts = WEEKDAYS.map((d) => data[d] ?? 0);
   const maxCount = Math.max(...counts, 1);
@@ -66,6 +134,7 @@ function WeekdayChart({
 
 export default function InsightsScreen() {
   const { theme, moodSetId } = useSettings();
+  const { width } = useWindowDimensions();
   const [insights, setInsights] = useState<Insights | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -89,8 +158,14 @@ export default function InsightsScreen() {
 
   if (loading) {
     return (
-      <ThemedView safe edges={['top', 'left', 'right']} style={styles.center}>
-        <ActivityIndicator color={theme.accent} />
+      <ThemedView safe edges={['top', 'left', 'right']}>
+        <View style={styles.scroll}>
+          <Skeleton width="55%" height={26} />
+          <Skeleton width="100%" height={108} radius={RADIUS.lg} style={{ marginTop: 8 }} />
+          <SkeletonCard />
+          <SkeletonCard />
+          <SkeletonCard />
+        </View>
       </ThemedView>
     );
   }
@@ -110,7 +185,10 @@ export default function InsightsScreen() {
       <ThemedView safe edges={['top', 'left', 'right']} style={styles.center}>
         <Text style={styles.emptyIcon}>📓</Text>
         <Text style={[styles.emptyText, { color: theme.text, fontFamily: FONTS.modern }]}>
-          Start journaling to see your insights.
+          Your insights are waiting
+        </Text>
+        <Text style={[styles.emptySubtext, { color: theme.textSecondary, fontFamily: FONTS.modern }]}>
+          Write a few entries and we&apos;ll surface your moods, streaks, and patterns here.
         </Text>
       </ThemedView>
     );
@@ -121,6 +199,9 @@ export default function InsightsScreen() {
     ? Math.round(insights.avg_mood_last_30)
     : null;
   const avgMoodEmoji = avgMoodScore != null ? emojis[avgMoodScore - 1] : null;
+  const avgMoodColor = avgMoodScore != null
+    ? theme.mood[avgMoodScore as 1 | 2 | 3 | 4 | 5]
+    : theme.accent;
 
   const monthDelta = insights.entries_this_month - insights.entries_last_month;
   const deltaLabel = monthDelta > 0
@@ -129,12 +210,23 @@ export default function InsightsScreen() {
     ? `${monthDelta} vs last month`
     : 'Same as last month';
   const deltaColor =
-    monthDelta > 0 ? theme.accent : monthDelta < 0 ? theme.destructive : theme.textSecondary;
+    monthDelta > 0 ? theme.success : monthDelta < 0 ? theme.destructive : theme.textSecondary;
 
-  // Staggered slide-up entrance, sequenced only over the cards that actually render.
-  let cardIndex = 0;
-  const stagger = () =>
-    FadeInDown.delay(Math.min(cardIndex++, 8) * 45).duration(DURATION.base);
+  const trendIcon: IoniconName = insights.mood_trend === 'improving'
+    ? 'trending-up'
+    : insights.mood_trend === 'declining'
+    ? 'trending-down'
+    : 'remove';
+  const trendColor = insights.mood_trend === 'improving'
+    ? theme.success
+    : insights.mood_trend === 'declining'
+    ? theme.destructive
+    : theme.textSecondary;
+
+  // Staggered slide-up, sequenced only over the cards that actually render.
+  let i = 0;
+  const nextDelay = () => Math.min(i++, 8) * 45;
+  const chartWidth = width - SPACING.xl * 2 - SPACING.lg * 2;
 
   return (
     <ThemedView safe edges={['top', 'left', 'right']}>
@@ -143,126 +235,144 @@ export default function InsightsScreen() {
           Your insights
         </Text>
 
-        {/* Total entries */}
-        <Animated.View entering={stagger()} style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-          <Text style={[styles.cardLabel, { color: theme.textSecondary, fontFamily: FONTS.modern }]}>
-            Total entries
-          </Text>
-          <Text style={[styles.cardBig, { color: theme.text, fontFamily: FONTS.modern }]}>
-            {insights.total_entries}
-          </Text>
-        </Animated.View>
-
-        {/* This month */}
-        <Animated.View entering={stagger()} style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-          <Text style={[styles.cardLabel, { color: theme.textSecondary, fontFamily: FONTS.modern }]}>
-            This month
-          </Text>
-          <Text style={[styles.cardBig, { color: theme.text, fontFamily: FONTS.modern }]}>
-            {insights.entries_this_month}
-          </Text>
-          <Text style={[styles.cardSub, { color: deltaColor, fontFamily: FONTS.modern }]}>
-            {deltaLabel}
-          </Text>
-        </Animated.View>
-
-        {/* Streaks row */}
-        <Animated.View entering={stagger()} style={styles.row}>
-          <View style={[styles.cardHalf, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-            <Text style={[styles.cardLabel, { color: theme.textSecondary, fontFamily: FONTS.modern }]}>
-              Current streak
-            </Text>
-            <View style={styles.streakRow}>
-              <Text style={styles.streakIcon}>🔥</Text>
-              <Text style={[styles.cardBig, { color: theme.text, fontFamily: FONTS.modern }]}>
+        {/* Hero stat — current streak (falls back to total entries) */}
+        <Animated.View
+          entering={FadeInDown.delay(nextDelay()).duration(DURATION.base)}
+          style={[styles.hero, { backgroundColor: theme.accent }]}
+        >
+          {insights.current_streak > 0 ? (
+            <>
+              <Text style={styles.heroEmoji}>🔥</Text>
+              <Text style={[styles.heroValue, { color: theme.background, fontFamily: FONTS.modern }]}>
                 {insights.current_streak}
               </Text>
-            </View>
-            <Text style={[styles.cardSub, { color: theme.textSecondary, fontFamily: FONTS.modern }]}>
-              {insights.current_streak === 1 ? 'day' : 'days'}
-            </Text>
-          </View>
-
-          <View style={[styles.cardHalf, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-            <Text style={[styles.cardLabel, { color: theme.textSecondary, fontFamily: FONTS.modern }]}>
-              Longest streak
-            </Text>
-            <Text style={[styles.cardBig, { color: theme.text, fontFamily: FONTS.modern }]}>
-              {insights.longest_streak}
-            </Text>
-            <Text style={[styles.cardSub, { color: theme.textSecondary, fontFamily: FONTS.modern }]}>
-              {insights.longest_streak === 1 ? 'day' : 'days'}
-            </Text>
-          </View>
+              <Text style={[styles.heroLabel, { color: theme.background, fontFamily: FONTS.modern }]}>
+                day{insights.current_streak === 1 ? '' : 's'} in a row
+              </Text>
+            </>
+          ) : (
+            <>
+              <Text style={styles.heroEmoji}>📔</Text>
+              <Text style={[styles.heroValue, { color: theme.background, fontFamily: FONTS.modern }]}>
+                {insights.total_entries}
+              </Text>
+              <Text style={[styles.heroLabel, { color: theme.background, fontFamily: FONTS.modern }]}>
+                entries written
+              </Text>
+            </>
+          )}
         </Animated.View>
 
-        {/* Average mood — only shown when data exists */}
-        {avgMoodScore != null && (
-          <Animated.View entering={stagger()} style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+        {/* Mood-over-the-week chart */}
+        {insights.avg_mood_by_day != null && Object.keys(insights.avg_mood_by_day).length > 1 && (
+          <Animated.View
+            entering={FadeInDown.delay(nextDelay()).duration(DURATION.base)}
+            style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}
+          >
             <Text style={[styles.cardLabel, { color: theme.textSecondary, fontFamily: FONTS.modern }]}>
-              Average mood (last 30 days)
+              Mood across the week
             </Text>
-            <View style={styles.moodRow}>
-              {avgMoodEmoji != null && (
-                <Text style={styles.moodEmoji}>{avgMoodEmoji}</Text>
+            <MoodLineChart data={insights.avg_mood_by_day} width={chartWidth} />
+          </Animated.View>
+        )}
+
+        <View style={styles.row}>
+          <StatCard
+            icon="book-outline"
+            color={theme.accent}
+            label="Total entries"
+            value={insights.total_entries}
+            theme={theme}
+            delay={nextDelay()}
+            flex
+          />
+
+          <StatCard
+            icon="calendar-outline"
+            color={deltaColor}
+            label="This month"
+            value={insights.entries_this_month}
+            sub={deltaLabel}
+            subColor={deltaColor}
+            theme={theme}
+            delay={nextDelay()}
+            flex
+          />
+        </View>
+
+        {/* Calendar — days journaled this month, with mood per day */}
+        {insights.calendar_this_month != null && (
+          <Animated.View
+            entering={FadeInDown.delay(nextDelay()).duration(DURATION.base)}
+            style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}
+          >
+            <Text style={[styles.cardLabel, { color: theme.textSecondary, fontFamily: FONTS.modern }]}>
+              This month
+            </Text>
+            <MonthCalendar
+              days={Object.fromEntries(
+                insights.calendar_this_month.map((d) => [
+                  d.date,
+                  d.mood != null ? Math.round(d.mood) : null,
+                ]),
               )}
-              <Text style={[styles.cardBig, { color: theme.text, fontFamily: FONTS.modern }]}>
-                {insights.avg_mood_last_30!.toFixed(1)}
-                <Text style={[styles.cardSub, { color: theme.textSecondary, fontFamily: FONTS.modern }]}>
-                  {' '}/ 5
-                </Text>
-              </Text>
-            </View>
+              moodEmojis={emojis}
+              theme={theme}
+            />
           </Animated.View>
         )}
 
-        {/* ── Pattern cards — only shown after weekly job has run ── */}
+        <StatCard
+          icon="trophy-outline"
+          color={theme.success}
+          label="Longest streak"
+          value={`${insights.longest_streak} day${insights.longest_streak === 1 ? '' : 's'}`}
+          theme={theme}
+          delay={nextDelay()}
+        />
 
-        {/* Most active day */}
-        {insights.most_active_day != null && (
-          <Animated.View entering={stagger()} style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-            <Text style={[styles.cardLabel, { color: theme.textSecondary, fontFamily: FONTS.modern }]}>
-              Most active day
-            </Text>
-            <Text style={[styles.cardBig, { color: theme.text, fontFamily: FONTS.modern }]}>
-              {insights.most_active_day}
-            </Text>
-            <Text style={[styles.cardSub, { color: theme.textSecondary, fontFamily: FONTS.modern }]}>
-              You write most on {insights.most_active_day}
-            </Text>
-          </Animated.View>
+        {avgMoodScore != null && (
+          <StatCard
+            icon="happy-outline"
+            color={avgMoodColor}
+            label="Average mood (last 30 days)"
+            value={`${insights.avg_mood_last_30!.toFixed(1)} / 5  ${avgMoodEmoji ?? ''}`}
+            theme={theme}
+            delay={nextDelay()}
+          />
         )}
 
-        {/* Peak writing time */}
+        {/* ── Pattern cards — only shown after the weekly job has run ── */}
         {insights.peak_writing_hour != null && (
-          <Animated.View entering={stagger()} style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-            <Text style={[styles.cardLabel, { color: theme.textSecondary, fontFamily: FONTS.modern }]}>
-              Peak writing time
-            </Text>
-            <Text style={[styles.cardBig, { color: theme.text, fontFamily: FONTS.modern }]}>
-              {peakWritingLabel(insights.peak_writing_hour)}
-            </Text>
-            <Text style={[styles.cardSub, { color: theme.textSecondary, fontFamily: FONTS.modern }]}>
-              You tend to write in the {peakWritingLabel(insights.peak_writing_hour)}
-            </Text>
-          </Animated.View>
+          <StatCard
+            icon="time-outline"
+            color={theme.accent}
+            label="Peak writing time"
+            value={peakWritingLabel(insights.peak_writing_hour)}
+            sub={`You tend to write in the ${peakWritingLabel(insights.peak_writing_hour)}`}
+            theme={theme}
+            delay={nextDelay()}
+          />
         )}
 
-        {/* Mood trend — insufficient_data is never shown */}
         {insights.mood_trend != null && insights.mood_trend !== 'insufficient_data' && (
-          <Animated.View entering={stagger()} style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-            <Text style={[styles.cardLabel, { color: theme.textSecondary, fontFamily: FONTS.modern }]}>
-              Mood trend
-            </Text>
-            <Text style={[styles.cardBig, { color: theme.text, fontFamily: FONTS.modern }]}>
-              {moodTrendLabel(insights.mood_trend)}
-            </Text>
-          </Animated.View>
+          <StatCard
+            icon={trendIcon}
+            color={trendColor}
+            label="Mood trend"
+            value={moodTrendLabel(insights.mood_trend)}
+            sub={moodTrendDetail(insights.avg_mood_by_day)}
+            theme={theme}
+            delay={nextDelay()}
+          />
         )}
 
         {/* Writing consistency mini bar chart */}
         {insights.entries_per_weekday != null && (
-          <Animated.View entering={stagger()} style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+          <Animated.View
+            entering={FadeInDown.delay(nextDelay()).duration(DURATION.base)}
+            style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}
+          >
             <Text style={[styles.cardLabel, { color: theme.textSecondary, fontFamily: FONTS.modern }]}>
               Writing consistency
             </Text>
@@ -275,32 +385,38 @@ export default function InsightsScreen() {
 }
 
 const styles = StyleSheet.create({
-  center: { alignItems: 'center', justifyContent: 'center' },
-  scroll: { padding: 20, gap: 12, paddingBottom: 40 },
+  center: { alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40 },
+  scroll: { padding: SPACING.xl, gap: SPACING.md, paddingBottom: 40 },
   title: { fontSize: 22, fontWeight: '700', marginBottom: 4 },
+  hero: {
+    borderRadius: RADIUS.xl,
+    paddingVertical: SPACING.xl,
+    alignItems: 'center',
+  },
+  heroEmoji: { fontSize: 30, marginBottom: 4 },
+  heroValue: { fontSize: 52, fontWeight: '800', lineHeight: 58 },
+  heroLabel: { fontSize: 14, fontWeight: '600', opacity: 0.9 },
+  row: { flexDirection: 'row', gap: SPACING.md },
   card: {
-    borderRadius: 14,
+    borderRadius: RADIUS.lg,
     borderWidth: 1,
-    padding: 16,
+    padding: SPACING.lg,
   },
-  cardHalf: {
-    flex: 1,
-    borderRadius: 14,
-    borderWidth: 1,
-    padding: 16,
+  cardFlex: { flex: 1 },
+  cardRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.md },
+  iconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  row: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  cardLabel: { fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 },
-  cardBig: { fontSize: 36, fontWeight: '700', lineHeight: 42 },
+  cardTextCol: { flex: 1 },
+  cardLabel: { fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 },
+  cardValue: { fontSize: 24, fontWeight: '700' },
   cardSub: { fontSize: 13, marginTop: 2 },
-  streakRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  streakIcon: { fontSize: 28 },
-  moodRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 4 },
-  moodEmoji: { fontSize: 32 },
   emptyIcon: { fontSize: 48, marginBottom: 16 },
-  emptyText: { fontSize: 16, textAlign: 'center', paddingHorizontal: 40 },
+  emptyText: { fontSize: 18, fontWeight: '700', textAlign: 'center', marginBottom: 8 },
+  emptySubtext: { fontSize: 14, textAlign: 'center', lineHeight: 20 },
   errorText: { fontSize: 14, textAlign: 'center' },
 });

@@ -247,6 +247,8 @@ export interface Insights {
   mood_trend?: 'improving' | 'declining' | 'stable' | 'insufficient_data';
   avg_mood_by_day?: Record<string, number>;
   entries_per_weekday?: Record<string, number>;
+  // Days with at least one entry in the current month, with that day's average mood.
+  calendar_this_month?: { date: string; mood: number | null }[];
 }
 
 export const api = {
