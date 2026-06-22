@@ -15,6 +15,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ThemedView from '../../components/ThemedView';
 import { FONT_OPTIONS, FONTS, FontKey, scaledFontSize } from '../../constants/fonts';
 import { MOOD_EMOJIS, MOOD_SETS } from '../../constants/moods';
@@ -30,6 +31,7 @@ import { api, ApiError } from '../../services/api';
 
 export default function SettingsScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { theme, themeMode, setThemeById, entryFont, setEntryFont, moodSetId, setMoodSetId } = useSettings();
   const { currentUser, logout, updateUser, toggleAI } = useAuth();
 
@@ -197,8 +199,13 @@ export default function SettingsScreen() {
   }
 
   return (
-    <ThemedView safe edges={['top', 'left', 'right']}>
-      <View style={[styles.header, { backgroundColor: theme.surface, borderBottomColor: theme.border }]}>
+    <ThemedView safe edges={['left', 'right']}>
+      <View
+        style={[
+          styles.header,
+          { backgroundColor: theme.surface, borderBottomColor: theme.border, paddingTop: insets.top + 16 },
+        ]}
+      >
         <Text style={[styles.title, { color: theme.text, fontFamily: FONTS.modern }]}>
           Settings
         </Text>
@@ -422,15 +429,6 @@ export default function SettingsScreen() {
         >
           <Text style={[styles.actionText, { color: theme.text, fontFamily: FONTS.modern }]}>
             Export my data
-          </Text>
-        </Pressable>
-
-        <Pressable
-          style={[styles.actionRow, { backgroundColor: theme.surface, borderColor: theme.border }]}
-          onPress={() => router.push('/trash')}
-        >
-          <Text style={[styles.actionText, { color: theme.text, fontFamily: FONTS.modern }]}>
-            Trash
           </Text>
         </Pressable>
 

@@ -1,6 +1,5 @@
-import { useRouter } from 'expo-router';
-import React, { useCallback, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
+import React, { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -10,11 +9,12 @@ import {
   Text,
   View,
 } from 'react-native';
-import ThemedView from '../components/ThemedView';
-import { FONTS } from '../constants/fonts';
-import { SPACING, RADIUS } from '../constants/tokens';
-import { useSettings } from '../context/SettingsContext';
-import { api, ApiError, Entry } from '../services/api';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import ThemedView from '../../components/ThemedView';
+import { FONTS } from '../../constants/fonts';
+import { SPACING, RADIUS } from '../../constants/tokens';
+import { useSettings } from '../../context/SettingsContext';
+import { api, ApiError, Entry } from '../../services/api';
 
 const TRASH_RETENTION_DAYS = 30;
 
@@ -38,8 +38,8 @@ function daysUntilPurge(iso: string): number {
 }
 
 export default function TrashScreen() {
-  const router = useRouter();
   const { theme } = useSettings();
+  const insets = useSafeAreaInsets();
   const [entries, setEntries] = useState<Entry[]>([]);
   const [loading, setLoading] = useState(true);
   const [restoringId, setRestoringId] = useState<string | null>(null);
@@ -75,17 +75,16 @@ export default function TrashScreen() {
   }
 
   return (
-    <ThemedView safe>
-      <View style={[styles.header, { borderBottomColor: theme.border }]}>
-        <Pressable onPress={() => router.back()} hitSlop={12}>
-          <Text style={[styles.backBtn, { color: theme.accent, fontFamily: FONTS.modern }]}>
-            ← Back
-          </Text>
-        </Pressable>
+    <ThemedView safe edges={['left', 'right']}>
+      <View
+        style={[
+          styles.header,
+          { backgroundColor: theme.surface, borderBottomColor: theme.border, paddingTop: insets.top + 16 },
+        ]}
+      >
         <Text style={[styles.title, { color: theme.text, fontFamily: FONTS.modern }]}>
           Trash
         </Text>
-        <View style={styles.headerSpacer} />
       </View>
 
       <View style={[styles.infoBanner, { backgroundColor: theme.accent + '14', borderColor: theme.accent + '30' }]}>
@@ -153,16 +152,12 @@ export default function TrashScreen() {
 
 const styles = StyleSheet.create({
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
     paddingTop: 16,
     paddingBottom: 12,
     paddingHorizontal: 20,
     borderBottomWidth: 1,
   },
-  backBtn: { fontSize: 15, width: 60 },
-  title: { flex: 1, fontSize: 17, fontWeight: '700', textAlign: 'center' },
-  headerSpacer: { width: 60 },
+  title: { fontSize: 22, fontWeight: '700' },
   infoBanner: {
     marginHorizontal: 16,
     marginTop: 12,

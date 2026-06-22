@@ -59,6 +59,14 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="trash"
+        options={{
+          title: 'Trash',
+          tabBarIcon: ({ focused, color }) =>
+            <TabIcon name={focused ? 'trash' : 'trash-outline'} focused={focused} color={color} />,
+        }}
+      />
+      <Tabs.Screen
         name="settings"
         options={{
           title: 'Settings',
