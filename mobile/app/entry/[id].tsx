@@ -18,7 +18,7 @@ import PressableScale from '../../components/PressableScale';
 import ThemedView from '../../components/ThemedView';
 import TypingDots from '../../components/TypingDots';
 import { COMPANION_NAME } from '../../constants/config';
-import { FONTS } from '../../constants/fonts';
+import { FONTS, scaledFontSize } from '../../constants/fonts';
 import { tapMedium } from '../../constants/haptics';
 import { useSettings } from '../../context/SettingsContext';
 import { useAuth } from '../../hooks/useAuth';
@@ -201,7 +201,17 @@ export default function EntryDetailScreen() {
 
           {/* Original entry text */}
           <View style={[styles.entryBubble, { backgroundColor: theme.accent }]}>
-            <Text style={[styles.entryText, { color: theme.background, fontFamily: activeEntryFont }]}>
+            <Text
+              style={[
+                styles.entryText,
+                {
+                  color: theme.background,
+                  fontFamily: activeEntryFont,
+                  fontSize: scaledFontSize(entryFont, 16),
+                  lineHeight: scaledFontSize(entryFont, 24),
+                },
+              ]}
+            >
               {entry.content}
             </Text>
           </View>

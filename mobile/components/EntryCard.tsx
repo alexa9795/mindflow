@@ -4,7 +4,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSettings } from '../context/SettingsContext';
 import { MOOD_EMOJIS } from '../constants/moods';
-import { FONTS } from '../constants/fonts';
+import { FONTS, scaledFontSize } from '../constants/fonts';
 import { DURATION, RADIUS, SPACING } from '../constants/tokens';
 import PressableScale from './PressableScale';
 import type { Entry } from '../services/api';
@@ -56,7 +56,15 @@ export default function EntryCard({ entry, index = 0 }: EntryCardProps) {
           </View>
           <Text
             numberOfLines={2}
-            style={[styles.preview, { color: theme.text, fontFamily: FONTS[entryFont] }]}
+            style={[
+              styles.preview,
+              {
+                color: theme.text,
+                fontFamily: FONTS[entryFont],
+                fontSize: scaledFontSize(entryFont, 15),
+                lineHeight: scaledFontSize(entryFont, 22),
+              },
+            ]}
           >
             {entry.content.slice(0, 80)}
           </Text>

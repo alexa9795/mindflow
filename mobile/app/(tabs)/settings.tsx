@@ -16,16 +16,21 @@ import {
   View,
 } from 'react-native';
 import ThemedView from '../../components/ThemedView';
-import { FONT_OPTIONS, FONTS, FontKey } from '../../constants/fonts';
+import { FONT_OPTIONS, FONTS, FontKey, scaledFontSize } from '../../constants/fonts';
 import { MOOD_EMOJIS, MOOD_SETS } from '../../constants/moods';
-import { THEMES } from '../../constants/themes';
+import {
+  SYSTEM_DARK_THEME_ID,
+  SYSTEM_LIGHT_THEME_ID,
+  SYSTEM_THEME_ID,
+  THEMES,
+} from '../../constants/themes';
 import { useSettings } from '../../context/SettingsContext';
 import { useAuth, BIOMETRIC_ENABLED_KEY } from '../../hooks/useAuth';
 import { api, ApiError } from '../../services/api';
 
 export default function SettingsScreen() {
   const router = useRouter();
-  const { theme, setThemeById, entryFont, setEntryFont, moodSetId, setMoodSetId } = useSettings();
+  const { theme, themeMode, setThemeById, entryFont, setEntryFont, moodSetId, setMoodSetId } = useSettings();
   const { currentUser, logout, updateUser, toggleAI } = useAuth();
 
   const [nameModalVisible, setNameModalVisible] = useState(false);
@@ -267,7 +272,7 @@ export default function SettingsScreen() {
               style={[
                 styles.themeSwatch,
                 { backgroundColor: t.background, borderColor: t.border },
-                theme.id === t.id && { borderColor: theme.accent, borderWidth: 2.5 },
+                themeMode === t.id && { borderColor: theme.accent, borderWidth: 2.5 },
               ]}
               onPress={() => void setThemeById(t.id)}
             >
@@ -277,6 +282,24 @@ export default function SettingsScreen() {
               </Text>
             </Pressable>
           ))}
+          <Pressable
+            key={SYSTEM_THEME_ID}
+            style={[
+              styles.themeSwatch,
+              styles.systemSwatch,
+              { borderColor: THEMES[SYSTEM_DARK_THEME_ID].border },
+              themeMode === SYSTEM_THEME_ID && { borderColor: theme.accent, borderWidth: 2.5 },
+            ]}
+            onPress={() => void setThemeById(SYSTEM_THEME_ID)}
+          >
+            <View style={styles.systemSwatchHalves}>
+              <View style={[styles.systemSwatchHalf, { backgroundColor: THEMES[SYSTEM_LIGHT_THEME_ID].background }]} />
+              <View style={[styles.systemSwatchHalf, { backgroundColor: THEMES[SYSTEM_DARK_THEME_ID].background }]} />
+            </View>
+            <Text style={[styles.swatchLabel, { color: theme.text, fontFamily: FONTS.modern }]}>
+              System
+            </Text>
+          </Pressable>
         </View>
 
         {/* Font picker */}
@@ -292,7 +315,17 @@ export default function SettingsScreen() {
               ]}
               onPress={() => void setEntryFont(opt.key as FontKey)}
             >
-              <Text style={[styles.fontSample, { color: theme.text, fontFamily: FONTS[opt.key] }]}>
+              <Text
+                style={[
+                  styles.fontSample,
+                  {
+                    color: theme.text,
+                    fontFamily: FONTS[opt.key],
+                    fontSize: scaledFontSize(opt.key, 15),
+                    lineHeight: scaledFontSize(opt.key, 20),
+                  },
+                ]}
+              >
                 Amor fati — love your fate.
               </Text>
               <Text style={[styles.fontLabel, { color: theme.textSecondary, fontFamily: FONTS.modern }]}>
@@ -369,7 +402,7 @@ export default function SettingsScreen() {
             disabled={trialLoading}
           >
             <Text style={[styles.actionText, { color: theme.accent, fontFamily: FONTS.modern }]}>
-              {trialLoading ? 'Activating…' : 'Try free trial (7 days)'}
+              {trialLoading ? 'Activating…' : 'Free trial (7 days)'}
             </Text>
           </Pressable>
         )}
@@ -506,6 +539,9 @@ const styles = StyleSheet.create({
   },
   swatchInner: { width: 32, height: 20, borderRadius: 6 },
   swatchLabel: { fontSize: 12, fontWeight: '600' },
+  systemSwatch: { backgroundColor: 'transparent', overflow: 'hidden' },
+  systemSwatchHalves: { flexDirection: 'row', width: 32, height: 20, borderRadius: 6, overflow: 'hidden' },
+  systemSwatchHalf: { flex: 1 },
   fontGrid: { gap: 10, marginBottom: 24 },
   fontOption: {
     borderRadius: 12,

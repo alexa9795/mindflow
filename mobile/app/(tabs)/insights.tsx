@@ -21,9 +21,6 @@ import type { Theme } from '../../constants/themes';
 import { useSettings } from '../../context/SettingsContext';
 import { api, Insights } from '../../services/api';
 
-const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-const WEEKDAY_SHORT = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-
 type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
 
 function peakWritingLabel(hour: number): string {
@@ -100,35 +97,6 @@ function StatCard({
         </View>
       </View>
     </Animated.View>
-  );
-}
-
-function WeekdayChart({
-  data,
-  theme,
-}: {
-  data: Record<string, number>;
-  theme: Theme;
-}) {
-  const counts = WEEKDAYS.map((d) => data[d] ?? 0);
-  const maxCount = Math.max(...counts, 1);
-  const BAR_HEIGHT = 36;
-
-  return (
-    <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 6, marginTop: 8, height: BAR_HEIGHT + 18 }}>
-      {WEEKDAYS.map((day, i) => {
-        const count = counts[i];
-        const barH = count > 0 ? Math.max(Math.round((count / maxCount) * BAR_HEIGHT), 4) : 0;
-        return (
-          <View key={day} style={{ flex: 1, alignItems: 'center', justifyContent: 'flex-end', height: BAR_HEIGHT + 18 }}>
-            <View style={{ width: '100%', height: barH, backgroundColor: theme.accent, borderRadius: 2 }} />
-            <Text style={{ fontSize: 9, color: theme.textSecondary, fontFamily: FONTS.modern, marginTop: 3 }}>
-              {WEEKDAY_SHORT[i]}
-            </Text>
-          </View>
-        );
-      })}
-    </View>
   );
 }
 
@@ -276,29 +244,17 @@ export default function InsightsScreen() {
           </Animated.View>
         )}
 
-        <View style={styles.row}>
+        {/* Average mood */}
+        {avgMoodScore != null && (
           <StatCard
-            icon="book-outline"
-            color={theme.accent}
-            label="Total entries"
-            value={insights.total_entries}
+            icon="happy-outline"
+            color={avgMoodColor}
+            label="Average mood (last 30 days)"
+            value={`${insights.avg_mood_last_30!.toFixed(1)} / 5  ${avgMoodEmoji ?? ''}`}
             theme={theme}
             delay={nextDelay()}
-            flex
           />
-
-          <StatCard
-            icon="calendar-outline"
-            color={deltaColor}
-            label="This month"
-            value={insights.entries_this_month}
-            sub={deltaLabel}
-            subColor={deltaColor}
-            theme={theme}
-            delay={nextDelay()}
-            flex
-          />
-        </View>
+        )}
 
         {/* Calendar — days journaled this month, with mood per day */}
         {insights.calendar_this_month != null && (
@@ -322,39 +278,32 @@ export default function InsightsScreen() {
           </Animated.View>
         )}
 
-        <StatCard
-          icon="trophy-outline"
-          color={theme.success}
-          label="Longest streak"
-          value={`${insights.longest_streak} day${insights.longest_streak === 1 ? '' : 's'}`}
-          theme={theme}
-          delay={nextDelay()}
-        />
-
-        {avgMoodScore != null && (
+        {/* Longest streak + this month vs last month */}
+        <View style={styles.row}>
           <StatCard
-            icon="happy-outline"
-            color={avgMoodColor}
-            label="Average mood (last 30 days)"
-            value={`${insights.avg_mood_last_30!.toFixed(1)} / 5  ${avgMoodEmoji ?? ''}`}
+            icon="trophy-outline"
+            color={theme.success}
+            label="Longest streak"
+            value={`${insights.longest_streak} day${insights.longest_streak === 1 ? '' : 's'}`}
             theme={theme}
             delay={nextDelay()}
+            flex
           />
-        )}
+
+          <StatCard
+            icon="calendar-outline"
+            color={deltaColor}
+            label="This month"
+            value={insights.entries_this_month}
+            sub={deltaLabel}
+            subColor={deltaColor}
+            theme={theme}
+            delay={nextDelay()}
+            flex
+          />
+        </View>
 
         {/* ── Pattern cards — only shown after the weekly job has run ── */}
-        {insights.peak_writing_hour != null && (
-          <StatCard
-            icon="time-outline"
-            color={theme.accent}
-            label="Peak writing time"
-            value={peakWritingLabel(insights.peak_writing_hour)}
-            sub={`You tend to write in the ${peakWritingLabel(insights.peak_writing_hour)}`}
-            theme={theme}
-            delay={nextDelay()}
-          />
-        )}
-
         {insights.mood_trend != null && insights.mood_trend !== 'insufficient_data' && (
           <StatCard
             icon={trendIcon}
@@ -367,17 +316,16 @@ export default function InsightsScreen() {
           />
         )}
 
-        {/* Writing consistency mini bar chart */}
-        {insights.entries_per_weekday != null && (
-          <Animated.View
-            entering={FadeInDown.delay(nextDelay()).duration(DURATION.base)}
-            style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}
-          >
-            <Text style={[styles.cardLabel, { color: theme.textSecondary, fontFamily: FONTS.modern }]}>
-              Writing consistency
-            </Text>
-            <WeekdayChart data={insights.entries_per_weekday} theme={theme} />
-          </Animated.View>
+        {insights.peak_writing_hour != null && (
+          <StatCard
+            icon="time-outline"
+            color={theme.accent}
+            label="Peak writing time"
+            value={peakWritingLabel(insights.peak_writing_hour)}
+            sub={`You tend to write in the ${peakWritingLabel(insights.peak_writing_hour)}`}
+            theme={theme}
+            delay={nextDelay()}
+          />
         )}
       </ScrollView>
     </ThemedView>

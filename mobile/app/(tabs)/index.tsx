@@ -7,6 +7,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import EntryCard from '../../components/EntryCard';
 import OfflineBanner from '../../components/OfflineBanner';
@@ -14,27 +15,24 @@ import PressableScale from '../../components/PressableScale';
 import { SkeletonCard } from '../../components/Skeleton';
 import ThemedView from '../../components/ThemedView';
 import { FONTS } from '../../constants/fonts';
+import { getDailyQuote } from '../../constants/quotes';
 import { ELEVATION, RADIUS, SPACING } from '../../constants/tokens';
 import { useSettings } from '../../context/SettingsContext';
 import { useEntries } from '../../hooks/useEntries';
 import { useFocusEffect } from 'expo-router';
 import { api } from '../../services/api';
 
-function greeting(): string {
-  const h = new Date().getHours();
-  if (h < 12) return 'Good morning';
-  if (h < 18) return 'Good afternoon';
-  return 'Good evening';
-}
-
 export default function HomeScreen() {
   const router = useRouter();
   const { theme } = useSettings();
+  const insets = useSafeAreaInsets();
   const { entries, loading, isOffline, fetchEntries, loadMore, hasMore } = useEntries();
   const [streak, setStreak] = useState<number>(0);
+  const [quote, setQuote] = useState<string>('');
 
   useFocusEffect(
     useCallback(() => {
+      void getDailyQuote().then(setQuote);
       void fetchEntries();
       // Reuse the insights endpoint purely for the header streak chip.
       api.getInsights()
@@ -44,16 +42,21 @@ export default function HomeScreen() {
   );
 
   return (
-    <ThemedView safe edges={['top', 'left', 'right']}>
+    <ThemedView safe edges={['left', 'right']}>
       <OfflineBanner visible={isOffline} />
 
-      <View style={[styles.header, { backgroundColor: theme.surface, borderBottomColor: theme.border }]}>
+      <View
+        style={[
+          styles.header,
+          { backgroundColor: theme.surface, borderBottomColor: theme.border, paddingTop: insets.top + 16 },
+        ]}
+      >
         <View style={styles.headerTextCol}>
-          <Text style={[styles.greeting, { color: theme.textSecondary, fontFamily: FONTS.modern }]}>
-            {greeting()}
-          </Text>
-          <Text style={[styles.title, { color: theme.text, fontFamily: FONTS.modern }]}>
-            Dear Journal
+          <Text
+            numberOfLines={2}
+            style={[styles.quote, { color: theme.text, fontFamily: FONTS.modern }]}
+          >
+            {quote}
           </Text>
         </View>
         {streak > 0 && (
@@ -128,9 +131,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     borderBottomWidth: 1,
   },
-  headerTextCol: { flex: 1 },
-  greeting: { fontSize: 13, marginBottom: 2 },
-  title: { fontSize: 22, fontWeight: '700' },
+  headerTextCol: { flex: 1, paddingRight: SPACING.md },
+  quote: { fontSize: 17, fontWeight: '600', fontStyle: 'italic', lineHeight: 22 },
   streakChip: {
     flexDirection: 'row',
     alignItems: 'center',

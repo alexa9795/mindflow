@@ -24,6 +24,8 @@ export interface Theme {
   success: string;
   /** Per-mood colours used for chips, accent strips, charts. */
   mood: MoodRamp;
+  /** Whether status bar / system chrome should render light-on-dark content. */
+  isDark: boolean;
 }
 
 export const softDark: Theme = {
@@ -38,12 +40,13 @@ export const softDark: Theme = {
   border: '#2E2E2E',
   destructive: '#F87171',
   success: '#7FB89A',
+  isDark: true,
   mood: {
-    1: '#E06C75',
-    2: '#E0A45E',
-    3: '#D6C77E',
-    4: '#8FBF8A',
-    5: '#6FB89A',
+    1: '#FF5C66',
+    2: '#FF9F40',
+    3: '#F2D03D',
+    4: '#5FDD7E',
+    5: '#2EE6B8',
   },
 };
 
@@ -59,12 +62,13 @@ export const warmNeutral: Theme = {
   border: '#D6CFC4',
   destructive: '#C0392B',
   success: '#5E8C6A',
+  isDark: false,
   mood: {
-    1: '#C26A5C',
-    2: '#CF9355',
-    3: '#C9A94E',
-    4: '#7FA86A',
-    5: '#5E8C6A',
+    1: '#E14B3F',
+    2: '#F08A24',
+    3: '#E0B400',
+    4: '#4FA84A',
+    5: '#1FA37E',
   },
 };
 
@@ -76,3 +80,12 @@ export const THEMES: Record<string, Theme> = {
 export const DEFAULT_THEME_ID = 'warmNeutral';
 
 export const THEME_STORAGE_KEY = 'echo_theme';
+
+/** Pseudo-theme id: follow the OS light/dark setting instead of a fixed theme. */
+export const SYSTEM_THEME_ID = 'system';
+
+/** Theme used when system scheme resolves to light. */
+export const SYSTEM_LIGHT_THEME_ID = 'warmNeutral';
+
+/** Theme used when system scheme resolves to dark. */
+export const SYSTEM_DARK_THEME_ID = 'softDark';

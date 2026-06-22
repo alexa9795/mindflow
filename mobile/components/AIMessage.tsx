@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { COMPANION_NAME } from '../constants/config';
-import { FONTS } from '../constants/fonts';
+import { FONTS, scaledFontSize } from '../constants/fonts';
 import { useSettings } from '../context/SettingsContext';
 import type { Message } from '../services/api';
 
@@ -46,7 +46,17 @@ export default function AIMessage({ message }: AIMessageProps) {
 
   return (
     <View style={[styles.userBubble, { backgroundColor: theme.accent }]}>
-      <Text style={[styles.text, { color: theme.background, fontFamily: activeEntryFont }]}>
+      <Text
+        style={[
+          styles.text,
+          {
+            color: theme.background,
+            fontFamily: activeEntryFont,
+            fontSize: scaledFontSize(entryFont, 15),
+            lineHeight: scaledFontSize(entryFont, 22),
+          },
+        ]}
+      >
         {message.content}
       </Text>
     </View>

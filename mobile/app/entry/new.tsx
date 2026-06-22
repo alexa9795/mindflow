@@ -16,7 +16,7 @@ import MoodSelector from '../../components/MoodSelector';
 import OfflineBanner from '../../components/OfflineBanner';
 import PressableScale from '../../components/PressableScale';
 import ThemedView from '../../components/ThemedView';
-import { FONTS } from '../../constants/fonts';
+import { FONTS, scaledFontSize } from '../../constants/fonts';
 import { notifySuccess } from '../../constants/haptics';
 import { useSettings } from '../../context/SettingsContext';
 import { useAuth } from '../../hooks/useAuth';
@@ -117,6 +117,8 @@ export default function NewEntryScreen() {
                 borderColor: theme.border,
                 color: theme.text,
                 fontFamily: activeEntryFont,
+                fontSize: scaledFontSize(entryFont, 17),
+                lineHeight: scaledFontSize(entryFont, 26),
               },
             ]}
             placeholder="Write freely… this is your space"

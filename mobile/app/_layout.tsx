@@ -29,6 +29,11 @@ import { AuthProvider, useAuth } from '../hooks/useAuth';
 const SPLASH_BG = '#EDE8E0';
 const SPLASH_SPINNER = '#2C2418';
 
+function ThemedStatusBar() {
+  const { theme } = useSettings();
+  return <StatusBar style={theme.isDark ? 'light' : 'dark'} />;
+}
+
 function AuthGuard({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading, justRegistered } = useAuth();
   const { theme } = useSettings();
@@ -83,7 +88,7 @@ export default function RootLayout() {
   return (
     <SettingsProvider>
       <AuthProvider>
-        <StatusBar style="auto" />
+        <ThemedStatusBar />
         <AuthGuard>
           <Slot />
         </AuthGuard>
