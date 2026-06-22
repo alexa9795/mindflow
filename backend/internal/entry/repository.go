@@ -21,6 +21,9 @@ type Repository interface {
 	LoadMessages(ctx context.Context, entryID string) ([]Message, error)
 	ExportUserData(ctx context.Context, userID string) ([]Entry, error)
 	DeleteAllByUserID(ctx context.Context, userID string) error
+	SoftDelete(ctx context.Context, id, userID string) error
+	Restore(ctx context.Context, id, userID string) error
+	ListTrash(ctx context.Context, userID string) ([]Entry, error)
 }
 
 type repository struct {
@@ -54,7 +57,7 @@ func (r *repository) List(ctx context.Context, userID string, limit, offset int)
 	rows, err := r.db.QueryContext(ctx, `
 		SELECT id, user_id, LEFT(content, 120) AS content, mood_score, created_at, COUNT(*) OVER() AS total
 		FROM entries
-		WHERE user_id = $1
+		WHERE user_id = $1 AND deleted_at IS NULL
 		ORDER BY created_at DESC
 		LIMIT $2 OFFSET $3`,
 		userID, limit, offset,
@@ -81,7 +84,7 @@ func (r *repository) GetByID(ctx context.Context, id, userID string) (*Entry, er
 	err := r.db.QueryRowContext(ctx, `
 		SELECT id, user_id, content, mood_score, created_at
 		FROM entries
-		WHERE id = $1 AND user_id = $2`,
+		WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL`,
 		id, userID,
 	).Scan(&e.ID, &e.UserID, &e.Content, &e.MoodScore, &e.CreatedAt)
 	if err != nil {
@@ -93,7 +96,7 @@ func (r *repository) GetByID(ctx context.Context, id, userID string) (*Entry, er
 func (r *repository) GetContent(ctx context.Context, id, userID string) (string, error) {
 	var content string
 	err := r.db.QueryRowContext(ctx, `
-		SELECT content FROM entries WHERE id = $1 AND user_id = $2`,
+		SELECT content FROM entries WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL`,
 		id, userID,
 	).Scan(&content)
 	if err != nil {
@@ -173,6 +176,68 @@ func (r *repository) DeleteAllByUserID(ctx context.Context, userID string) error
 		return fmt.Errorf("delete all entries: %w", err)
 	}
 	return nil
+}
+
+func (r *repository) SoftDelete(ctx context.Context, id, userID string) error {
+	res, err := r.db.ExecContext(ctx, `
+		UPDATE entries SET deleted_at = NOW()
+		WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL`,
+		id, userID,
+	)
+	if err != nil {
+		return fmt.Errorf("soft delete entry: %w", err)
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("soft delete entry rows affected: %w", err)
+	}
+	if n == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
+}
+
+func (r *repository) Restore(ctx context.Context, id, userID string) error {
+	res, err := r.db.ExecContext(ctx, `
+		UPDATE entries SET deleted_at = NULL
+		WHERE id = $1 AND user_id = $2 AND deleted_at IS NOT NULL`,
+		id, userID,
+	)
+	if err != nil {
+		return fmt.Errorf("restore entry: %w", err)
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("restore entry rows affected: %w", err)
+	}
+	if n == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
+}
+
+func (r *repository) ListTrash(ctx context.Context, userID string) ([]Entry, error) {
+	rows, err := r.db.QueryContext(ctx, `
+		SELECT id, user_id, LEFT(content, 120) AS content, mood_score, created_at, deleted_at
+		FROM entries
+		WHERE user_id = $1 AND deleted_at IS NOT NULL
+		ORDER BY deleted_at DESC`,
+		userID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("list trash: %w", err)
+	}
+	defer rows.Close()
+
+	entries := []Entry{}
+	for rows.Next() {
+		var e Entry
+		if err := rows.Scan(&e.ID, &e.UserID, &e.Content, &e.MoodScore, &e.CreatedAt, &e.DeletedAt); err != nil {
+			return nil, fmt.Errorf("scan trash entry: %w", err)
+		}
+		entries = append(entries, e)
+	}
+	return entries, rows.Err()
 }
 
 func (r *repository) LoadMessages(ctx context.Context, entryID string) ([]Message, error) {

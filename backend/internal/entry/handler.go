@@ -238,3 +238,67 @@ func (h *Handler) DeleteAll(w http.ResponseWriter, r *http.Request) {
 	h.audit.Log(r.Context(), &userID, audit.ActionDeleteEntries, audit.IPFromRequest(r), nil)
 	w.WriteHeader(http.StatusNoContent)
 }
+
+func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
+	userID, ok := r.Context().Value(middleware.UserIDKey).(string)
+	if !ok || userID == "" {
+		api.WriteError(w, api.ErrUnauthorized)
+		return
+	}
+	entryID := r.PathValue("id")
+
+	if err := h.svc.Delete(r.Context(), entryID, userID); err != nil {
+		if errors.Is(err, ErrNotFound) {
+			api.WriteError(w, api.ErrNotFound)
+			return
+		}
+		slog.Error("delete entry error", "error", err)
+		api.WriteError(w, api.ErrInternalServer)
+		return
+	}
+
+	h.audit.Log(r.Context(), &userID, audit.ActionDeleteEntry, audit.IPFromRequest(r), map[string]any{"entry_id": entryID})
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *Handler) Restore(w http.ResponseWriter, r *http.Request) {
+	userID, ok := r.Context().Value(middleware.UserIDKey).(string)
+	if !ok || userID == "" {
+		api.WriteError(w, api.ErrUnauthorized)
+		return
+	}
+	entryID := r.PathValue("id")
+
+	if err := h.svc.Restore(r.Context(), entryID, userID); err != nil {
+		if errors.Is(err, ErrNotFound) {
+			api.WriteError(w, api.ErrNotFound)
+			return
+		}
+		slog.Error("restore entry error", "error", err)
+		api.WriteError(w, api.ErrInternalServer)
+		return
+	}
+
+	h.audit.Log(r.Context(), &userID, audit.ActionRestoreEntry, audit.IPFromRequest(r), map[string]any{"entry_id": entryID})
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *Handler) ListTrash(w http.ResponseWriter, r *http.Request) {
+	userID, ok := r.Context().Value(middleware.UserIDKey).(string)
+	if !ok || userID == "" {
+		api.WriteError(w, api.ErrUnauthorized)
+		return
+	}
+
+	entries, err := h.svc.ListTrash(r.Context(), userID)
+	if err != nil {
+		slog.Error("list trash error", "error", err)
+		api.WriteError(w, api.ErrInternalServer)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
+		"entries": entries,
+	})
+}

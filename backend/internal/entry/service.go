@@ -42,6 +42,9 @@ type Service interface {
 	// When AI is disabled by the user: returns (nil, nil, false, ErrAIDisabled).
 	AddMessage(ctx context.Context, entryID, userID, content string) (*Message, *Message, bool, error)
 	DeleteAll(ctx context.Context, userID string) error
+	Delete(ctx context.Context, id, userID string) error
+	Restore(ctx context.Context, id, userID string) error
+	ListTrash(ctx context.Context, userID string) ([]Entry, error)
 }
 
 type service struct {
@@ -184,4 +187,32 @@ func (s *service) DeleteAll(ctx context.Context, userID string) error {
 		return fmt.Errorf("delete all entries: %w", err)
 	}
 	return nil
+}
+
+func (s *service) Delete(ctx context.Context, id, userID string) error {
+	if err := s.repo.SoftDelete(ctx, id, userID); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrNotFound
+		}
+		return fmt.Errorf("delete entry: %w", err)
+	}
+	return nil
+}
+
+func (s *service) Restore(ctx context.Context, id, userID string) error {
+	if err := s.repo.Restore(ctx, id, userID); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrNotFound
+		}
+		return fmt.Errorf("restore entry: %w", err)
+	}
+	return nil
+}
+
+func (s *service) ListTrash(ctx context.Context, userID string) ([]Entry, error) {
+	entries, err := s.repo.ListTrash(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("list trash: %w", err)
+	}
+	return entries, nil
 }

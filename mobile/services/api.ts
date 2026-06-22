@@ -176,6 +176,7 @@ export interface Entry {
   content: string;
   mood_score?: number;
   created_at: string;
+  deleted_at?: string;
   messages?: Message[];
 }
 
@@ -350,6 +351,15 @@ export const api = {
 
   deleteEntries: () =>
     request<void>('/api/entries', { method: 'DELETE' }),
+
+  deleteEntry: (id: string) =>
+    request<void>(`/api/entries/${id}`, { method: 'DELETE' }),
+
+  restoreEntry: (id: string) =>
+    request<void>(`/api/entries/${id}/restore`, { method: 'POST' }),
+
+  getTrash: () =>
+    request<{ entries: Entry[] }>('/api/entries/trash'),
 
   deleteAccount: () =>
     request<void>('/api/auth/me', { method: 'DELETE' }),

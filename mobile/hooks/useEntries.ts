@@ -11,6 +11,7 @@ interface EntriesState {
   fetchEntries: () => Promise<void>;
   loadMore: () => Promise<void>;
   createEntry: (content: string, moodScore?: number) => Promise<Entry>;
+  removeEntry: (id: string) => void;
 }
 
 export function useEntries(): EntriesState {
@@ -78,5 +79,9 @@ export function useEntries(): EntriesState {
     }
   }, [updateUser]);
 
-  return { entries, loading, error, isOffline, hasMore, fetchEntries, loadMore, createEntry };
+  const removeEntry = useCallback((id: string) => {
+    setEntries((prev) => prev.filter((e) => e.id !== id));
+  }, []);
+
+  return { entries, loading, error, isOffline, hasMore, fetchEntries, loadMore, createEntry, removeEntry };
 }

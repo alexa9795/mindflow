@@ -427,6 +427,15 @@ export default function SettingsScreen() {
 
         <Pressable
           style={[styles.actionRow, { backgroundColor: theme.surface, borderColor: theme.border }]}
+          onPress={() => router.push('/trash')}
+        >
+          <Text style={[styles.actionText, { color: theme.text, fontFamily: FONTS.modern }]}>
+            Trash
+          </Text>
+        </Pressable>
+
+        <Pressable
+          style={[styles.actionRow, { backgroundColor: theme.surface, borderColor: theme.border }]}
           onPress={handleDeleteEntries}
         >
           <Text style={[styles.actionText, { color: theme.destructive, fontFamily: FONTS.modern }]}>

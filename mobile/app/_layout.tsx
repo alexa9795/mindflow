@@ -21,6 +21,7 @@ import { Slot, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect } from 'react';
 import { ActivityIndicator, View } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SettingsProvider, useSettings } from '../context/SettingsContext';
 import { AuthProvider, useAuth } from '../hooks/useAuth';
 
@@ -86,13 +87,15 @@ export default function RootLayout() {
   }
 
   return (
-    <SettingsProvider>
-      <AuthProvider>
-        <ThemedStatusBar />
-        <AuthGuard>
-          <Slot />
-        </AuthGuard>
-      </AuthProvider>
-    </SettingsProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SettingsProvider>
+        <AuthProvider>
+          <ThemedStatusBar />
+          <AuthGuard>
+            <Slot />
+          </AuthGuard>
+        </AuthProvider>
+      </SettingsProvider>
+    </GestureHandlerRootView>
   );
 }

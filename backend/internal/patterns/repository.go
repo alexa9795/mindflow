@@ -33,6 +33,7 @@ func ComputePatterns(ctx context.Context, db *sql.DB, userID string) error {
 				EXTRACT(HOUR FROM created_at AT TIME ZONE 'UTC')::int AS hour
 			FROM entries
 			WHERE user_id = $1
+			  AND deleted_at IS NULL
 			  AND created_at > NOW() - INTERVAL '90 days'
 			GROUP BY day_name, hour
 		),
@@ -47,6 +48,7 @@ func ComputePatterns(ctx context.Context, db *sql.DB, userID string) error {
 				COUNT(*)::int AS mood_count
 			FROM entries
 			WHERE user_id = $1
+			  AND deleted_at IS NULL
 			  AND created_at > NOW() - INTERVAL '60 days'
 			  AND mood_score IS NOT NULL
 		)

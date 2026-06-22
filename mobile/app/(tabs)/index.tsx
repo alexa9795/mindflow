@@ -2,6 +2,7 @@ import { useRouter } from 'expo-router';
 import React, { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   StyleSheet,
   Text,
@@ -26,9 +27,19 @@ export default function HomeScreen() {
   const router = useRouter();
   const { theme } = useSettings();
   const insets = useSafeAreaInsets();
-  const { entries, loading, isOffline, fetchEntries, loadMore, hasMore } = useEntries();
+  const { entries, loading, isOffline, fetchEntries, loadMore, hasMore, removeEntry } = useEntries();
   const [streak, setStreak] = useState<number>(0);
   const [quote, setQuote] = useState<string>('');
+
+  async function handleDeleteEntry(id: string) {
+    removeEntry(id);
+    try {
+      await api.deleteEntry(id);
+    } catch {
+      Alert.alert('Error', 'Could not delete entry. Please try again.');
+      void fetchEntries();
+    }
+  }
 
   useFocusEffect(
     useCallback(() => {
@@ -95,7 +106,9 @@ export default function HomeScreen() {
               </Text>
             </View>
           }
-          renderItem={({ item, index }) => <EntryCard entry={item} index={index} />}
+          renderItem={({ item, index }) => (
+            <EntryCard entry={item} index={index} onDelete={handleDeleteEntry} />
+          )}
           onEndReached={hasMore ? () => void loadMore() : undefined}
           onEndReachedThreshold={0.3}
           ListFooterComponent={

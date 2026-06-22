@@ -89,7 +89,7 @@ func (r *repository) GetInsightsData(ctx context.Context, userID string) (*Insig
 			SELECT mood_score,
 			       (created_at AT TIME ZONE 'UTC')::date AS entry_date
 			FROM entries
-			WHERE user_id = $1
+			WHERE user_id = $1 AND deleted_at IS NULL
 		),
 		totals AS (
 			SELECT COUNT(*)::int AS total_entries FROM base

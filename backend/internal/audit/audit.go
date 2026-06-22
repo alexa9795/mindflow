@@ -38,6 +38,8 @@ const (
 	ActionTermsAccepted     Action = "account.terms_accepted"
 	ActionDeleteAccount     Action = "account.delete"
 	ActionDeleteEntries     Action = "account.delete_entries"
+	ActionDeleteEntry       Action = "entry.delete"
+	ActionRestoreEntry      Action = "entry.restore"
 
 	// Subscription actions.
 	ActionTrialActivated Action = "subscription.trial_activated"

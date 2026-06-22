@@ -164,7 +164,10 @@ func main() {
 	mux.HandleFunc("GET /api/entries", authMW(entryHandler.List))
 	mux.HandleFunc("GET /api/export", authMW(exportHandler.Export))
 	mux.HandleFunc("DELETE /api/entries", authMW(entryHandler.DeleteAll))
+	mux.HandleFunc("GET /api/entries/trash", authMW(entryHandler.ListTrash))
 	mux.HandleFunc("GET /api/entries/{id}", authMW(entryHandler.Get))
+	mux.HandleFunc("DELETE /api/entries/{id}", authMW(entryHandler.Delete))
+	mux.HandleFunc("POST /api/entries/{id}/restore", authMW(entryHandler.Restore))
 	// AI endpoints — auth + per-user rate limit + body size.
 	mux.Handle("POST /api/entries/{id}/respond", chain(
 		http.HandlerFunc(entryHandler.Respond),
@@ -208,6 +211,36 @@ func main() {
 				}
 				cancel()
 				revokeCache.Cleanup()
+			}
+		}
+	}()
+
+	// Background job: permanently purge entries that have been in the trash
+	// (soft-deleted) for more than 30 days. Runs once at startup, then daily.
+	go func() {
+		purgeOldTrash := func() {
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+			res, err := db.DB.ExecContext(ctx,
+				`DELETE FROM entries WHERE deleted_at IS NOT NULL AND deleted_at < NOW() - INTERVAL '30 days'`)
+			if err != nil {
+				slog.Error("failed to purge old trash entries", "error", err)
+				return
+			}
+			if n, err := res.RowsAffected(); err == nil && n > 0 {
+				slog.Info("purged old trash entries", "count", n)
+			}
+		}
+
+		purgeOldTrash()
+		ticker := time.NewTicker(24 * time.Hour)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-appCtx.Done():
+				return
+			case <-ticker.C:
+				purgeOldTrash()
 			}
 		}
 	}()

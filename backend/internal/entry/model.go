@@ -11,12 +11,13 @@ const (
 )
 
 type Entry struct {
-	ID        string    `json:"id"`
-	UserID    string    `json:"-"`
-	Content   string    `json:"content"`
-	MoodScore *int      `json:"mood_score,omitempty"`
-	CreatedAt time.Time `json:"created_at"`
-	Messages  []Message `json:"messages,omitempty"`
+	ID        string     `json:"id"`
+	UserID    string     `json:"-"`
+	Content   string     `json:"content"`
+	MoodScore *int       `json:"mood_score,omitempty"`
+	CreatedAt time.Time  `json:"created_at"`
+	DeletedAt *time.Time `json:"deleted_at,omitempty"`
+	Messages  []Message  `json:"messages,omitempty"`
 }
 
 type Message struct {
