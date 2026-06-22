@@ -1,10 +1,73 @@
-import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
-import { MOOD_EMOJIS, MOOD_SETS } from '../constants/moods';
+import React, { useEffect } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
+import { MOOD_EMOJIS, MOOD_SETS, type MoodOption } from '../constants/moods';
 import { FONTS } from '../constants/fonts';
+import { DURATION, RADIUS } from '../constants/tokens';
 import { tapLight } from '../constants/haptics';
 import { useSettings } from '../context/SettingsContext';
-import PressableScale from './PressableScale';
+import type { Theme } from '../constants/themes';
+
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
+interface MoodChipProps {
+  mood: MoodOption;
+  emoji: string;
+  isActive: boolean;
+  theme: Theme;
+  onPress: () => void;
+}
+
+function MoodChip({ mood, emoji, isActive, theme, onPress }: MoodChipProps) {
+  const moodColor = theme.mood[mood.score as 1 | 2 | 3 | 4 | 5];
+  const select = useSharedValue(isActive ? 1 : 0);
+  const press = useSharedValue(1);
+
+  useEffect(() => {
+    select.value = withSpring(isActive ? 1 : 0, { damping: 11, stiffness: 220 });
+  }, [isActive, select]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: press.value * (1 + select.value * 0.12) }],
+  }));
+
+  return (
+    <AnimatedPressable
+      onPressIn={() => {
+        press.value = withTiming(0.9, { duration: DURATION.fast });
+      }}
+      onPressOut={() => {
+        press.value = withTiming(1, { duration: DURATION.fast });
+      }}
+      onPress={() => {
+        tapLight();
+        onPress();
+      }}
+      accessibilityLabel={mood.label}
+      style={[
+        styles.btn,
+        { backgroundColor: theme.surface, borderColor: theme.border },
+        isActive && { borderColor: moodColor, backgroundColor: moodColor + '22' },
+        animatedStyle,
+      ]}
+    >
+      <Text style={styles.emoji}>{emoji}</Text>
+      <Text
+        style={[
+          styles.label,
+          { color: isActive ? moodColor : theme.textSecondary, fontFamily: FONTS.modern },
+        ]}
+      >
+        {mood.label}
+      </Text>
+    </AnimatedPressable>
+  );
+}
 
 interface MoodSelectorProps {
   selected: number | undefined;
@@ -20,32 +83,15 @@ export default function MoodSelector({ selected, onSelect }: MoodSelectorProps) 
     <View style={styles.row}>
       {moodSet.moods.map((mood, index) => {
         const isActive = selected === mood.score;
-        const moodColor = theme.mood[mood.score as 1 | 2 | 3 | 4 | 5];
         return (
-          <PressableScale
+          <MoodChip
             key={mood.score}
-            activeScale={0.9}
-            style={[
-              styles.btn,
-              { backgroundColor: theme.surface, borderColor: theme.border },
-              isActive && {
-                borderColor: moodColor,
-                backgroundColor: moodColor + '22',
-                transform: [{ scale: 1.12 }],
-              },
-            ]}
-            onPress={() => {
-              tapLight();
-              onSelect(isActive ? undefined : mood.score);
-            }}
-            accessibilityLabel={mood.label}
-          >
-            {/* Phase 2: when mood.imageSource is set, render <Image> instead of emoji */}
-            <Text style={styles.emoji}>{emojis[index]}</Text>
-            <Text style={[styles.label, { color: isActive ? moodColor : theme.textSecondary, fontFamily: FONTS.modern }]}>
-              {mood.label}
-            </Text>
-          </PressableScale>
+            mood={mood}
+            emoji={emojis[index]}
+            isActive={isActive}
+            theme={theme}
+            onPress={() => onSelect(isActive ? undefined : mood.score)}
+          />
         );
       })}
     </View>
@@ -63,7 +109,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     paddingVertical: 10,
-    borderRadius: 12,
+    borderRadius: RADIUS.md,
     borderWidth: 1.5,
     gap: 4,
   },

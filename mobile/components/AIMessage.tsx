@@ -1,5 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { COMPANION_NAME } from '../constants/config';
 import { FONTS } from '../constants/fonts';
 import { useSettings } from '../context/SettingsContext';
 import type { Message } from '../services/api';
@@ -28,10 +29,17 @@ export default function AIMessage({ message }: AIMessageProps) {
 
   if (message.role === 'assistant') {
     return (
-      <View style={[styles.aiBubble, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-        <Text style={[styles.text, { color: theme.text, fontFamily: FONTS.modern }]}>
-          {stripMarkdown(message.content)}
-        </Text>
+      <View style={styles.aiRow}>
+        <View style={[styles.avatar, { backgroundColor: theme.accent }]}>
+          <Text style={[styles.avatarText, { color: theme.background }]}>
+            {COMPANION_NAME.charAt(0)}
+          </Text>
+        </View>
+        <View style={[styles.aiBubble, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+          <Text style={[styles.text, { color: theme.text, fontFamily: FONTS.modern }]}>
+            {stripMarkdown(message.content)}
+          </Text>
+        </View>
       </View>
     );
   }
@@ -46,14 +54,29 @@ export default function AIMessage({ message }: AIMessageProps) {
 }
 
 const styles = StyleSheet.create({
-  aiBubble: {
+  aiRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
     alignSelf: 'flex-start',
+    gap: 8,
+    maxWidth: '90%',
+    marginBottom: 8,
+  },
+  avatar: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 2,
+  },
+  avatarText: { fontSize: 13, fontWeight: '700' },
+  aiBubble: {
+    flexShrink: 1,
     borderRadius: 18,
     borderBottomLeftRadius: 4,
     borderWidth: 1,
     padding: 14,
-    maxWidth: '85%',
-    marginBottom: 8,
   },
   userBubble: {
     alignSelf: 'flex-end',

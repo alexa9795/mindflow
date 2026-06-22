@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -7,24 +7,39 @@ import {
   Text,
   View,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import EntryCard from '../../components/EntryCard';
 import OfflineBanner from '../../components/OfflineBanner';
 import PressableScale from '../../components/PressableScale';
+import { SkeletonCard } from '../../components/Skeleton';
 import ThemedView from '../../components/ThemedView';
 import { FONTS } from '../../constants/fonts';
-import { ELEVATION } from '../../constants/tokens';
+import { ELEVATION, RADIUS, SPACING } from '../../constants/tokens';
 import { useSettings } from '../../context/SettingsContext';
 import { useEntries } from '../../hooks/useEntries';
 import { useFocusEffect } from 'expo-router';
+import { api } from '../../services/api';
+
+function greeting(): string {
+  const h = new Date().getHours();
+  if (h < 12) return 'Good morning';
+  if (h < 18) return 'Good afternoon';
+  return 'Good evening';
+}
 
 export default function HomeScreen() {
   const router = useRouter();
   const { theme } = useSettings();
   const { entries, loading, isOffline, fetchEntries, loadMore, hasMore } = useEntries();
+  const [streak, setStreak] = useState<number>(0);
 
   useFocusEffect(
     useCallback(() => {
       void fetchEntries();
+      // Reuse the insights endpoint purely for the header streak chip.
+      api.getInsights()
+        .then((data) => setStreak(data.current_streak))
+        .catch(() => {/* header chip is non-critical */});
     }, [fetchEntries]),
   );
 
@@ -33,14 +48,31 @@ export default function HomeScreen() {
       <OfflineBanner visible={isOffline} />
 
       <View style={[styles.header, { backgroundColor: theme.surface, borderBottomColor: theme.border }]}>
-        <Text style={[styles.title, { color: theme.text, fontFamily: FONTS.modern }]}>
-          Dear Journal
-        </Text>
+        <View style={styles.headerTextCol}>
+          <Text style={[styles.greeting, { color: theme.textSecondary, fontFamily: FONTS.modern }]}>
+            {greeting()}
+          </Text>
+          <Text style={[styles.title, { color: theme.text, fontFamily: FONTS.modern }]}>
+            Dear Journal
+          </Text>
+        </View>
+        {streak > 0 && (
+          <View style={[styles.streakChip, { backgroundColor: theme.accent + '1A', borderColor: theme.accent + '40' }]}>
+            <Text style={styles.streakEmoji}>🔥</Text>
+            <Text style={[styles.streakText, { color: theme.accent, fontFamily: FONTS.modern }]}>
+              {streak} day{streak === 1 ? '' : 's'}
+            </Text>
+          </View>
+        )}
       </View>
 
       {loading && entries.length === 0 ? (
-        <View style={styles.center}>
-          <ActivityIndicator color={theme.accent} />
+        <View style={styles.skeletonList}>
+          {Array.from({ length: 5 }).map((_, idx) => (
+            <View key={idx} style={{ marginBottom: SPACING.md }}>
+              <SkeletonCard />
+            </View>
+          ))}
         </View>
       ) : (
         <FlatList
@@ -53,10 +85,10 @@ export default function HomeScreen() {
             <View style={styles.empty}>
               <Text style={styles.emptyIcon}>✍️</Text>
               <Text style={[styles.emptyTitle, { color: theme.text, fontFamily: FONTS.modern }]}>
-                Start your first entry
+                Your story starts here
               </Text>
               <Text style={[styles.emptySubtitle, { color: theme.textSecondary, fontFamily: FONTS.modern }]}>
-                Tap + to begin writing
+                Tap + to write your first entry
               </Text>
             </View>
           }
@@ -80,7 +112,7 @@ export default function HomeScreen() {
         accessibilityLabel="New entry"
         haptic
       >
-        <Text style={[styles.fabText, { color: theme.background }]}>＋</Text>
+        <Ionicons name="add" size={30} color={theme.background} />
       </PressableScale>
     </ThemedView>
   );
@@ -88,13 +120,30 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingTop: 16,
     paddingBottom: 12,
     paddingHorizontal: 20,
     borderBottomWidth: 1,
   },
+  headerTextCol: { flex: 1 },
+  greeting: { fontSize: 13, marginBottom: 2 },
   title: { fontSize: 22, fontWeight: '700' },
+  streakChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: 6,
+    borderRadius: RADIUS.pill,
+    borderWidth: 1,
+  },
+  streakEmoji: { fontSize: 14 },
+  streakText: { fontSize: 13, fontWeight: '700' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  skeletonList: { padding: 16 },
   centerContent: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   listContent: { padding: 16, paddingBottom: 100 },
   empty: { alignItems: 'center', paddingTop: 80 },
@@ -112,5 +161,4 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     ...ELEVATION.floating,
   },
-  fabText: { fontSize: 28, lineHeight: 32 },
 });
