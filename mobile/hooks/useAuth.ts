@@ -3,6 +3,7 @@ import * as SecureStore from 'expo-secure-store';
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { Alert } from 'react-native';
 import { api, setToken, setRefreshToken, setUnauthorizedHandler, setTokensRefreshedHandler, User } from '../services/api';
+import { initPurchases } from '../services/purchases';
 
 const TOKEN_KEY = 'echo_jwt';
 const REFRESH_TOKEN_KEY = 'echo_refresh_jwt';
@@ -47,6 +48,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     setUnauthorizedHandler(() => void doLogout());
   }, [doLogout]);
+
+  // Configure RevenueCat whenever a user becomes authenticated (login, register,
+  // or silent rehydration on cold start). Keyed on the user id so it re-runs only
+  // when the identity changes.
+  const userId = currentUser?.id;
+  useEffect(() => {
+    if (userId) initPurchases(userId);
+  }, [userId]);
 
   // Persist rotated tokens to SecureStore so they survive app restarts.
   useEffect(() => {

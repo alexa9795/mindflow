@@ -101,7 +101,7 @@ export default function NewEntryScreen() {
               <Text style={[styles.limitText, { color: theme.textSecondary, fontFamily: FONTS.modern }]}>
                 You've used all 10 free entries this month.{' '}
               </Text>
-              <Pressable onPress={() => router.push('/(tabs)/settings')}>
+              <Pressable onPress={() => router.push('/paywall')}>
                 <Text style={[styles.upgradeLink, { color: theme.accent, fontFamily: FONTS.modern }]}>
                   Upgrade
                 </Text>

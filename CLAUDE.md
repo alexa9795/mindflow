@@ -50,6 +50,11 @@
 - [ ] Restrict CORS Access-Control-Allow-Origin from "*" to the
       actual Railway backend URL in middleware/cors.go
 - [ ] Set ANTHROPIC_API_KEY env var
+- [ ] Set REVENUECAT_WEBHOOK_SECRET env var (backend; validates the
+      Authorization header on POST /api/webhooks/revenuecat)
+- [ ] Set EXPO_PUBLIC_REVENUECAT_IOS_KEY and
+      EXPO_PUBLIC_REVENUECAT_ANDROID_KEY (mobile; RevenueCat public
+      API keys, selected by Platform.OS in services/purchases.ts)
 - [ ] Set DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME for
       Railway Postgres instance
 - [ ] Review trigger word log rotation (logs/triggers.log will

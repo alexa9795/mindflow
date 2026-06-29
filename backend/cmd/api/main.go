@@ -24,6 +24,7 @@ import (
 	"github.com/alexa9795/mindflow/internal/middleware"
 	"github.com/alexa9795/mindflow/internal/patterns"
 	"github.com/alexa9795/mindflow/internal/retention"
+	"github.com/alexa9795/mindflow/internal/revenuecat"
 	"github.com/alexa9795/mindflow/internal/subscription"
 	"github.com/joho/godotenv"
 	"golang.org/x/time/rate"
@@ -90,6 +91,9 @@ func main() {
 	insightsSvc := insights.NewService(insightsRepo)
 	insightsHandler := insights.NewHandler(insightsSvc)
 
+	rcRepo := revenuecat.NewRepository(db.DB)
+	rcHandler := revenuecat.NewHandler(rcRepo)
+
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
@@ -115,11 +119,11 @@ func main() {
 	// Auth middleware with token revocation checking via authRepo.
 	authMW := middleware.Auth(authRepo, auditLogger, revokeCache)
 
-	loginLimit    := middleware.RateLimitWithMap(loginLimiters, rate.Every(6*time.Second), 3, auditLogger)     // 10 req/min, burst 3
+	loginLimit := middleware.RateLimitWithMap(loginLimiters, rate.Every(6*time.Second), 3, auditLogger)        // 10 req/min, burst 3
 	registerLimit := middleware.RateLimitWithMap(registerLimiters, rate.Every(12*time.Second), 2, auditLogger) // 5 req/min, burst 2
-	resetLimit    := middleware.RateLimitWithMap(resetLimiters, rate.Every(20*time.Minute), 3, auditLogger)    // 3 req/hour, burst 3
-	refreshLimit  := middleware.RateLimitWithMap(refreshLimiters, rate.Every(3*time.Second), 5, auditLogger)   // 20 req/min, burst 5
-	aiLimit       := middleware.AIRateLimit(aiLimiters, auditLogger)
+	resetLimit := middleware.RateLimitWithMap(resetLimiters, rate.Every(20*time.Minute), 3, auditLogger)       // 3 req/hour, burst 3
+	refreshLimit := middleware.RateLimitWithMap(refreshLimiters, rate.Every(3*time.Second), 5, auditLogger)    // 20 req/min, burst 5
+	aiLimit := middleware.AIRateLimit(aiLimiters, auditLogger)
 
 	subCheck := middleware.CheckSubscription(subSvc)
 
@@ -184,6 +188,9 @@ func main() {
 
 	// Insights route.
 	mux.HandleFunc("GET /api/insights", authMW(insightsHandler.GetInsights))
+
+	// RevenueCat webhook — no auth middleware; validates its own shared secret.
+	mux.Handle("POST /api/webhooks/revenuecat", http.HandlerFunc(rcHandler.Webhook))
 
 	// Shutdown context — used to stop background jobs cleanly.
 	appCtx, appCancel := context.WithCancel(context.Background())

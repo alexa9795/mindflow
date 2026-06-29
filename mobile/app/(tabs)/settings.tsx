@@ -17,6 +17,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ThemedView from '../../components/ThemedView';
+import { COMPANION_NAME } from '../../constants/config';
 import { FONT_OPTIONS, FONTS, FontKey, scaledFontSize } from '../../constants/fonts';
 import { MOOD_EMOJIS, MOOD_SETS } from '../../constants/moods';
 import {
@@ -403,15 +404,25 @@ export default function SettingsScreen() {
         </View>
 
         {currentUser?.subscription?.tier === 'free' && (
-          <Pressable
-            style={[styles.actionRow, { backgroundColor: theme.surface, borderColor: theme.border }]}
-            onPress={() => void handleActivateTrial()}
-            disabled={trialLoading}
-          >
-            <Text style={[styles.actionText, { color: theme.accent, fontFamily: FONTS.modern }]}>
-              {trialLoading ? 'Activating…' : 'Free trial (7 days)'}
-            </Text>
-          </Pressable>
+          <>
+            <Pressable
+              style={[styles.actionRow, { backgroundColor: theme.surface, borderColor: theme.border }]}
+              onPress={() => router.push('/paywall')}
+            >
+              <Text style={[styles.actionText, { color: theme.accent, fontFamily: FONTS.modern }]}>
+                {`Upgrade to ${COMPANION_NAME} Pro`}
+              </Text>
+            </Pressable>
+            <Pressable
+              style={[styles.actionRow, { backgroundColor: theme.surface, borderColor: theme.border }]}
+              onPress={() => void handleActivateTrial()}
+              disabled={trialLoading}
+            >
+              <Text style={[styles.actionText, { color: theme.accent, fontFamily: FONTS.modern }]}>
+                {trialLoading ? 'Activating…' : 'Free trial (7 days)'}
+              </Text>
+            </Pressable>
+          </>
         )}
 
         <Pressable
