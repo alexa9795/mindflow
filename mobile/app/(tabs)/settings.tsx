@@ -17,7 +17,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ThemedView from '../../components/ThemedView';
-import { COMPANION_NAME } from '../../constants/config';
+import { APP_NAME } from '../../constants/config';
 import { FONT_OPTIONS, FONTS, FontKey, scaledFontSize } from '../../constants/fonts';
 import { MOOD_EMOJIS, MOOD_SETS } from '../../constants/moods';
 import {
@@ -410,7 +410,7 @@ export default function SettingsScreen() {
               onPress={() => router.push('/paywall')}
             >
               <Text style={[styles.actionText, { color: theme.accent, fontFamily: FONTS.modern }]}>
-                {`Upgrade to ${COMPANION_NAME} Pro`}
+                {`Upgrade to ${APP_NAME} Pro`}
               </Text>
             </Pressable>
             <Pressable

@@ -2,7 +2,7 @@
   "expo": {
     "name": "MindFlow",
     "slug": "mindflow",
-    "version": "0.1.0",
+    "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "icon": "./assets/icon.png",
@@ -16,7 +16,8 @@
       "bundleIdentifier": "com.antie.mindflow",
       "buildNumber": "1",
       "infoPlist": {
-        "NSFaceIDUsageDescription": "Use Face ID to sign in to MindFlow quickly and securely."
+        "NSFaceIDUsageDescription": "Use Face ID to sign in to MindFlow quickly and securely.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {

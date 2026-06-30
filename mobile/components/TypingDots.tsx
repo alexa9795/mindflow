@@ -37,7 +37,7 @@ function Dot({ color, delay }: { color: string; delay: number }) {
   return <Animated.View style={[styles.dot, { backgroundColor: color }, animatedStyle]} />;
 }
 
-/** Three pulsing dots — used as Echo's "thinking" indicator. */
+/** Three pulsing dots — used as the AI "thinking" indicator. */
 export default function TypingDots({ color }: TypingDotsProps) {
   return (
     <View style={styles.row}>

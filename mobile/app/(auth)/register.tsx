@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   ImageBackground,
   KeyboardAvoidingView,
+  Linking,
   Platform,
   Pressable,
   ScrollView,
@@ -16,6 +17,7 @@ import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../hooks/useAuth';
+import { PRIVACY_POLICY_URL, TERMS_OF_SERVICE_URL } from '../../constants/config';
 import { FONTS } from '../../constants/fonts';
 import { ApiError, NetworkError } from '../../services/api';
 import EchoLogo from '../../components/EchoLogo';
@@ -113,7 +115,7 @@ export default function RegisterScreen() {
         <View style={[styles.identityZone, { height: zone2Height }]}>
           <View style={styles.logoRow}>
             <EchoLogo color="#2C2418" width={220} hideText />
-            <Text style={styles.wordmark}>Echo</Text>
+            <Text style={styles.wordmark}>MindFlow</Text>
           </View>
           <Text style={styles.tagline}>your private space to think</Text>
         </View>
@@ -186,7 +188,13 @@ export default function RegisterScreen() {
               I agree that my journal entries — which may include sensitive
               information about my wellbeing — are stored so I can use MindFlow.
               See our{' '}
-              <Text style={styles.consentLink}>Privacy Policy</Text>.
+              <Text
+                style={styles.consentLink}
+                onPress={() => void Linking.openURL(PRIVACY_POLICY_URL)}
+              >
+                Privacy Policy
+              </Text>
+              .
             </Text>
           </Pressable>
 
@@ -203,7 +211,13 @@ export default function RegisterScreen() {
             </View>
             <Text style={styles.consentText}>
               I have read and accept the{' '}
-              <Text style={styles.consentLink}>Terms of Service</Text>.
+              <Text
+                style={styles.consentLink}
+                onPress={() => void Linking.openURL(TERMS_OF_SERVICE_URL)}
+              >
+                Terms of Service
+              </Text>
+              .
             </Text>
           </Pressable>
 

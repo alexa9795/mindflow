@@ -1,7 +1,10 @@
-# Echo — AI-powered mobile journaling app
+# MindFlow — AI-powered mobile journaling app
 
-> App name: **Echo**. AI companion name: **Echo** (same — intentional).
-> GitHub repo and local folder remain `mindflow` for continuity.
+> App name: **MindFlow** (used everywhere — app, companion, store listing,
+> legal docs). The domain is `mindflowjournal.app`.
+> Note: some internal component/file names still use the old "Echo" name
+> (e.g. `EchoLogo`, `EchoConsentModal`) — these are not user-facing and are
+> a non-blocking cleanup item.
 
 ## Stack
 - Backend: Go 1.22+ (REST API) — golang.org/x/crypto pinned to v0.31.0 for Go 1.22 compatibility

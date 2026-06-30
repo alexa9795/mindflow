@@ -24,7 +24,7 @@ const POINTS: { icon: keyof typeof Ionicons.glyphMap; title: string; body: strin
   {
     icon: 'sparkles-outline',
     title: 'A companion that listens',
-    body: 'Echo reads between the lines and reflects back what it notices, gently.',
+    body: 'MindFlow reads between the lines and reflects back what it notices, gently.',
   },
   {
     icon: 'trending-up-outline',
@@ -62,14 +62,14 @@ export default function WelcomeScreen() {
         <View style={styles.body}>
           <View style={styles.logoRow}>
             <EchoLogo color="#2C2418" width={180} hideText />
-            <Text style={styles.wordmark}>Echo</Text>
+            <Text style={styles.wordmark}>MindFlow</Text>
           </View>
 
           <Text style={styles.greeting}>
             Welcome{currentUser?.name ? `, ${currentUser.name.split(' ')[0]}` : ''}.
           </Text>
           <Text style={styles.subgreeting}>
-            Echo is your private journal with a companion that helps you notice
+            MindFlow is your private journal with a companion that helps you notice
             what you might miss on your own.
           </Text>
 

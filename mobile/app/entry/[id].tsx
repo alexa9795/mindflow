@@ -99,7 +99,7 @@ export default function EntryDetailScreen() {
       }
       setMessages((prev) => [...prev, ...newMsgs]);
       if (res.ai_error) {
-        setError(res.ai_error_message ?? 'Echo is unavailable right now. Your message was saved.');
+        setError(res.ai_error_message ?? 'MindFlow is unavailable right now. Your message was saved.');
       }
     } catch (e: unknown) {
       if (e instanceof NetworkError) {
@@ -136,7 +136,7 @@ export default function EntryDetailScreen() {
         setAiLoading(false);
       }
     } catch {
-      setError('Could not enable Echo. Please try again.');
+      setError('Could not enable AI reflections. Please try again.');
     } finally {
       setEnablingConsent(false);
     }

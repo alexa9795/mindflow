@@ -85,7 +85,7 @@ export default function LoginScreen() {
         <View style={[styles.identityZone, { height: zone2Height }]}>
           <View style={styles.logoRow}>
             <EchoLogo color="#2C2418" width={220} hideText />
-            <Text style={styles.wordmark}>Echo</Text>
+            <Text style={styles.wordmark}>MindFlow</Text>
           </View>
           <Text style={styles.tagline}>your private space to think</Text>
         </View>

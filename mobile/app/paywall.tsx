@@ -12,7 +12,7 @@ import {
 import type { PurchasesPackage } from 'react-native-purchases';
 import PressableScale from '../components/PressableScale';
 import ThemedView from '../components/ThemedView';
-import { COMPANION_NAME } from '../constants/config';
+import { APP_NAME, COMPANION_NAME } from '../constants/config';
 import { FONTS } from '../constants/fonts';
 import { notifySuccess } from '../constants/haptics';
 import { useSettings } from '../context/SettingsContext';
@@ -105,7 +105,7 @@ export default function PaywallScreen() {
           </Text>
         </Pressable>
         <Text style={[styles.headerTitle, { color: theme.text, fontFamily: FONTS.modern }]}>
-          {COMPANION_NAME} Pro
+          {APP_NAME} Pro
         </Text>
         <View style={{ width: 52 }} />
       </View>
