@@ -18,7 +18,7 @@ import { useRouter } from 'expo-router';
 import { useAuth } from '../../hooks/useAuth';
 import { FONTS } from '../../constants/fonts';
 import { ApiError, NetworkError } from '../../services/api';
-import EchoLogo from '../../components/EchoLogo';
+import MindFlowLogo from '../../components/MindFlowLogo';
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -84,7 +84,7 @@ export default function LoginScreen() {
         {/* Zone 2 — Identity */}
         <View style={[styles.identityZone, { height: zone2Height }]}>
           <View style={styles.logoRow}>
-            <EchoLogo color="#2C2418" width={220} hideText />
+            <MindFlowLogo color="#2C2418" width={220} hideText />
             <Text style={styles.wordmark}>MindFlow</Text>
           </View>
           <Text style={styles.tagline}>your private space to think</Text>

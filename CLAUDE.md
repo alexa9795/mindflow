@@ -2,9 +2,6 @@
 
 > App name: **MindFlow** (used everywhere — app, companion, store listing,
 > legal docs). The domain is `mindflowjournal.app`.
-> Note: some internal component/file names still use the old "Echo" name
-> (e.g. `EchoLogo`, `EchoConsentModal`) — these are not user-facing and are
-> a non-blocking cleanup item.
 
 ## Stack
 - Backend: Go 1.22+ (REST API) — golang.org/x/crypto pinned to v0.31.0 for Go 1.22 compatibility

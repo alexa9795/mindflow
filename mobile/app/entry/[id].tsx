@@ -12,7 +12,7 @@ import {
   View,
 } from 'react-native';
 import AIMessage from '../../components/AIMessage';
-import EchoConsentModal from '../../components/EchoConsentModal';
+import MindFlowConsentModal from '../../components/MindFlowConsentModal';
 import OfflineBanner from '../../components/OfflineBanner';
 import PressableScale from '../../components/PressableScale';
 import ThemedView from '../../components/ThemedView';
@@ -279,7 +279,7 @@ export default function EntryDetailScreen() {
         )}
       </KeyboardAvoidingView>
 
-      <EchoConsentModal
+      <MindFlowConsentModal
         visible={showConsentModal}
         enabling={enablingConsent}
         onEnable={() => void handleConsentEnable()}

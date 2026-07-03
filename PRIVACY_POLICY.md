@@ -6,7 +6,7 @@
 # Privacy Policy — MindFlow
 
 > **App name:** MindFlow (this is the name users see in the App Store and
-> Google Play). **Echo** is the name of the in-app AI companion feature —
+> Google Play). The in-app AI companion is a feature of MindFlow —
 > it is not a separate product or company.
 
 **Last updated:** 2026-06-20
@@ -68,7 +68,7 @@ succeeded.
 |---|---|---|
 | Journal entries (text) | Core app functionality — personal journaling | **Explicit consent (Art. 9(2)(a))** + Contract (Art. 6(1)(b)) |
 | Mood scores | Mood tracking and trends | **Explicit consent (Art. 9(2)(a))** + Contract (Art. 6(1)(b)) |
-| Echo AI conversation messages | AI companion responses | **Explicit consent (Art. 9(2)(a))** + Contract (Art. 6(1)(b)) |
+| AI conversation messages | AI companion responses | **Explicit consent (Art. 9(2)(a))** + Contract (Art. 6(1)(b)) |
 | Journaling consent timestamp | Record of your consent to store sensitive content | Legal obligation / consent record (Art. 6(1)(c)) |
 | AI consent timestamp (`ai_consent_given_at`) | Record that you consented to AI processing | Legal obligation / consent record (Art. 6(1)(c)) |
 
@@ -165,9 +165,9 @@ GDPR Art. 9, this is special category data requiring explicit consent.
 1. **To store and process your sensitive journal content at all** — given
    when you create your account / write your first entry.
 2. **To process that content with AI** — given separately when you first
-   interact with Echo (the AI companion).
+   interact with MindFlow's AI companion.
 
-When you first interact with Echo, you are shown a consent modal explaining
+When you first interact with MindFlow's AI companion, you are shown a consent modal explaining
 that your journal content will be sent to Anthropic's Claude API for AI
 responses. You must actively consent before any AI processing occurs. Your
 consent timestamp is recorded.
@@ -191,7 +191,7 @@ We share data with the following processors under written agreements. They act o
 
 ### 6.1 Anthropic (AI Inference)
 
-**What is shared:** The text of your journal entries and AI conversation messages, when you interact with Echo and have given AI consent.
+**What is shared:** The text of your journal entries and AI conversation messages, when you interact with MindFlow's AI companion and have given AI consent.
 
 **Purpose:** Generating AI companion responses via the Claude API.
 
@@ -285,7 +285,7 @@ Commissioner's Office (ICO), https://ico.org.uk.
 
 ## 8. Mental Health and Crisis Support
 
-MindFlow is a journaling and personal reflection tool. **Echo, the AI companion, is not a therapist, psychologist, or medical professional. Echo does not provide medical advice, diagnosis, or treatment.**
+MindFlow is a journaling and personal reflection tool. **MindFlow's AI companion is not a therapist, psychologist, or medical professional. It does not provide medical advice, diagnosis, or treatment.**
 
 If you are in distress or experiencing a mental health crisis, please seek professional support. The app links to **findahelpline.com**, an international directory of crisis support resources.
 

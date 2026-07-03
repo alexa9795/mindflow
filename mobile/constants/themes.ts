@@ -79,7 +79,7 @@ export const THEMES: Record<string, Theme> = {
 
 export const DEFAULT_THEME_ID = 'warmNeutral';
 
-export const THEME_STORAGE_KEY = 'echo_theme';
+export const THEME_STORAGE_KEY = 'mindflow_theme';
 
 /** Pseudo-theme id: follow the OS light/dark setting instead of a fixed theme. */
 export const SYSTEM_THEME_ID = 'system';

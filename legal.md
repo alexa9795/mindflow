@@ -13,8 +13,7 @@
 
 | Topic | Decision |
 |---|---|
-| **Public app name** | **MindFlow** everywhere (stores + legal). Domain mindflowjournal.app already owned. |
-| **"Echo"** | Name of the **in-app AI companion feature only** — NOT a separate product or the app name. Originally considered as the store name; rejected because "Echo" is a crowded trademark/search term (Amazon Echo, etc.), hard to discover, and hard to protect. MindFlow is distinctive and trademarkable. |
+| **Public app name** | **MindFlow** everywhere (stores + legal). Domain mindflowjournal.app already owned. Distinctive and trademarkable. The in-app AI companion is a feature of MindFlow — no separate persona name. |
 | **Billing** | **Apple In-App Purchase + Google Play Billing** only (subscription is consumed in-app → Apple Guideline 3.1.1 mandates this; Stripe not allowed for in-app digital subs). We never receive card data; we only get subscription status. Qualifies for Apple/Google 15% small-business rate (<$1M/yr). |
 | **Legal entity** | **STILL OPEN** — see §3 below. Determines who the data controller is. |
 
@@ -24,7 +23,7 @@
 
 Updated `PRIVACY_POLICY.md` (now v1.1) and `COMPLIANCE.md`:
 
-- Confirmed MindFlow branding + clarified Echo = AI companion feature.
+- Confirmed MindFlow branding (single name for the app and its AI companion).
 - Added **Apple/Google as payment processors** (policy §3.3, §6.4); stated we
   never receive card data.
 - Reframed journal entries/mood as relying on **explicit consent Art. 9(2)(a)**
@@ -117,7 +116,7 @@ given, specific" and unbundled). Changes mirror the storage consent:
 ### 4.1c Terms of Service document — DRAFTED 2026-06-20
 Draft created at `TERMS_OF_SERVICE.md` (DRAFT-with-TODOs style, matching the
 privacy policy). Covers: provider identity, eligibility (16+), service
-description, **Echo no-medical-advice/AI disclaimer + crisis**, account
+description, **AI companion no-medical-advice disclaimer + crisis**, account
 responsibilities, acceptable use, **Your Content ownership + limited operating
 licence**, **subscriptions/billing (Apple/Google IAP, auto-renewal,
 store-handled refunds, price changes)**, IP, privacy cross-reference,
@@ -182,7 +181,7 @@ retention window and whether zero-data-retention is available on the plan.
 In-app account deletion, JSON data export (Art. 20), AI consent modal +
 timestamp, consent withdrawal, concrete 12-month inactivity-deletion schedule,
 named processors with DPA references (Anthropic/Railway/Resend signed
-2026-05-07), crisis-support disclaimer, "Echo is not a therapist" language,
+2026-05-07), crisis-support disclaimer, "not a therapist" AI disclaimer language,
 bcrypt + hashed tokens + HTTPS security section. Structure is above typical
 indie-app standard — remaining work is refinement, not a rewrite.
 

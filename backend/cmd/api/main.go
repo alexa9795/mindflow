@@ -252,7 +252,7 @@ func main() {
 		}
 	}()
 
-	slog.Info("Echo API starting", "port", port)
+	slog.Info("MindFlow API starting", "port", port)
 	srv := &http.Server{
 		Addr:         ":" + port,
 		Handler:      middleware.RequestID(middleware.SecurityHeaders(middleware.CORS(mux))),

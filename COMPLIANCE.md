@@ -1,9 +1,9 @@
 # MindFlow — Compliance Notes
 
 > **Branding decision (2026-06-20):** Public app name is **MindFlow**
-> (App Store + Google Play). **Echo** is the in-app AI companion feature
-> name only — not a separate product. Use "MindFlow" in all legal/store
-> identity. Domain mindflowjournal.app already owned.
+> (App Store + Google Play). The in-app AI companion is a feature of MindFlow
+> (no separate persona name). Use "MindFlow" in all legal/store identity.
+> Domain mindflowjournal.app already owned.
 >
 > **Billing decision (2026-06-20):** Subscriptions via **Apple In-App
 > Purchase + Google Play Billing** only. No Stripe for in-app digital
@@ -34,13 +34,13 @@ Anthropic acts as a data processor for AI inference. The DPA includes Standard C
 |---|---|---|
 | Art. 20 export | ✅ | Entries, messages, audit events, profile, ai_consent_given_at |
 | Art. 17 deletion | ✅ | Cascade + audit anonymisation |
-| Art. 9 AI consent | ✅ | Consent modal on first Echo tap, ai_consent_given_at timestamp |
+| Art. 9 AI consent | ✅ | Consent modal on first AI companion use, ai_consent_given_at timestamp |
 | Art. 28 DPA (Anthropic) | ✅ | Via Commercial Terms + SCCs, confirmed by Anthropic privacy team 2026-05-07 |
 | Art. 28 DPA (Railway) | ✅ | DocuSign signed 2026-05-07 (Envelope ID: A46F8A56-B730-4646-B1F9-11AC7962BDB2), includes EU SCCs (Module 2) + UK Addendum |
 | Art. 28 DPA (Resend) | ✅ | Binding on ToS acceptance. Pre-signed DPA downloaded 2026-05-07 from resend.com/settings/documents, includes EU SCCs + UK Addendum |
 | Art. 9 consent — storage | ✅ | Implemented 2026-06-20 (migration 024). Required checkbox at signup, enforced server-side, stored as `journaling_consent_given_at`, audited (`account.journaling_consent`), included in export. Pending paid legal review. |
 | Terms of Service acceptance | ⚠️ | Acceptance mechanism implemented 2026-06-20 (migration 025): separate required checkbox, enforced server-side, stored as `terms_accepted_at`, audited (`account.terms_accepted`), in export. Draft document now exists in TERMS_OF_SERVICE.md — still needs entity decision, billing terms, paid legal review, and a live URL before launch. |
-| Art. 9 consent — AI | ✅ | Consent modal on first Echo tap, ai_consent_given_at timestamp |
+| Art. 9 consent — AI | ✅ | Consent modal on first AI companion use, ai_consent_given_at timestamp |
 | Profiling disclosure (Art. 13(2)(f)/22) | ⚠️ | Pattern detection + trigger-word detection now disclosed in policy §3.4. Verify live behaviour matches (metadata-only logging, no Art. 22 decision). |
 | DPIA (Art. 35) | ❌ | Not yet done. Special-category data + profiling = likely DPIA trigger. Draft one before/around launch. |
 | UK Art. 27 representative | ❌ | DPAs include UK Addendums → likely targeting UK users. Assess need for UK representative. |
@@ -52,7 +52,7 @@ Anthropic acts as a data processor for AI inference. The DPA includes Standard C
 
 ### Anthropic
 - **Role:** Processor (AI inference)
-- **Data processed:** Journal entry content sent to Claude API for Echo responses
+- **Data processed:** Journal entry content sent to Claude API for AI companion responses
 - **Transfer mechanism:** SCCs incorporated into Commercial Terms
 - **DPA:** https://www.anthropic.com/legal/dpa
 

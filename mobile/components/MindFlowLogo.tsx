@@ -1,10 +1,10 @@
 import React from 'react';
 import Svg, { Rect, Text } from 'react-native-svg';
 
-export interface EchoLogoProps {
+export interface MindFlowLogoProps {
   color: string;
   width?: number;
-  /** Render only the waveform bars — omit the "Echo" SVG text. */
+  /** Render only the waveform bars — omit the "MindFlow" SVG text. */
   hideText?: boolean;
 }
 
@@ -31,7 +31,7 @@ const BAR_RX = 1.75;
 const CENTER_Y = 26;
 const GROUP_X = 30;
 
-export default function EchoLogo({ color, width = 220, hideText = false }: EchoLogoProps) {
+export default function MindFlowLogo({ color, width = 220, hideText = false }: MindFlowLogoProps) {
   // When hiding text, crop viewBox to the bars' actual bounding box (x=26–128)
   // trimming the ~30px of leading empty space so the row centres correctly.
   const viewBox = hideText ? '26 0 102 52' : '0 0 220 52';
@@ -78,7 +78,9 @@ export default function EchoLogo({ color, width = 220, hideText = false }: EchoL
         opacity={0.70}
       />
 
-      {/* "Echo" wordmark — x = GROUP_X + 103 = 133 */}
+      {/* "MindFlow" wordmark — x = GROUP_X + 103 = 133.
+          Note: only the waveform mark is currently used (hideText); if the
+          wordmark is ever shown, the x/viewBox need retuning for the longer text. */}
       {!hideText && (
         <Text
           x={133}
@@ -88,7 +90,7 @@ export default function EchoLogo({ color, width = 220, hideText = false }: EchoL
           letterSpacing={2}
           fill={color}
         >
-          Echo
+          MindFlow
         </Text>
       )}
     </Svg>

@@ -26,7 +26,7 @@ var dummyHash []byte
 
 func init() {
 	var err error
-	dummyHash, err = bcrypt.GenerateFromPassword([]byte("echo-dummy-bcrypt-sentinel"), bcrypt.DefaultCost)
+	dummyHash, err = bcrypt.GenerateFromPassword([]byte("mindflow-dummy-bcrypt-sentinel"), bcrypt.DefaultCost)
 	if err != nil {
 		panic(fmt.Sprintf("failed to initialise dummy bcrypt hash: %v", err))
 	}

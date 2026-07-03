@@ -140,7 +140,7 @@ export default function SettingsScreen() {
     try {
       const data = await api.exportData();
       const json = JSON.stringify(data, null, 2);
-      const path = `${FileSystem.cacheDirectory}echo-export.json`;
+      const path = `${FileSystem.cacheDirectory}mindflow-export.json`;
       try {
         await FileSystem.writeAsStringAsync(path, json, { encoding: FileSystem.EncodingType.UTF8 });
       } catch {

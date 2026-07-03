@@ -7,8 +7,8 @@
 # Terms of Service — MindFlow
 
 > **App name:** MindFlow (the name shown in the App Store and Google Play).
-> **Echo** is the name of the in-app AI companion feature — not a separate
-> product or company.
+> The in-app AI companion is a feature of MindFlow — not a separate product
+> or company.
 
 **Last updated:** 2026-06-20
 **Effective date:** [PLACEHOLDER — set to publication date]
@@ -52,19 +52,20 @@ confirm that you meet this requirement. The Service is not directed at children
 
 MindFlow is a personal journaling application. It lets you write journal
 entries, record mood scores, view trends and insights, and—optionally—interact
-with **Echo**, an AI companion that reflects on your entries.
+with **MindFlow's AI companion**, which reflects on your entries.
 
 We may add, change, or remove features over time. We may also impose or change
 usage limits between the free and premium tiers (see Section 8).
 
 ---
 
-## 4. Echo (AI Companion) — Important Disclaimer
+## 4. AI Companion — Important Disclaimer
 
-**Echo is not a therapist, psychologist, doctor, or any kind of medical or
-mental-health professional. Echo does not provide medical advice, diagnosis,
-treatment, or crisis intervention.** Echo's responses are AI-generated, may be
-inaccurate or inappropriate, and must not be relied upon as professional advice.
+**MindFlow's AI companion is not a therapist, psychologist, doctor, or any kind
+of medical or mental-health professional. It does not provide medical advice,
+diagnosis, treatment, or crisis intervention.** Its responses are AI-generated,
+may be inaccurate or inappropriate, and must not be relied upon as professional
+advice.
 
 The Service is for personal reflection and journaling only. It is **not a
 medical device** and is not a substitute for professional care.
@@ -73,9 +74,9 @@ medical device** and is not a substitute for professional care.
 qualified professional or your local emergency services.** The app links to
 findahelpline.com, an international directory of crisis-support resources.
 
-Use of Echo requires your separate explicit consent to AI processing of your
-content, as described in the Privacy Policy (Section 5). You can disable Echo at
-any time in Settings → Privacy.
+Use of the AI companion requires your separate explicit consent to AI processing
+of your content, as described in the Privacy Policy (Section 5). You can disable
+the AI companion at any time in Settings → Privacy.
 
 ---
 
@@ -118,7 +119,7 @@ We may suspend or terminate accounts that violate this section (see Section 11).
 You grant us a limited, non-exclusive licence to store, process, and display
 Your Content **solely to operate and provide the Service to you** (for example,
 to save your entries, generate insights, and—where you have consented—produce
-Echo's responses). This licence ends when Your Content is deleted, except for
+the AI companion's responses). This licence ends when Your Content is deleted, except for
 backups in the ordinary course and anonymised records as described in the
 Privacy Policy.
 
@@ -163,7 +164,7 @@ billing period; you may cancel before they take effect.
 
 ## 9. Intellectual Property
 
-The Service itself—including the MindFlow and Echo names, the app, its design,
+The Service itself—including the MindFlow name, the app, its design,
 and underlying software—is owned by us or our licensors and is protected by
 intellectual-property laws. These Terms do not grant you any rights in our
 intellectual property except the limited right to use the Service as permitted

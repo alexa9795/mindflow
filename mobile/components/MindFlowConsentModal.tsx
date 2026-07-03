@@ -4,14 +4,14 @@ import { COMPANION_NAME } from '../constants/config';
 import { FONTS } from '../constants/fonts';
 import { useSettings } from '../context/SettingsContext';
 
-interface EchoConsentModalProps {
+interface MindFlowConsentModalProps {
   visible: boolean;
   enabling: boolean;
   onEnable: () => void;
   onDismiss: () => void;
 }
 
-export default function EchoConsentModal({ visible, enabling, onEnable, onDismiss }: EchoConsentModalProps) {
+export default function MindFlowConsentModal({ visible, enabling, onEnable, onDismiss }: MindFlowConsentModalProps) {
   const { theme } = useSettings();
 
   return (

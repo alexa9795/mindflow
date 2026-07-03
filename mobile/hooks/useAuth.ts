@@ -5,8 +5,8 @@ import { Alert } from 'react-native';
 import { api, setToken, setRefreshToken, setUnauthorizedHandler, setTokensRefreshedHandler, User } from '../services/api';
 import { initPurchases } from '../services/purchases';
 
-const TOKEN_KEY = 'echo_jwt';
-const REFRESH_TOKEN_KEY = 'echo_refresh_jwt';
+const TOKEN_KEY = 'mindflow_jwt';
+const REFRESH_TOKEN_KEY = 'mindflow_refresh_jwt';
 export const BIOMETRIC_ENABLED_KEY = 'biometric_enabled';
 
 interface AuthContextType {

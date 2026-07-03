@@ -35,48 +35,48 @@ func NewClient() (*Client, error) {
 func (c *Client) SendRetentionWarning(ctx context.Context, toEmail, userName string, daysUntilDeletion int) error {
 	body := fmt.Sprintf(`Hi %s,
 
-We noticed you haven't journaled in a while. Your Echo account and all your entries will be deleted in %d days due to inactivity.
+We noticed you haven't journaled in a while. Your MindFlow account and all your entries will be deleted in %d days due to inactivity.
 
 If you'd like to keep your account, simply open the app and write something — that's all it takes.
 
 If you're happy for your data to be deleted, no action is needed.
 
 Take care,
-The Echo team`, userName, daysUntilDeletion)
+The MindFlow team`, userName, daysUntilDeletion)
 
-	return c.send(ctx, toEmail, "Your Echo account will be deleted soon", body)
+	return c.send(ctx, toEmail, "Your MindFlow account will be deleted soon", body)
 }
 
 // SendFinalRetentionWarning sends the final warning 30 days before deletion.
 func (c *Client) SendFinalRetentionWarning(ctx context.Context, toEmail, userName string) error {
 	body := fmt.Sprintf(`Hi %s,
 
-This is a final reminder that your Echo account will be permanently deleted in 30 days due to inactivity.
+This is a final reminder that your MindFlow account will be permanently deleted in 30 days due to inactivity.
 
 All your journal entries will be lost and cannot be recovered.
 
 Open the app to keep your account active.
 
 Take care,
-The Echo team`, userName)
+The MindFlow team`, userName)
 
-	return c.send(ctx, toEmail, "Final notice: Echo account deletion in 30 days", body)
+	return c.send(ctx, toEmail, "Final notice: MindFlow account deletion in 30 days", body)
 }
 
 // SendPasswordReset sends a password reset token to the user.
 func (c *Client) SendPasswordReset(ctx context.Context, toEmail, userName, resetToken string) error {
 	body := fmt.Sprintf(`Hi %s,
 
-Someone requested a password reset for your Echo account.
+Someone requested a password reset for your MindFlow account.
 If this wasn't you, ignore this email.
 
 Your reset token is: %s
 This token expires in 1 hour.
 
 Take care,
-The Echo team`, userName, resetToken)
+The MindFlow team`, userName, resetToken)
 
-	return c.send(ctx, toEmail, "Reset your Echo password", body)
+	return c.send(ctx, toEmail, "Reset your MindFlow password", body)
 }
 
 func (c *Client) send(ctx context.Context, toEmail, subject, body string) error {

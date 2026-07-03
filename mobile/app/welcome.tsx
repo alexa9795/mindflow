@@ -13,7 +13,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { FONTS } from '../constants/fonts';
 import { useAuth } from '../hooks/useAuth';
-import EchoLogo from '../components/EchoLogo';
+import MindFlowLogo from '../components/MindFlowLogo';
 
 const POINTS: { icon: keyof typeof Ionicons.glyphMap; title: string; body: string }[] = [
   {
@@ -61,7 +61,7 @@ export default function WelcomeScreen() {
 
         <View style={styles.body}>
           <View style={styles.logoRow}>
-            <EchoLogo color="#2C2418" width={180} hideText />
+            <MindFlowLogo color="#2C2418" width={180} hideText />
             <Text style={styles.wordmark}>MindFlow</Text>
           </View>
 

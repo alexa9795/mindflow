@@ -20,7 +20,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { PRIVACY_POLICY_URL, TERMS_OF_SERVICE_URL } from '../../constants/config';
 import { FONTS } from '../../constants/fonts';
 import { ApiError, NetworkError } from '../../services/api';
-import EchoLogo from '../../components/EchoLogo';
+import MindFlowLogo from '../../components/MindFlowLogo';
 
 function isValidEmail(email: string): boolean {
   // Basic RFC-style check: local@domain.tld
@@ -114,7 +114,7 @@ export default function RegisterScreen() {
         {/* Zone 2 — Identity */}
         <View style={[styles.identityZone, { height: zone2Height }]}>
           <View style={styles.logoRow}>
-            <EchoLogo color="#2C2418" width={220} hideText />
+            <MindFlowLogo color="#2C2418" width={220} hideText />
             <Text style={styles.wordmark}>MindFlow</Text>
           </View>
           <Text style={styles.tagline}>your private space to think</Text>

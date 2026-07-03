@@ -38,6 +38,6 @@ func (h *Handler) Export(w http.ResponseWriter, r *http.Request) {
 
 	h.audit.Log(r.Context(), &userID, audit.ActionDataExport, audit.IPFromRequest(r), nil)
 	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Content-Disposition", `attachment; filename="echo-export.json"`)
+	w.Header().Set("Content-Disposition", `attachment; filename="mindflow-export.json"`)
 	_ = json.NewEncoder(w).Encode(data)
 }

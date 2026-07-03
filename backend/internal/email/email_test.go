@@ -24,7 +24,7 @@ func TestNewClientMissingFromEmail(t *testing.T) {
 
 func TestNewClientSuccess(t *testing.T) {
 	t.Setenv("RESEND_API_KEY", "re_test_key")
-	t.Setenv("RESEND_FROM_EMAIL", "Echo <noreply@example.com>")
+	t.Setenv("RESEND_FROM_EMAIL", "MindFlow <noreply@example.com>")
 	c, err := NewClient()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)

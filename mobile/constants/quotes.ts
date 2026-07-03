@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const DAILY_QUOTE_STORAGE_KEY = 'echo_daily_quote';
+const DAILY_QUOTE_STORAGE_KEY = 'mindflow_daily_quote';
 
 export const JOURNAL_QUOTES: string[] = [
   'Fill your paper with the breathings of your heart. — William Wordsworth',
