@@ -114,7 +114,7 @@ export default function RegisterScreen() {
         {/* Zone 2 — Identity */}
         <View style={[styles.identityZone, { height: zone2Height }]}>
           <View style={styles.logoRow}>
-            <MindFlowLogo color="#2C2418" width={220} hideText />
+            <MindFlowLogo color="#2C2418" height={52} hideText />
             <Text style={styles.wordmark}>MindFlow</Text>
           </View>
           <Text style={styles.tagline}>your private space to think</Text>
