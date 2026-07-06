@@ -52,6 +52,9 @@ Backend env vars (Railway):
 - [ ] Set ANTHROPIC_API_KEY
 - [ ] Set REVENUECAT_WEBHOOK_SECRET (validates the Authorization header
       on POST /api/webhooks/revenuecat)
+- [ ] Set RESEND_API_KEY + RESEND_FROM_EMAIL — without them the email
+      client is disabled, so password-reset and inactivity emails
+      silently don't send
 - [ ] Set ALLOWED_ORIGINS to the production URL (code already reads it
       from env in middleware/cors.go — no code change needed)
 
