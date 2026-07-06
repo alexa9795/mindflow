@@ -129,7 +129,7 @@ Still OPEN before publish:
 - **Billing terms** — finalise renewal periods, prices, free-tier limits, trial
   terms, EU digital-withdrawal-right wording once Apple/Google IAP is set up
   (§8 TODO). Confirm own-EULA vs Apple's standard Licensed Application EULA.
-- **Publish** at a stable URL (e.g. mindflowjournal.app/terms) and link the
+- **Publish** at a stable URL (e.g. mindflowjournal.app/terms.html) and link the
   signup checkbox's "Terms of Service" text to it.
 - **`terms_version`** field not implemented (only `terms_accepted_at`); add if
   you plan to revise and re-prompt for acceptance.

@@ -321,7 +321,7 @@ We implement the following technical and organisational measures to protect your
 
 If we make material changes to this policy, we will notify you by email and/or an in-app notice at least 30 days before the changes take effect. Continued use of MindFlow after the effective date constitutes acceptance of the updated policy.
 
-The current version of this policy is always available within the app and at https://mindflowjournal.app/privacy.
+The current version of this policy is always available within the app and at https://mindflowjournal.app/privacy.html
 
 ---
 

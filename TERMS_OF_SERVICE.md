@@ -35,7 +35,7 @@ Contact: support@mindflowjournal.app
 
 By creating an account, ticking the acceptance box, or using the Service, you
 confirm that you have read, understood, and agree to these Terms and to our
-[Privacy Policy](https://mindflowjournal.app/privacy). If you do not agree, do
+[Privacy Policy](https://mindflowjournal.app/privacy.html). If you do not agree, do
 not use the Service.
 
 ---
@@ -125,7 +125,7 @@ Privacy Policy.
 
 **We will never sell Your Content or use it for advertising.** How we handle
 Your Content, including special-category (mental-health) data and the consents
-we rely on, is described in the [Privacy Policy](https://mindflowjournal.app/privacy).
+we rely on, is described in the [Privacy Policy](https://mindflowjournal.app/privacy.html).
 
 You are responsible for Your Content and confirm you have the right to provide
 it.
@@ -175,7 +175,7 @@ here. This does not affect your ownership of Your Content (Section 7).
 ## 10. Privacy
 
 Our handling of personal data is governed by the
-[Privacy Policy](https://mindflowjournal.app/privacy), which forms part of your
+[Privacy Policy](https://mindflowjournal.app/privacy.html), which forms part of your
 agreement with us. Please read it carefully, particularly the sections on
 special-category data and AI processing.
 

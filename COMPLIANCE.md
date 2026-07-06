@@ -103,7 +103,7 @@ Anthropic acts as a data processor for AI inference. The DPA includes Standard C
 
 - [x] Domain purchased: mindflowjournal.app (Porkbun, expires 2027-05-25)
 - [x] Resend verified sender: noreply@mindflowjournal.app (Ireland eu-west-1)
-- [x] Privacy policy published at https://mindflowjournal.app/privacy
+- [x] Privacy policy published at https://mindflowjournal.app/privacy.html
 - [ ] **Legal entity decision** (autónomo vs Spanish SL) — sets data controller
 - [ ] **Paid legal review of privacy policy** (~€150)
 - [x] **Art. 9 storage consent** captured at signup (migration 024, 2026-06-20)
