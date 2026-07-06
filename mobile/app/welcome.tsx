@@ -61,7 +61,7 @@ export default function WelcomeScreen() {
 
         <View style={styles.body}>
           <View style={styles.logoRow}>
-            <MindFlowLogo color="#2C2418" width={180} hideText />
+            <MindFlowLogo color="#2C2418" height={44} hideText />
             <Text style={styles.wordmark}>MindFlow</Text>
           </View>
 
