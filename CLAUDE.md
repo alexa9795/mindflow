@@ -5,11 +5,11 @@
 
 ## Stack
 - Backend: Go 1.22+ (REST API) — golang.org/x/crypto pinned to v0.31.0 for Go 1.22 compatibility
-- Mobile: React Native (Expo 55)
-- Database: PostgreSQL (Supabase)
+- Mobile: React Native (Expo 54)
+- Database: PostgreSQL (Railway in prod, Docker Compose locally)
 - AI: Claude API (claude-sonnet-4-6)
-- Payments: Stripe
-- Auth: Supabase Auth
+- Payments: RevenueCat (Apple In-App Purchase + Google Play Billing)
+- Auth: Custom JWT (bcrypt + refresh-token rotation)
 
 ## Project Structure
 - /backend → Go REST API
@@ -39,33 +39,42 @@
 - Never commit .env files
 
 ## 📋 TODO
-- Pattern detection (analyse mood trends and common themes across entries)
-- Insights screen (currently placeholder — must show real content
-  before App Store submission; will display pattern detection
-  results, mood trends, word frequency)
+- App-feature backlog is clear: pattern detection (weekly job in
+  internal/patterns) and the Insights screen (real charts, calendar,
+  mood trends) are both shipped. Remaining pre-launch work is store/
+  deployment prep — see the checklist below.
 
 ## DEPLOYMENT CHECKLIST (before Railway launch)
-- [ ] Set JWT_SECRET env var (never use the dev fallback in prod)
+Backend env vars (Railway):
+- [ ] Set JWT_SECRET (server refuses to start without it — no fallback)
 - [ ] Set DB_SSL_MODE=require for Railway Postgres
-- [ ] Restrict CORS Access-Control-Allow-Origin from "*" to the
-      actual Railway backend URL in middleware/cors.go
-- [ ] Set ANTHROPIC_API_KEY env var
-- [ ] Set REVENUECAT_WEBHOOK_SECRET env var (backend; validates the
-      Authorization header on POST /api/webhooks/revenuecat)
-- [ ] Set EXPO_PUBLIC_REVENUECAT_IOS_KEY and
-      EXPO_PUBLIC_REVENUECAT_ANDROID_KEY (mobile; RevenueCat public
-      API keys, selected by Platform.OS in services/purchases.ts)
-- [ ] Set DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME for
-      Railway Postgres instance
-- [ ] Review trigger word log rotation (logs/triggers.log will
-      grow unbounded in production)
-- [ ] Privacy policy in place before App Store submission (~€150)
+- [ ] Set DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME
+- [ ] Set ANTHROPIC_API_KEY
+- [ ] Set REVENUECAT_WEBHOOK_SECRET (validates the Authorization header
+      on POST /api/webhooks/revenuecat)
+- [ ] Set ALLOWED_ORIGINS to the production URL (code already reads it
+      from env in middleware/cors.go — no code change needed)
+
+Mobile / RevenueCat:
+- [ ] Replace the REPLACE_WITH_… placeholders in eas.json with the real
+      EXPO_PUBLIC_REVENUECAT_IOS_KEY / _ANDROID_KEY public keys
+- [ ] Create subscription products in App Store Connect + Play Console,
+      link them in RevenueCat, and test purchase/restore on a device
+
+Store submission:
 - [ ] Apple Developer account ($99/yr) + Google Play ($25 one-time)
-- [ ] Insights screen must have real content (not placeholder)
-      before App Store submission — empty screens fail review
-- [ ] eas.json must be created before first EAS build
-      (run: eas build:configure)
-- [ ] App Store developer name and privacy policy must use
-      a company name, not personal name, if acquisition is
-      the goal — consider registering a legal entity before
-      submission
+- [ ] Commission the flow-themed app icon (current mark is a soundwave);
+      replace assets/icon.png, adaptive-icon.png, splash-icon.png
+- [ ] Paid legal review of the (already hosted) privacy policy + terms
+      (~€150); set their effective dates before publishing
+- [ ] Complete Apple App Privacy + Google Play Data Safety forms;
+      set age rating to 16+
+- [ ] App Store developer name + legal docs must use a company name,
+      not a personal name, if acquisition is the goal — decide the
+      legal entity (autónomo vs SL) before submission
+
+Done (kept for reference): eas.json created; Insights screen has real
+content; CORS reads ALLOWED_ORIGINS from env; trigger logging is
+stdout via slog (no unbounded log file); app version 1.0.0 +
+ITSAppUsesNonExemptEncryption set; legal docs hosted at
+mindflowjournal.app.
