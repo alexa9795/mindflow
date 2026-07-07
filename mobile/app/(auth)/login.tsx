@@ -167,7 +167,7 @@ const styles = StyleSheet.create({
   },
   wordmark: {
     fontFamily: FONTS.handwriting,
-    fontSize: 38,
+    fontSize: 32,
     color: '#2C2418',
   },
   tagline: {
