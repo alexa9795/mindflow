@@ -2,9 +2,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useRef } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import type { TFunction } from 'i18next';
+import { useTranslation } from 'react-i18next';
 import Swipeable, { type SwipeableMethods } from 'react-native-gesture-handler/ReanimatedSwipeable';
 import Animated, { FadeInDown, FadeOutLeft, useAnimatedStyle, type SharedValue } from 'react-native-reanimated';
 import { useSettings } from '../context/SettingsContext';
+import { bcp47ForLocale } from '../constants/locales';
 import { MOOD_EMOJIS } from '../constants/moods';
 import { FONTS, scaledFontSize } from '../constants/fonts';
 import { DURATION, RADIUS, SPACING } from '../constants/tokens';
@@ -22,20 +25,21 @@ interface EntryCardProps {
 }
 
 /** Human-friendly relative date: Today / Yesterday / N days ago, else a short date. */
-function formatRelativeDate(iso: string): string {
+function formatRelativeDate(iso: string, t: TFunction, bcp47: string): string {
   const then = new Date(iso);
   const now = new Date();
   const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
   const dayDiff = Math.round((startOfDay(now) - startOfDay(then)) / 86_400_000);
 
-  if (dayDiff <= 0) return 'Today';
-  if (dayDiff === 1) return 'Yesterday';
-  if (dayDiff < 7) return `${dayDiff} days ago`;
-  return then.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  if (dayDiff <= 0) return t('components.entryCard.today');
+  if (dayDiff === 1) return t('components.entryCard.yesterday');
+  if (dayDiff < 7) return t('components.entryCard.daysAgo', { count: dayDiff });
+  return then.toLocaleDateString(bcp47, { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 export default function EntryCard({ entry, index = 0, onDelete }: EntryCardProps) {
   const router = useRouter();
+  const { t, i18n } = useTranslation();
   const { theme, moodSetId, entryFont } = useSettings();
   const swipeableRef = useRef<SwipeableMethods>(null);
   const moodEmojis = MOOD_EMOJIS[moodSetId] ?? MOOD_EMOJIS.basic;
@@ -46,12 +50,12 @@ export default function EntryCard({ entry, index = 0, onDelete }: EntryCardProps
 
   function confirmDelete() {
     Alert.alert(
-      'Delete entry',
-      'Are you sure you want to delete this entry? It will be moved to Trash and can be recovered later.',
+      t('components.entryCard.confirmDelete.title'),
+      t('components.entryCard.confirmDelete.message'),
       [
-        { text: 'Cancel', style: 'cancel', onPress: () => swipeableRef.current?.close() },
+        { text: t('common.cancel'), style: 'cancel', onPress: () => swipeableRef.current?.close() },
         {
-          text: 'Delete',
+          text: t('common.delete'),
           style: 'destructive',
           onPress: () => onDelete?.(entry.id),
         },
@@ -68,10 +72,10 @@ export default function EntryCard({ entry, index = 0, onDelete }: EntryCardProps
         <Pressable
           style={[styles.deleteBtn, { backgroundColor: theme.destructive }]}
           onPress={confirmDelete}
-          accessibilityLabel="Delete entry"
+          accessibilityLabel={t('components.entryCard.deleteA11y')}
         >
           <Ionicons name="trash-outline" size={20} color="#FFFFFF" />
-          <Text style={styles.deleteText}>Delete</Text>
+          <Text style={styles.deleteText}>{t('components.entryCard.delete')}</Text>
         </Pressable>
       </Animated.View>
     );
@@ -97,7 +101,7 @@ export default function EntryCard({ entry, index = 0, onDelete }: EntryCardProps
           <View style={styles.body}>
             <View style={styles.row}>
               <Text style={[styles.date, { color: theme.textSecondary, fontFamily: FONTS.modern }]}>
-                {formatRelativeDate(entry.created_at)}
+                {formatRelativeDate(entry.created_at, t, bcp47ForLocale(i18n.language))}
               </Text>
               {moodEmoji && <Text style={styles.moodEmoji}>{moodEmoji}</Text>}
             </View>

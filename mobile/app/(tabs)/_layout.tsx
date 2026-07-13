@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FONTS } from '../../constants/fonts';
 import { useSettings } from '../../context/SettingsContext';
@@ -15,6 +16,7 @@ function TabIcon({ name, focused, color }: {
 
 export default function TabLayout() {
   const { theme } = useSettings();
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
 
   return (
@@ -45,7 +47,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Journal',
+          title: t('tabs.journal'),
           tabBarIcon: ({ focused, color }) =>
             <TabIcon name={focused ? 'book' : 'book-outline'} focused={focused} color={color} />,
         }}
@@ -53,7 +55,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="insights"
         options={{
-          title: 'Insights',
+          title: t('tabs.insights'),
           tabBarIcon: ({ focused, color }) =>
             <TabIcon name={focused ? 'sparkles' : 'sparkles-outline'} focused={focused} color={color} />,
         }}
@@ -61,7 +63,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="trash"
         options={{
-          title: 'Trash',
+          title: t('tabs.trash'),
           tabBarIcon: ({ focused, color }) =>
             <TabIcon name={focused ? 'trash' : 'trash-outline'} focused={focused} color={color} />,
         }}
@@ -69,7 +71,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="settings"
         options={{
-          title: 'Settings',
+          title: t('tabs.settings'),
           tabBarIcon: ({ focused, color }) =>
             <TabIcon name={focused ? 'settings' : 'settings-outline'} focused={focused} color={color} />,
         }}

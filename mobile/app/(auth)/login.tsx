@@ -15,6 +15,7 @@ import {
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../hooks/useAuth';
 import { FONTS } from '../../constants/fonts';
 import { ApiError, NetworkError } from '../../services/api';
@@ -22,6 +23,7 @@ import MindFlowLogo from '../../components/MindFlowLogo';
 
 export default function LoginScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const { login } = useAuth();
   const { height } = useWindowDimensions();
 
@@ -32,7 +34,7 @@ export default function LoginScreen() {
 
   async function submit() {
     if (!email.trim() || !password) {
-      setError('Please fill in all fields');
+      setError(t('auth.errors.fillFields'));
       return;
     }
     setLoading(true);
@@ -41,11 +43,11 @@ export default function LoginScreen() {
       await login(email.trim(), password);
     } catch (e: unknown) {
       if (e instanceof NetworkError) {
-        setError("You're offline or the server is unreachable");
+        setError(t('auth.errors.offline'));
       } else if (e instanceof ApiError) {
         setError(e.message);
       } else {
-        setError('Something went wrong');
+        setError(t('common.somethingWrong'));
       }
     } finally {
       setLoading(false);
@@ -87,7 +89,7 @@ export default function LoginScreen() {
             <MindFlowLogo color="#2C2418" height={52} hideText />
             <Text style={styles.wordmark}>MindFlow</Text>
           </View>
-          <Text style={styles.tagline}>your private space to think</Text>
+          <Text style={styles.tagline}>{t('auth.tagline')}</Text>
         </View>
 
         {/* Zone 3 — Form */}
@@ -101,7 +103,7 @@ export default function LoginScreen() {
 
           <TextInput
             style={styles.input}
-            placeholder="email"
+            placeholder={t('auth.emailPlaceholder')}
             placeholderTextColor="#B0A89E"
             value={email}
             onChangeText={setEmail}
@@ -112,7 +114,7 @@ export default function LoginScreen() {
 
           <TextInput
             style={[styles.input, styles.inputPassword]}
-            placeholder="password"
+            placeholder={t('auth.passwordPlaceholder')}
             placeholderTextColor="#B0A89E"
             value={password}
             onChangeText={setPassword}
@@ -128,18 +130,18 @@ export default function LoginScreen() {
             {loading ? (
               <ActivityIndicator color="#F5F0E8" />
             ) : (
-              <Text style={styles.btnText}>SIGN IN</Text>
+              <Text style={styles.btnText}>{t('auth.login.signIn')}</Text>
             )}
           </Pressable>
 
           <Pressable onPress={() => router.push('/(auth)/forgot-password')}>
-            <Text style={[styles.toggleLink, styles.forgotLink]}>Forgot password?</Text>
+            <Text style={[styles.toggleLink, styles.forgotLink]}>{t('auth.login.forgotPassword')}</Text>
           </Pressable>
 
           <Pressable onPress={() => router.replace('/(auth)/register')}>
             <Text style={[styles.toggleLink, styles.bottomLink]}>
-              Don't have an account?{'  '}
-              <Text style={styles.toggleLinkBold}>Register</Text>
+              {t('auth.login.noAccount')}{'  '}
+              <Text style={styles.toggleLinkBold}>{t('auth.login.registerLink')}</Text>
             </Text>
           </Pressable>
         </View>

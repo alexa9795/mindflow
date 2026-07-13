@@ -11,13 +11,15 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import AIMessage from '../../components/AIMessage';
 import MindFlowConsentModal from '../../components/MindFlowConsentModal';
 import OfflineBanner from '../../components/OfflineBanner';
 import PressableScale from '../../components/PressableScale';
 import ThemedView from '../../components/ThemedView';
 import TypingDots from '../../components/TypingDots';
-import { COMPANION_NAME } from '../../constants/config';
+import { APP_NAME, COMPANION_NAME } from '../../constants/config';
+import { bcp47ForLocale } from '../../constants/locales';
 import { FONTS, scaledFontSize } from '../../constants/fonts';
 import { tapMedium } from '../../constants/haptics';
 import { useSettings } from '../../context/SettingsContext';
@@ -27,6 +29,7 @@ import { api, ApiError, Entry, Message, NetworkError } from '../../services/api'
 export default function EntryDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const { t, i18n } = useTranslation();
   const { theme, entryFont } = useSettings();
   const { currentUser, toggleAI } = useAuth();
   const scrollRef = useRef<ScrollView>(null);
@@ -75,7 +78,7 @@ export default function EntryDetailScreen() {
         }
       } catch (e: unknown) {
         if (e instanceof NetworkError) setIsOffline(true);
-        else setError('Failed to load entry');
+        else setError(t('entryDetail.failedToLoad'));
       } finally {
         setLoadingEntry(false);
       }
@@ -99,7 +102,7 @@ export default function EntryDetailScreen() {
       }
       setMessages((prev) => [...prev, ...newMsgs]);
       if (res.ai_error) {
-        setError(res.ai_error_message ?? 'MindFlow is unavailable right now. Your message was saved.');
+        setError(res.ai_error_message ?? t('entryDetail.unavailableSaved', { appName: APP_NAME }));
       }
     } catch (e: unknown) {
       if (e instanceof NetworkError) {
@@ -107,7 +110,7 @@ export default function EntryDetailScreen() {
       } else if (e instanceof ApiError) {
         setError(e.message);
       } else {
-        setError('Failed to send reply');
+        setError(t('entryDetail.failedToSend'));
       }
       setReply(text);
     } finally {
@@ -136,7 +139,7 @@ export default function EntryDetailScreen() {
         setAiLoading(false);
       }
     } catch {
-      setError('Could not enable AI reflections. Please try again.');
+      setError(t('entryDetail.consentEnableError'));
     } finally {
       setEnablingConsent(false);
     }
@@ -156,14 +159,14 @@ export default function EntryDetailScreen() {
     return (
       <ThemedView safe style={styles.center}>
         <Text style={[styles.errorText, { color: theme.textSecondary, fontFamily: FONTS.modern }]}>
-          {error ?? 'Entry not found'}
+          {error ?? t('entryDetail.entryNotFound')}
         </Text>
       </ThemedView>
     );
   }
 
   function formatDate(iso: string) {
-    return new Date(iso).toLocaleDateString('en-US', {
+    return new Date(iso).toLocaleDateString(bcp47ForLocale(i18n.language), {
       month: 'short',
       day: 'numeric',
       year: 'numeric',
@@ -178,7 +181,7 @@ export default function EntryDetailScreen() {
       <View style={[styles.header, { borderBottomColor: theme.border }]}>
         <Pressable onPress={() => router.back()} hitSlop={12}>
           <Text style={[styles.backBtn, { color: theme.accent, fontFamily: FONTS.modern }]}>
-            ← Back
+            {t('common.back')}
           </Text>
         </Pressable>
         <View style={styles.headerSpacer} />
@@ -226,7 +229,7 @@ export default function EntryDetailScreen() {
             <View style={[styles.thinkingBubble, { backgroundColor: theme.surface, borderColor: theme.border }]}>
               <TypingDots color={theme.accent} />
               <Text style={[styles.thinkingText, { color: theme.textSecondary, fontFamily: FONTS.modern }]}>
-                {COMPANION_NAME} is thinking…
+                {t('entryDetail.thinking', { companion: COMPANION_NAME })}
               </Text>
             </View>
           )}
@@ -253,7 +256,7 @@ export default function EntryDetailScreen() {
                   fontFamily: FONTS.modern,
                 },
               ]}
-              placeholder="Reply…"
+              placeholder={t('entryDetail.replyPlaceholder')}
               placeholderTextColor={theme.textSecondary}
               value={reply}
               onChangeText={setReply}

@@ -9,6 +9,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import type { PurchasesPackage } from 'react-native-purchases';
 import PressableScale from '../components/PressableScale';
 import ThemedView from '../components/ThemedView';
@@ -25,8 +26,11 @@ import {
   restorePurchases,
 } from '../services/purchases';
 
+const FREE_TIER_ENTRY_LIMIT = 10;
+
 export default function PaywallScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const { theme } = useSettings();
   const { updateUser } = useAuth();
 
@@ -42,16 +46,17 @@ export default function PaywallScreen() {
         const offerings = await getOfferings();
         const current = offerings.current;
         if (!current || current.availablePackages.length === 0) {
-          setLoadError('No subscription options are available right now.');
+          setLoadError(t('paywall.loadErrorNoOptions'));
           return;
         }
         setPackages(current.availablePackages);
       } catch {
-        setLoadError('Could not load subscription options. Please try again.');
+        setLoadError(t('paywall.loadErrorGeneric'));
       } finally {
         setLoading(false);
       }
     })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Pull the latest subscription state from the backend (updated via the
@@ -71,11 +76,11 @@ export default function PaywallScreen() {
       await purchasePackage(pkg);
       await refreshUser();
       notifySuccess();
-      Alert.alert('Welcome to Pro', `You now have unlimited access to ${COMPANION_NAME}.`);
+      Alert.alert(t('paywall.alerts.welcomeTitle'), t('paywall.alerts.welcomeMessage', { companion: COMPANION_NAME }));
       router.back();
     } catch (e: unknown) {
       if (e instanceof PurchaseCancelledError) return;
-      Alert.alert('Purchase failed', 'Something went wrong. You have not been charged.');
+      Alert.alert(t('paywall.alerts.purchaseFailedTitle'), t('paywall.alerts.purchaseFailedMessage'));
     } finally {
       setBusy(null);
     }
@@ -86,10 +91,10 @@ export default function PaywallScreen() {
     try {
       await restorePurchases();
       await refreshUser();
-      Alert.alert('Purchases restored', 'Your subscription has been restored.');
+      Alert.alert(t('paywall.alerts.restoredTitle'), t('paywall.alerts.restoredMessage'));
       router.back();
     } catch {
-      Alert.alert('Restore failed', 'We could not find any purchases to restore.');
+      Alert.alert(t('paywall.alerts.restoreFailedTitle'), t('paywall.alerts.restoreFailedMessage'));
     } finally {
       setBusy(null);
     }
@@ -101,21 +106,21 @@ export default function PaywallScreen() {
       <View style={[styles.header, { borderBottomColor: theme.border }]}>
         <Pressable onPress={() => router.back()} hitSlop={12}>
           <Text style={[styles.backBtn, { color: theme.accent, fontFamily: FONTS.modern }]}>
-            ← Back
+            {t('common.back')}
           </Text>
         </Pressable>
         <Text style={[styles.headerTitle, { color: theme.text, fontFamily: FONTS.modern }]}>
-          {APP_NAME} Pro
+          {t('paywall.headerTitle', { appName: APP_NAME })}
         </Text>
         <View style={{ width: 52 }} />
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={[styles.heading, { color: theme.text, fontFamily: FONTS.modern }]}>
-          Unlimited journaling
+          {t('paywall.heading')}
         </Text>
         <Text style={[styles.subheading, { color: theme.textSecondary, fontFamily: FONTS.modern }]}>
-          Go beyond 10 entries a month and unlock unlimited AI reflections with {COMPANION_NAME}.
+          {t('paywall.subheading', { limit: FREE_TIER_ENTRY_LIMIT, companion: COMPANION_NAME })}
         </Text>
 
         {loading && (
@@ -149,7 +154,7 @@ export default function PaywallScreen() {
                 <ActivityIndicator color={theme.accent} />
               ) : (
                 <Text style={[styles.planCta, { color: theme.accent, fontFamily: FONTS.modern }]}>
-                  Subscribe →
+                  {t('paywall.subscribe')}
                 </Text>
               )}
             </PressableScale>
@@ -162,13 +167,12 @@ export default function PaywallScreen() {
           disabled={busy !== null}
         >
           <Text style={[styles.restoreText, { color: theme.textSecondary, fontFamily: FONTS.modern }]}>
-            {busy === 'restore' ? 'Restoring…' : 'Restore purchases'}
+            {busy === 'restore' ? t('paywall.restoring') : t('paywall.restorePurchases')}
           </Text>
         </Pressable>
 
         <Text style={[styles.legal, { color: theme.textSecondary, fontFamily: FONTS.modern }]}>
-          Subscriptions renew automatically until cancelled. Manage or cancel anytime in your
-          device account settings.
+          {t('paywall.legal')}
         </Text>
       </ScrollView>
     </ThemedView>

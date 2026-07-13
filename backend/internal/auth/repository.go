@@ -18,6 +18,7 @@ type Repository interface {
 	ActivateTrial(ctx context.Context, userID string) (time.Time, error)
 	UpdateAIEnabled(ctx context.Context, userID string, enabled bool) error
 	GetAIEnabled(ctx context.Context, userID string) (bool, error)
+	UpdateLocale(ctx context.Context, userID, locale string) error
 	RevokeToken(ctx context.Context, jti string, expiresAt time.Time) error
 	IsTokenRevoked(ctx context.Context, jti string) (bool, error)
 	UpdateLastActive(ctx context.Context, userID string) error
@@ -75,10 +76,10 @@ func (r *repository) GetUserByID(ctx context.Context, id string) (*User, error) 
 	var u User
 	var aiConsentGivenAt, journalingConsentGivenAt, termsAcceptedAt sql.NullTime
 	err := r.db.QueryRowContext(ctx, `
-		SELECT id, email, name, created_at, ai_enabled, ai_consent_given_at, journaling_consent_given_at, terms_accepted_at
+		SELECT id, email, name, locale, created_at, ai_enabled, ai_consent_given_at, journaling_consent_given_at, terms_accepted_at
 		FROM users WHERE id = $1`,
 		id,
-	).Scan(&u.ID, &u.Email, &u.Name, &u.CreatedAt, &u.AIEnabled, &aiConsentGivenAt, &journalingConsentGivenAt, &termsAcceptedAt)
+	).Scan(&u.ID, &u.Email, &u.Name, &u.Locale, &u.CreatedAt, &u.AIEnabled, &aiConsentGivenAt, &journalingConsentGivenAt, &termsAcceptedAt)
 	if err != nil {
 		return nil, fmt.Errorf("get user by id: %w", err)
 	}
@@ -187,6 +188,17 @@ func (r *repository) GetAIEnabled(ctx context.Context, userID string) (bool, err
 	return enabled, nil
 }
 
+func (r *repository) UpdateLocale(ctx context.Context, userID, locale string) error {
+	_, err := r.db.ExecContext(ctx, `
+		UPDATE users SET locale = $1, updated_at = NOW() WHERE id = $2`,
+		locale, userID,
+	)
+	if err != nil {
+		return fmt.Errorf("update locale: %w", err)
+	}
+	return nil
+}
+
 func (r *repository) RevokeToken(ctx context.Context, jti string, expiresAt time.Time) error {
 	_, err := r.db.ExecContext(ctx,
 		`INSERT INTO revoked_tokens (jti, expires_at) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
@@ -257,11 +269,11 @@ func (r *repository) GetUserByResetToken(ctx context.Context, token string) (*Us
 	var u User
 	var aiConsentGivenAt, journalingConsentGivenAt, termsAcceptedAt sql.NullTime
 	err := r.db.QueryRowContext(ctx, `
-		SELECT id, email, name, created_at, ai_enabled, ai_consent_given_at, journaling_consent_given_at, terms_accepted_at
+		SELECT id, email, name, locale, created_at, ai_enabled, ai_consent_given_at, journaling_consent_given_at, terms_accepted_at
 		FROM users
 		WHERE reset_token = $1 AND reset_token_expires_at > NOW()`,
 		token,
-	).Scan(&u.ID, &u.Email, &u.Name, &u.CreatedAt, &u.AIEnabled, &aiConsentGivenAt, &journalingConsentGivenAt, &termsAcceptedAt)
+	).Scan(&u.ID, &u.Email, &u.Name, &u.Locale, &u.CreatedAt, &u.AIEnabled, &aiConsentGivenAt, &journalingConsentGivenAt, &termsAcceptedAt)
 	if err != nil {
 		return nil, fmt.Errorf("get user by reset token: %w", err)
 	}

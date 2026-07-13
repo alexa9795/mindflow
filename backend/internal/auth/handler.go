@@ -312,6 +312,39 @@ func (h *Handler) AIToggle(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(map[string]bool{"ai_enabled": body.AIEnabled})
 }
 
+// LocaleUpdate handles PATCH /api/auth/locale.
+func (h *Handler) LocaleUpdate(w http.ResponseWriter, r *http.Request) {
+	userID, ok := r.Context().Value(middleware.UserIDKey).(string)
+	if !ok || userID == "" {
+		api.WriteError(w, api.ErrUnauthorized)
+		return
+	}
+
+	var body struct {
+		Locale string `json:"locale"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		api.WriteError(w, api.ErrBadRequest.WithMessage("Invalid request body"))
+		return
+	}
+	if !SupportedLocales[body.Locale] {
+		api.WriteError(w, api.ErrBadRequest.WithMessage("Unsupported locale"))
+		return
+	}
+
+	if err := h.svc.UpdateLocale(r.Context(), userID, body.Locale); err != nil {
+		slog.Error("locale update error", "error", err)
+		api.WriteError(w, api.ErrInternalServer)
+		return
+	}
+
+	h.audit.Log(r.Context(), &userID, audit.ActionUpdateLocale, audit.IPFromRequest(r),
+		map[string]any{"locale": body.Locale})
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]string{"locale": body.Locale})
+}
+
 // RequestPasswordReset handles POST /api/auth/reset-password/request.
 // Always returns 200 — never reveals whether an email is registered.
 func (h *Handler) RequestPasswordReset(w http.ResponseWriter, r *http.Request) {

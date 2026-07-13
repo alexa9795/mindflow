@@ -27,6 +27,16 @@ Analysis of remaining work before publishing. Grouped by priority.
 > 1.0.0 + `ITSAppUsesNonExemptEncryption`; iOS privacy manifest; legal docs
 > hosted at mindflowjournal.app.
 
+> **Multi-language support shipped (2026-07-13):** the app now supports
+> **English, French, Spanish, German, Italian, Portuguese** via `i18next` +
+> `react-i18next` (`mobile/i18n/`, `mobile/locales/*.json`). Language picker in
+> Settings → Appearance; the choice is synced to the account (`locale` column
+> + `PATCH /api/auth/locale`, mirrors the `ai_enabled` toggle pattern) so it
+> follows the user to a new device on login. Device locale is used as the
+> default on first launch (`expo-localization`). All screens/components
+> extracted to translation keys; quotes bank (112 entries) and mood/theme/font
+> labels are translated too. Backend: migration `027_add_locale.sql`.
+
 ---
 
 ## 🔴 Blockers — will fail store review
@@ -260,3 +270,14 @@ Confirmed monetisation model:
       `go 1.25.0`, but `CLAUDE.md` Stack says "Go 1.22+ … x/crypto pinned for
       Go 1.22 compatibility". A dev on 1.22 can't build. Decide the real minimum
       (go.mod is authoritative) and fix CLAUDE.md + the crypto-pin note to match.
+- [ ] **Native-speaker review of the FR/ES/DE/IT/PT translations** before store
+      submission — same rationale as the paid legal review already gating the
+      Privacy Policy/Terms: the AI-generated translations in `mobile/locales/`
+      are solid but unverified by a native speaker, especially the marketing
+      copy in `welcome.tsx`/`paywall.tsx` and the 112-quote bank in
+      `locales/*.json` (`quotes` key). Not a launch blocker for internal
+      testing, but do this before public release.
+- [ ] **Localize the store listing itself** (`STORE_LISTING.md`, App Store
+      Connect / Play Console metadata) to match the in-app languages, once
+      billing values are finalized and the native-speaker translation review
+      above is done — currently only the in-app UI is localized.

@@ -12,6 +12,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import MoodSelector from '../../components/MoodSelector';
 import OfflineBanner from '../../components/OfflineBanner';
 import PressableScale from '../../components/PressableScale';
@@ -23,8 +24,11 @@ import { useAuth } from '../../hooks/useAuth';
 import { useEntries } from '../../hooks/useEntries';
 import { ApiError, NetworkError, SubscriptionLimitError } from '../../services/api';
 
+const FREE_TIER_ENTRY_LIMIT = 10;
+
 export default function NewEntryScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const { theme, entryFont } = useSettings();
   const { createEntry, isOffline } = useEntries();
   const { isSubscriptionLimitReached, currentUser } = useAuth();
@@ -41,7 +45,7 @@ export default function NewEntryScreen() {
 
   async function submit() {
     if (!content.trim()) {
-      setError('Write something first');
+      setError(t('newEntry.writeSomethingFirst'));
       return;
     }
     Keyboard.dismiss();
@@ -54,13 +58,13 @@ export default function NewEntryScreen() {
     } catch (e: unknown) {
       setSaving(false);
       if (e instanceof SubscriptionLimitError) {
-        setError("You've used all 10 free entries this month.");
+        setError(t('newEntry.usedAllFree', { count: FREE_TIER_ENTRY_LIMIT }));
       } else if (e instanceof NetworkError) {
-        setError("You're offline — your entry couldn't be saved");
+        setError(t('newEntry.offlineNotSaved'));
       } else if (e instanceof ApiError) {
         setError(e.message);
       } else {
-        setError('Something went wrong');
+        setError(t('common.somethingWrong'));
       }
     }
   }
@@ -76,11 +80,11 @@ export default function NewEntryScreen() {
       <View style={[styles.header, { borderBottomColor: theme.border }]}>
         <Pressable onPress={() => router.back()} hitSlop={12}>
           <Text style={[styles.backBtn, { color: theme.accent, fontFamily: FONTS.modern }]}>
-            ← Back
+            {t('common.back')}
           </Text>
         </Pressable>
         <Text style={[styles.headerTitle, { color: theme.text, fontFamily: FONTS.modern }]}>
-          New entry
+          {t('newEntry.headerTitle')}
         </Text>
         <View style={{ width: 52 }} />
       </View>
@@ -99,11 +103,11 @@ export default function NewEntryScreen() {
           {limitReached && (
             <View style={[styles.limitBanner, { backgroundColor: theme.surface, borderColor: theme.border }]}>
               <Text style={[styles.limitText, { color: theme.textSecondary, fontFamily: FONTS.modern }]}>
-                You've used all 10 free entries this month.{' '}
+                {t('newEntry.usedAllFree', { count: FREE_TIER_ENTRY_LIMIT })}{' '}
               </Text>
               <Pressable onPress={() => router.push('/paywall')}>
                 <Text style={[styles.upgradeLink, { color: theme.accent, fontFamily: FONTS.modern }]}>
-                  Upgrade
+                  {t('newEntry.upgrade')}
                 </Text>
               </Pressable>
             </View>
@@ -121,7 +125,7 @@ export default function NewEntryScreen() {
                 lineHeight: scaledFontSize(entryFont, 26),
               },
             ]}
-            placeholder="Write freely… this is your space"
+            placeholder={t('newEntry.journalPlaceholder')}
             placeholderTextColor={theme.textSecondary}
             value={content}
             onChangeText={setContent}
@@ -136,7 +140,7 @@ export default function NewEntryScreen() {
               styles.charCount,
               { color: charsLeft < 100 ? theme.destructive : theme.textSecondary, fontFamily: FONTS.modern },
             ]}>
-              {charsLeft} characters remaining
+              {t('newEntry.charsRemaining', { count: charsLeft })}
             </Text>
           )}
 
@@ -148,7 +152,7 @@ export default function NewEntryScreen() {
         <View style={[styles.footer, { backgroundColor: theme.background }]}>
           {!aiEnabled && (
             <Text style={[styles.aiOffNote, { color: theme.textSecondary, fontFamily: FONTS.modern }]}>
-              AI reflections are off. Turn them on in Settings.
+              {t('newEntry.aiOffNote')}
             </Text>
           )}
           <PressableScale
@@ -164,7 +168,7 @@ export default function NewEntryScreen() {
               <ActivityIndicator color={theme.background} />
             ) : (
               <Text style={[styles.saveBtnText, { color: theme.background, fontFamily: FONTS.modern }]}>
-                Save entry →
+                {t('newEntry.saveEntry')}
               </Text>
             )}
           </PressableScale>

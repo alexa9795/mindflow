@@ -1,10 +1,13 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle, Line, Polyline } from 'react-native-svg';
 import { FONTS } from '../constants/fonts';
 import { useSettings } from '../context/SettingsContext';
 
-const WEEKDAY_SHORT = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+// Fixed English keys matching the backend's data payload (Postgres day names)
+// — NOT user-facing, so not translated. The translated single-letter labels
+// rendered under the chart come from common.weekdayInitials instead.
 const WEEKDAY_FULL = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
 interface MoodLineChartProps {
@@ -28,6 +31,8 @@ function moodToY(score: number): number {
 /** Mood-over-the-week line chart. Presentation only — colours each point by its mood. */
 export default function MoodLineChart({ data, width }: MoodLineChartProps) {
   const { theme } = useSettings();
+  const { t } = useTranslation();
+  const weekdayInitials = t('common.weekdayInitials', { returnObjects: true }) as string[];
   const innerW = width - PAD_X * 2;
   const step = innerW / (WEEKDAY_FULL.length - 1);
 
@@ -80,9 +85,9 @@ export default function MoodLineChart({ data, width }: MoodLineChartProps) {
         ))}
       </Svg>
       <View style={[styles.labels, { paddingHorizontal: PAD_X }]}>
-        {WEEKDAY_SHORT.map((d) => (
-          <Text key={d} style={[styles.label, { color: theme.textSecondary, fontFamily: FONTS.modern }]}>
-            {d.charAt(0)}
+        {weekdayInitials.map((d, i) => (
+          <Text key={i} style={[styles.label, { color: theme.textSecondary, fontFamily: FONTS.modern }]}>
+            {d}
           </Text>
         ))}
       </View>

@@ -16,8 +16,9 @@ import {
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../hooks/useAuth';
-import { PRIVACY_POLICY_URL, TERMS_OF_SERVICE_URL } from '../../constants/config';
+import { APP_NAME, PRIVACY_POLICY_URL, TERMS_OF_SERVICE_URL } from '../../constants/config';
 import { FONTS } from '../../constants/fonts';
 import { ApiError, NetworkError } from '../../services/api';
 import MindFlowLogo from '../../components/MindFlowLogo';
@@ -29,6 +30,7 @@ function isValidEmail(email: string): boolean {
 
 export default function RegisterScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const { register } = useAuth();
   const { height } = useWindowDimensions();
 
@@ -47,23 +49,23 @@ export default function RegisterScreen() {
     setConfirmError(null);
 
     if (!name.trim() || !email.trim() || !password) {
-      setError('Please fill in all fields');
+      setError(t('auth.errors.fillFields'));
       return;
     }
     if (!isValidEmail(email)) {
-      setError('Please enter a valid email address');
+      setError(t('auth.register.errors.invalidEmail'));
       return;
     }
     if (password !== confirmPassword) {
-      setConfirmError("Passwords don't match");
+      setConfirmError(t('auth.register.errors.passwordMismatch'));
       return;
     }
     if (!consent) {
-      setError('Please agree to storage of your journal entries to continue');
+      setError(t('auth.register.errors.consentRequired'));
       return;
     }
     if (!acceptTerms) {
-      setError('Please accept the Terms of Service to continue');
+      setError(t('auth.register.errors.termsRequired'));
       return;
     }
     setLoading(true);
@@ -71,11 +73,11 @@ export default function RegisterScreen() {
       await register(email.trim(), password, name.trim(), consent, acceptTerms);
     } catch (e: unknown) {
       if (e instanceof NetworkError) {
-        setError("You're offline or the server is unreachable");
+        setError(t('auth.errors.offline'));
       } else if (e instanceof ApiError) {
         setError(e.message);
       } else {
-        setError('Something went wrong');
+        setError(t('common.somethingWrong'));
       }
     } finally {
       setLoading(false);
@@ -117,7 +119,7 @@ export default function RegisterScreen() {
             <MindFlowLogo color="#2C2418" height={52} hideText />
             <Text style={styles.wordmark}>MindFlow</Text>
           </View>
-          <Text style={styles.tagline}>your private space to think</Text>
+          <Text style={styles.tagline}>{t('auth.tagline')}</Text>
         </View>
 
         {/* Zone 3 — Form */}
@@ -131,7 +133,7 @@ export default function RegisterScreen() {
 
           <TextInput
             style={styles.input}
-            placeholder="name"
+            placeholder={t('auth.register.namePlaceholder')}
             placeholderTextColor="#B0A89E"
             value={name}
             onChangeText={setName}
@@ -141,7 +143,7 @@ export default function RegisterScreen() {
 
           <TextInput
             style={styles.input}
-            placeholder="email"
+            placeholder={t('auth.emailPlaceholder')}
             placeholderTextColor="#B0A89E"
             value={email}
             onChangeText={setEmail}
@@ -152,7 +154,7 @@ export default function RegisterScreen() {
 
           <TextInput
             style={[styles.input, styles.inputPassword]}
-            placeholder="password"
+            placeholder={t('auth.passwordPlaceholder')}
             placeholderTextColor="#B0A89E"
             value={password}
             onChangeText={setPassword}
@@ -162,7 +164,7 @@ export default function RegisterScreen() {
 
           <TextInput
             style={[styles.input, confirmError ? styles.inputError : null]}
-            placeholder="confirm password"
+            placeholder={t('auth.register.confirmPasswordPlaceholder')}
             placeholderTextColor="#B0A89E"
             value={confirmPassword}
             onChangeText={(v) => { setConfirmPassword(v); setConfirmError(null); }}
@@ -185,14 +187,12 @@ export default function RegisterScreen() {
               {consent && <Text style={styles.checkboxMark}>✓</Text>}
             </View>
             <Text style={styles.consentText}>
-              I agree that my journal entries — which may include sensitive
-              information about my wellbeing — are stored so I can use MindFlow.
-              See our{' '}
+              {t('auth.register.consentText', { appName: APP_NAME })}
               <Text
                 style={styles.consentLink}
                 onPress={() => void Linking.openURL(PRIVACY_POLICY_URL)}
               >
-                Privacy Policy
+                {t('auth.register.privacyPolicyLink')}
               </Text>
               .
             </Text>
@@ -210,12 +210,12 @@ export default function RegisterScreen() {
               {acceptTerms && <Text style={styles.checkboxMark}>✓</Text>}
             </View>
             <Text style={styles.consentText}>
-              I have read and accept the{' '}
+              {t('auth.register.termsText')}
               <Text
                 style={styles.consentLink}
                 onPress={() => void Linking.openURL(TERMS_OF_SERVICE_URL)}
               >
-                Terms of Service
+                {t('auth.register.termsOfServiceLink')}
               </Text>
               .
             </Text>
@@ -229,14 +229,14 @@ export default function RegisterScreen() {
             {loading ? (
               <ActivityIndicator color="#F5F0E8" />
             ) : (
-              <Text style={styles.btnText}>CREATE ACCOUNT</Text>
+              <Text style={styles.btnText}>{t('auth.register.createAccount')}</Text>
             )}
           </Pressable>
 
           <Pressable onPress={() => router.replace('/(auth)/login')}>
             <Text style={[styles.toggleLink, styles.bottomLink]}>
-              Already have an account?{'  '}
-              <Text style={styles.toggleLinkBold}>Sign in</Text>
+              {t('auth.register.haveAccount')}{'  '}
+              <Text style={styles.toggleLinkBold}>{t('auth.register.signInLink')}</Text>
             </Text>
           </Pressable>
         </View>

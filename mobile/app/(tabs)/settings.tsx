@@ -15,11 +15,13 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ThemedView from '../../components/ThemedView';
 import { APP_NAME } from '../../constants/config';
 import { FONT_OPTIONS, FONTS, FontKey, scaledFontSize } from '../../constants/fonts';
 import { MOOD_EMOJIS, MOOD_SETS } from '../../constants/moods';
+import { SUPPORTED_LOCALES } from '../../constants/locales';
 import {
   SYSTEM_DARK_THEME_ID,
   SYSTEM_LIGHT_THEME_ID,
@@ -32,9 +34,11 @@ import { api, ApiError } from '../../services/api';
 
 export default function SettingsScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
-  const { theme, themeMode, setThemeById, entryFont, setEntryFont, moodSetId, setMoodSetId } = useSettings();
+  const { theme, themeMode, setThemeById, entryFont, setEntryFont, moodSetId, setMoodSetId, locale, setLocale } = useSettings();
   const { currentUser, logout, updateUser, toggleAI } = useAuth();
+  const [languageSyncLoading, setLanguageSyncLoading] = useState(false);
 
   const [nameModalVisible, setNameModalVisible] = useState(false);
   const [nameInput, setNameInput] = useState('');
@@ -65,10 +69,10 @@ export default function SettingsScreen() {
   }
 
   async function handleLogout() {
-    Alert.alert('Sign out', 'Are you sure?', [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert(t('settingsScreen.alerts.signOutTitle'), t('settingsScreen.alerts.signOutMessage'), [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: 'Sign out',
+        text: t('settingsScreen.signOut'),
         style: 'destructive',
         onPress: async () => {
           await logout();
@@ -76,6 +80,20 @@ export default function SettingsScreen() {
         },
       },
     ]);
+  }
+
+  async function handleLanguageChange(code: string) {
+    await setLocale(code);
+    if (!currentUser) return;
+    setLanguageSyncLoading(true);
+    try {
+      await api.updateLocale(code);
+      updateUser({ ...currentUser, locale: code });
+    } catch {
+      Alert.alert(t('common.error'), t('settingsScreen.alerts.languageSyncError'));
+    } finally {
+      setLanguageSyncLoading(false);
+    }
   }
 
   function openEditName() {
@@ -87,7 +105,7 @@ export default function SettingsScreen() {
   async function handleSaveName() {
     const trimmed = nameInput.trim();
     if (!trimmed) {
-      setNameError('Name cannot be empty');
+      setNameError(t('settingsScreen.editNameModal.errorEmpty'));
       return;
     }
     setNameLoading(true);
@@ -97,7 +115,7 @@ export default function SettingsScreen() {
       updateUser(updated);
       setNameModalVisible(false);
     } catch (e: unknown) {
-      setNameError(e instanceof ApiError ? e.message : 'Something went wrong');
+      setNameError(e instanceof ApiError ? e.message : t('common.somethingWrong'));
     } finally {
       setNameLoading(false);
     }
@@ -108,7 +126,7 @@ export default function SettingsScreen() {
     try {
       await toggleAI(enabled);
     } catch {
-      Alert.alert('Error', 'Could not update AI setting. Please try again.');
+      Alert.alert(t('common.error'), t('settingsScreen.alerts.aiToggleError'));
     } finally {
       setAiToggleLoading(false);
     }
@@ -116,19 +134,19 @@ export default function SettingsScreen() {
 
   function handleDeleteEntries() {
     Alert.alert(
-      'Delete all entries',
-      'This will permanently delete all your journal entries and cannot be undone.',
+      t('settingsScreen.alerts.deleteEntriesTitle'),
+      t('settingsScreen.alerts.deleteEntriesMessage'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Delete all',
+          text: t('settingsScreen.alerts.deleteAll'),
           style: 'destructive',
           onPress: async () => {
             try {
               await api.deleteEntries();
-              Alert.alert('Done', 'All entries have been deleted.');
+              Alert.alert(t('settingsScreen.alerts.done'), t('settingsScreen.alerts.entriesDeletedMessage'));
             } catch {
-              Alert.alert('Error', 'Could not delete entries. Please try again.');
+              Alert.alert(t('common.error'), t('settingsScreen.alerts.deleteEntriesError'));
             }
           },
         },
@@ -144,20 +162,20 @@ export default function SettingsScreen() {
       try {
         await FileSystem.writeAsStringAsync(path, json, { encoding: FileSystem.EncodingType.UTF8 });
       } catch {
-        Alert.alert('Error', 'Could not write export file. Check device storage.');
+        Alert.alert(t('common.error'), t('settingsScreen.alerts.exportWriteError'));
         return;
       }
       const canShare = await Sharing.isAvailableAsync();
       if (canShare) {
         await Sharing.shareAsync(path, { mimeType: 'application/json', dialogTitle: 'Export journal data' });
       } else {
-        Alert.alert('Export saved', `Your data has been saved to:\n${path}`);
+        Alert.alert(t('settingsScreen.alerts.exportSavedTitle'), t('settingsScreen.alerts.exportSavedMessage', { path }));
       }
     } catch (e: unknown) {
       if (e instanceof ApiError) {
-        Alert.alert('Error', e.message);
+        Alert.alert(t('common.error'), e.message);
       } else {
-        Alert.alert('Error', 'Could not export data. Please try again.');
+        Alert.alert(t('common.error'), t('settingsScreen.alerts.exportError'));
       }
     }
   }
@@ -168,9 +186,9 @@ export default function SettingsScreen() {
       await api.activateTrial();
       const user = await api.getMe();
       updateUser(user);
-      Alert.alert('Trial activated', 'Your 7-day trial is now active.');
+      Alert.alert(t('settingsScreen.alerts.trialActivatedTitle'), t('settingsScreen.alerts.trialActivatedMessage'));
     } catch (e: unknown) {
-      Alert.alert('Error', e instanceof ApiError ? e.message : 'Could not activate trial. Please try again.');
+      Alert.alert(t('common.error'), e instanceof ApiError ? e.message : t('settingsScreen.alerts.trialError'));
     } finally {
       setTrialLoading(false);
     }
@@ -178,12 +196,12 @@ export default function SettingsScreen() {
 
   function handleDeleteAccount() {
     Alert.alert(
-      'Delete account',
-      'This will permanently delete your account and all data. This cannot be undone.',
+      t('settingsScreen.alerts.deleteAccountTitle'),
+      t('settingsScreen.alerts.deleteAccountMessage'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Delete account',
+          text: t('settingsScreen.deleteAccount'),
           style: 'destructive',
           onPress: async () => {
             try {
@@ -191,7 +209,7 @@ export default function SettingsScreen() {
               await logout();
               router.replace('/(auth)/login');
             } catch {
-              Alert.alert('Error', 'Could not delete account. Please try again.');
+              Alert.alert(t('common.error'), t('settingsScreen.alerts.deleteAccountError'));
             }
           },
         },
@@ -208,7 +226,7 @@ export default function SettingsScreen() {
         ]}
       >
         <Text style={[styles.title, { color: theme.text, fontFamily: FONTS.modern }]}>
-          Settings
+          {t('settingsScreen.title')}
         </Text>
       </View>
 
@@ -218,16 +236,16 @@ export default function SettingsScreen() {
         {biometricAvailable && (
           <>
             <Text style={[styles.sectionLabel, { color: theme.textSecondary, fontFamily: FONTS.modern }]}>
-              SECURITY
+              {t('settingsScreen.security')}
             </Text>
             <View style={[styles.infoBlock, { backgroundColor: theme.surface, borderColor: theme.border }]}>
               <View style={styles.toggleRow}>
                 <View style={styles.toggleLabelCol}>
                   <Text style={[styles.infoLabel, { color: theme.text, fontFamily: FONTS.modern }]}>
-                    Sign in with Face ID
+                    {t('settingsScreen.faceIdLabel')}
                   </Text>
                   <Text style={[styles.toggleSub, { color: theme.textSecondary, fontFamily: FONTS.modern }]}>
-                    Skip the password screen on next sign-in.
+                    {t('settingsScreen.faceIdSub')}
                   </Text>
                 </View>
                 <Switch
@@ -243,17 +261,17 @@ export default function SettingsScreen() {
 
         {/* ── Privacy ────────────────────────────────────────── */}
         <Text style={[styles.sectionLabel, { color: theme.textSecondary, fontFamily: FONTS.modern }]}>
-          PRIVACY
+          {t('settingsScreen.privacy')}
         </Text>
 
         <View style={[styles.infoBlock, { backgroundColor: theme.surface, borderColor: theme.border }]}>
           <View style={styles.toggleRow}>
             <View style={styles.toggleLabelCol}>
               <Text style={[styles.infoLabel, { color: theme.text, fontFamily: FONTS.modern }]}>
-                AI Reflections
+                {t('settingsScreen.aiReflectionsLabel')}
               </Text>
               <Text style={[styles.toggleSub, { color: theme.textSecondary, fontFamily: FONTS.modern }]}>
-                When off, your entries are never sent to any AI service.
+                {t('settingsScreen.aiReflectionsSub')}
               </Text>
             </View>
             <Switch
@@ -268,25 +286,25 @@ export default function SettingsScreen() {
 
         {/* ── Appearance ─────────────────────────────────────── */}
         <Text style={[styles.sectionLabel, { color: theme.textSecondary, fontFamily: FONTS.modern }]}>
-          APPEARANCE
+          {t('settingsScreen.appearance')}
         </Text>
 
         {/* Theme picker */}
-        <Text style={[styles.label, { color: theme.text, fontFamily: FONTS.modern }]}>Theme</Text>
+        <Text style={[styles.label, { color: theme.text, fontFamily: FONTS.modern }]}>{t('settingsScreen.theme')}</Text>
         <View style={styles.row}>
-          {Object.values(THEMES).map((t) => (
+          {Object.values(THEMES).map((th) => (
             <Pressable
-              key={t.id}
+              key={th.id}
               style={[
                 styles.themeSwatch,
-                { backgroundColor: t.background, borderColor: t.border },
-                themeMode === t.id && { borderColor: theme.accent, borderWidth: 2.5 },
+                { backgroundColor: th.background, borderColor: th.border },
+                themeMode === th.id && { borderColor: theme.accent, borderWidth: 2.5 },
               ]}
-              onPress={() => void setThemeById(t.id)}
+              onPress={() => void setThemeById(th.id)}
             >
-              <View style={[styles.swatchInner, { backgroundColor: t.surface }]} />
-              <Text style={[styles.swatchLabel, { color: t.text, fontFamily: FONTS.modern }]}>
-                {t.name}
+              <View style={[styles.swatchInner, { backgroundColor: th.surface }]} />
+              <Text style={[styles.swatchLabel, { color: th.text, fontFamily: FONTS.modern }]}>
+                {t(`settingsScreen.themeNames.${th.id}`, { defaultValue: th.name })}
               </Text>
             </Pressable>
           ))}
@@ -305,13 +323,13 @@ export default function SettingsScreen() {
               <View style={[styles.systemSwatchHalf, { backgroundColor: THEMES[SYSTEM_DARK_THEME_ID].background }]} />
             </View>
             <Text style={[styles.swatchLabel, { color: theme.text, fontFamily: FONTS.modern }]}>
-              System
+              {t('settingsScreen.system')}
             </Text>
           </Pressable>
         </View>
 
         {/* Font picker */}
-        <Text style={[styles.label, { color: theme.text, fontFamily: FONTS.modern }]}>Font</Text>
+        <Text style={[styles.label, { color: theme.text, fontFamily: FONTS.modern }]}>{t('settingsScreen.font')}</Text>
         <View style={styles.fontGrid}>
           {FONT_OPTIONS.map((opt) => (
             <Pressable
@@ -334,10 +352,10 @@ export default function SettingsScreen() {
                   },
                 ]}
               >
-                Amor fati — love your fate.
+                {t('settingsScreen.fontSample')}
               </Text>
               <Text style={[styles.fontLabel, { color: theme.textSecondary, fontFamily: FONTS.modern }]}>
-                {opt.label}
+                {t(`settingsScreen.fontNames.${opt.key}`, { defaultValue: opt.label })}
               </Text>
             </Pressable>
           ))}
@@ -345,7 +363,7 @@ export default function SettingsScreen() {
 
         {/* Mood icon set picker */}
         <Text style={[styles.label, { color: theme.text, fontFamily: FONTS.modern }]}>
-          Mood icons
+          {t('settingsScreen.moodIcons')}
         </Text>
         <View style={styles.moodSets}>
           {Object.values(MOOD_SETS).map((set) => {
@@ -361,7 +379,7 @@ export default function SettingsScreen() {
                 onPress={() => void setMoodSetId(set.id)}
               >
                 <Text style={[styles.moodSetName, { color: theme.textSecondary, fontFamily: FONTS.modern }]}>
-                  {set.name}
+                  {t(`settingsScreen.moodSetNames.${set.id}`, { defaultValue: set.name })}
                 </Text>
                 <View style={styles.moodPreviewRow}>
                   {emojis.map((emoji, i) => (
@@ -373,15 +391,38 @@ export default function SettingsScreen() {
           })}
         </View>
 
+        {/* Language picker */}
+        <Text style={[styles.label, { color: theme.text, fontFamily: FONTS.modern }]}>
+          {t('settingsScreen.language')}
+        </Text>
+        <View style={styles.fontGrid}>
+          {SUPPORTED_LOCALES.map((l) => (
+            <Pressable
+              key={l.code}
+              style={[
+                styles.fontOption,
+                { backgroundColor: theme.surface, borderColor: theme.border },
+                locale === l.code && { borderColor: theme.accent },
+              ]}
+              onPress={() => void handleLanguageChange(l.code)}
+              disabled={languageSyncLoading}
+            >
+              <Text style={[styles.fontLabel, { color: theme.text, fontFamily: FONTS.modern }]}>
+                {l.nativeLabel}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+
         {/* ── Account ────────────────────────────────────────── */}
         <Text style={[styles.sectionLabel, { color: theme.textSecondary, fontFamily: FONTS.modern }]}>
-          ACCOUNT
+          {t('settingsScreen.account')}
         </Text>
 
         <View style={[styles.infoBlock, { backgroundColor: theme.surface, borderColor: theme.border }]}>
           <View style={styles.infoRow}>
             <Text style={[styles.infoLabel, { color: theme.textSecondary, fontFamily: FONTS.modern }]}>
-              Email
+              {t('settingsScreen.email')}
             </Text>
             <Text style={[styles.infoValue, { color: theme.text, fontFamily: FONTS.modern }]}>
               {currentUser?.email ?? '—'}
@@ -390,14 +431,14 @@ export default function SettingsScreen() {
           <View style={[styles.infoDivider, { backgroundColor: theme.border }]} />
           <Pressable style={styles.infoRow} onPress={openEditName}>
             <Text style={[styles.infoLabel, { color: theme.textSecondary, fontFamily: FONTS.modern }]}>
-              Name
+              {t('settingsScreen.name')}
             </Text>
             <View style={styles.infoValueRow}>
               <Text style={[styles.infoValue, { color: theme.text, fontFamily: FONTS.modern }]}>
                 {currentUser?.name ?? '—'}
               </Text>
               <Text style={[styles.editChevron, { color: theme.accent, fontFamily: FONTS.modern }]}>
-                Edit
+                {t('settingsScreen.edit')}
               </Text>
             </View>
           </Pressable>
@@ -410,7 +451,7 @@ export default function SettingsScreen() {
               onPress={() => router.push('/paywall')}
             >
               <Text style={[styles.actionText, { color: theme.accent, fontFamily: FONTS.modern }]}>
-                {`Upgrade to ${APP_NAME} Pro`}
+                {t('settingsScreen.upgradeToPro', { appName: APP_NAME })}
               </Text>
             </Pressable>
             <Pressable
@@ -419,7 +460,7 @@ export default function SettingsScreen() {
               disabled={trialLoading}
             >
               <Text style={[styles.actionText, { color: theme.accent, fontFamily: FONTS.modern }]}>
-                {trialLoading ? 'Activating…' : 'Free trial (7 days)'}
+                {trialLoading ? t('settingsScreen.activating') : t('settingsScreen.freeTrial')}
               </Text>
             </Pressable>
           </>
@@ -430,7 +471,7 @@ export default function SettingsScreen() {
           onPress={() => void handleLogout()}
         >
           <Text style={[styles.actionText, { color: theme.text, fontFamily: FONTS.modern }]}>
-            Sign out
+            {t('settingsScreen.signOut')}
           </Text>
         </Pressable>
 
@@ -439,7 +480,7 @@ export default function SettingsScreen() {
           onPress={() => void handleExportData()}
         >
           <Text style={[styles.actionText, { color: theme.text, fontFamily: FONTS.modern }]}>
-            Export my data
+            {t('settingsScreen.exportData')}
           </Text>
         </Pressable>
 
@@ -448,7 +489,7 @@ export default function SettingsScreen() {
           onPress={handleDeleteEntries}
         >
           <Text style={[styles.actionText, { color: theme.destructive, fontFamily: FONTS.modern }]}>
-            Delete all entries
+            {t('settingsScreen.deleteAllEntries')}
           </Text>
         </Pressable>
 
@@ -457,7 +498,7 @@ export default function SettingsScreen() {
           onPress={handleDeleteAccount}
         >
           <Text style={[styles.actionText, { color: theme.destructive, fontFamily: FONTS.modern }]}>
-            Delete account
+            {t('settingsScreen.deleteAccount')}
           </Text>
         </Pressable>
       </ScrollView>
@@ -478,7 +519,7 @@ export default function SettingsScreen() {
             onPress={() => undefined}
           >
             <Text style={[styles.modalTitle, { color: theme.text, fontFamily: FONTS.modern }]}>
-              Edit name
+              {t('settingsScreen.editNameModal.title')}
             </Text>
             <TextInput
               style={[
@@ -492,7 +533,7 @@ export default function SettingsScreen() {
               ]}
               value={nameInput}
               onChangeText={setNameInput}
-              placeholder="Your name"
+              placeholder={t('settingsScreen.editNameModal.placeholder')}
               placeholderTextColor={theme.textSecondary}
               autoFocus
               maxLength={50}
@@ -508,7 +549,7 @@ export default function SettingsScreen() {
                 onPress={() => setNameModalVisible(false)}
               >
                 <Text style={[styles.modalBtnText, { color: theme.textSecondary, fontFamily: FONTS.modern }]}>
-                  Cancel
+                  {t('settingsScreen.editNameModal.cancel')}
                 </Text>
               </Pressable>
               <Pressable
@@ -517,7 +558,7 @@ export default function SettingsScreen() {
                 disabled={nameLoading}
               >
                 <Text style={[styles.modalBtnText, { color: theme.background, fontFamily: FONTS.modern }]}>
-                  {nameLoading ? 'Saving…' : 'Save'}
+                  {nameLoading ? t('settingsScreen.editNameModal.saving') : t('settingsScreen.editNameModal.save')}
                 </Text>
               </Pressable>
             </View>

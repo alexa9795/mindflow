@@ -30,6 +30,7 @@ type mockAuthSvc struct {
 	refreshErr   error
 	resetPwErr   error
 	aiToggleErr  error
+	localeErr    error
 }
 
 func (m *mockAuthSvc) Register(_ context.Context, _ auth.RegisterRequest) (*auth.AuthResponse, error) {
@@ -50,6 +51,7 @@ func (m *mockAuthSvc) ActivateTrial(_ context.Context, _ string) (time.Time, err
 }
 func (m *mockAuthSvc) UpdateAIEnabled(_ context.Context, _ string, _ bool) error { return m.aiToggleErr }
 func (m *mockAuthSvc) GetAIEnabled(_ context.Context, _ string) (bool, error)    { return true, nil }
+func (m *mockAuthSvc) UpdateLocale(_ context.Context, _, _ string) error         { return m.localeErr }
 func (m *mockAuthSvc) RevokeToken(_ context.Context, _ string, _ time.Time) error { return nil }
 func (m *mockAuthSvc) SetAIConsent(_ context.Context, _ string) error             { return nil }
 func (m *mockAuthSvc) RequestPasswordReset(_ context.Context, _ string) error     { return nil }
@@ -474,6 +476,70 @@ func TestAIToggleHandler(t *testing.T) {
 				if got != *tc.wantEnabled {
 					t.Errorf("ai_enabled = %v, want %v", got, *tc.wantEnabled)
 				}
+			}
+		})
+	}
+}
+
+// ---- PATCH /api/auth/locale -------------------------------------------------
+
+func TestLocaleUpdateHandler(t *testing.T) {
+	tests := []struct {
+		name       string
+		body       string
+		setUserID  bool
+		svcErr     error
+		wantStatus int
+	}{
+		{
+			name:       "valid locale with userID returns 200",
+			body:       `{"locale":"fr"}`,
+			setUserID:  true,
+			wantStatus: http.StatusOK,
+		},
+		{
+			name:       "unsupported locale returns 400",
+			body:       `{"locale":"xx"}`,
+			setUserID:  true,
+			wantStatus: http.StatusBadRequest,
+		},
+		{
+			name:       "missing userID in context returns 401",
+			body:       `{"locale":"fr"}`,
+			setUserID:  false,
+			wantStatus: http.StatusUnauthorized,
+		},
+		{
+			name:       "malformed JSON returns 400",
+			body:       `{bad`,
+			setUserID:  true,
+			wantStatus: http.StatusBadRequest,
+		},
+		{
+			name:       "service error returns 500",
+			body:       `{"locale":"de"}`,
+			setUserID:  true,
+			svcErr:     errors.New("db error"),
+			wantStatus: http.StatusInternalServerError,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			svc := &mockAuthSvc{localeErr: tc.svcErr}
+			h := newHandler(svc, &mockSubSvcForHandler{status: defaultSubStatus})
+
+			req := httptest.NewRequest(http.MethodPatch, "/api/auth/locale", strings.NewReader(tc.body))
+			req.Header.Set("Content-Type", "application/json")
+			if tc.setUserID {
+				ctx := context.WithValue(req.Context(), middleware.UserIDKey, "uid-1")
+				req = req.WithContext(ctx)
+			}
+			rr := httptest.NewRecorder()
+			h.LocaleUpdate(rr, req)
+
+			if rr.Code != tc.wantStatus {
+				t.Errorf("status = %d, want %d (body: %s)", rr.Code, tc.wantStatus, rr.Body.String())
 			}
 		})
 	}

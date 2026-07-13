@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { StyleSheet, Text, View } from 'react-native';
 import { FONTS } from '../constants/fonts';
 
@@ -7,11 +8,12 @@ interface OfflineBannerProps {
 }
 
 export default function OfflineBanner({ visible }: OfflineBannerProps) {
+  const { t } = useTranslation();
   if (!visible) return null;
 
   return (
     <View style={styles.banner}>
-      <Text style={[styles.text, { fontFamily: FONTS.modern }]}>You're offline</Text>
+      <Text style={[styles.text, { fontFamily: FONTS.modern }]}>{t('common.youreOffline')}</Text>
     </View>
   );
 }

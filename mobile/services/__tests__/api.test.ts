@@ -100,6 +100,20 @@ describe('request layer', () => {
   });
 });
 
+describe('updateLocale', () => {
+  it('sends a PATCH with the locale code and returns the parsed response', async () => {
+    fetchMock.mockResolvedValueOnce(mockResponse(200, { locale: 'fr' }));
+
+    const result = await api.updateLocale('fr');
+
+    expect(result).toEqual({ locale: 'fr' });
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe(`${API_URL}/api/auth/locale`);
+    expect(init.method).toBe('PATCH');
+    expect(JSON.parse(init.body)).toEqual({ locale: 'fr' });
+  });
+});
+
 describe('401 refresh flow', () => {
   it('refreshes the token then retries the original request', async () => {
     setToken('stale');

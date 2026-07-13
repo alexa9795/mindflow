@@ -8,6 +8,8 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import type { TFunction } from 'i18next';
+import { useTranslation } from 'react-i18next';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import MonthCalendar from '../../components/MonthCalendar';
 import MoodLineChart from '../../components/MoodLineChart';
@@ -23,31 +25,39 @@ import { api, Insights } from '../../services/api';
 
 type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
 
-function peakWritingLabel(hour: number): string {
-  if (hour < 12) return 'morning';
-  if (hour < 18) return 'afternoon';
-  if (hour < 22) return 'evening';
-  return 'night';
+function peakWritingLabel(hour: number, t: TFunction): string {
+  if (hour < 12) return t('insightsScreen.periods.morning');
+  if (hour < 18) return t('insightsScreen.periods.afternoon');
+  if (hour < 22) return t('insightsScreen.periods.evening');
+  return t('insightsScreen.periods.night');
 }
 
-function moodTrendLabel(trend: string): string {
+function moodTrendLabel(trend: string, t: TFunction): string {
   switch (trend) {
-    case 'improving': return 'Trending up lately';
-    case 'declining': return 'Dipped recently';
-    case 'stable':    return 'Steady lately';
+    case 'improving': return t('insightsScreen.trend.improving');
+    case 'declining': return t('insightsScreen.trend.declining');
+    case 'stable':    return t('insightsScreen.trend.stable');
     default:          return '';
   }
 }
 
+/** Backend weekday keys are fixed English names (Postgres to_char 'Day') — translate for display. */
+function translateWeekday(day: string, t: TFunction): string {
+  return t(`common.weekdaysFull.${day.trim().toLowerCase()}`, { defaultValue: day });
+}
+
 /** Best/worst weekday by average mood, for a more detailed trend sub-line. */
-function moodTrendDetail(data?: Record<string, number>): string | undefined {
+function moodTrendDetail(data: Record<string, number> | undefined, t: TFunction): string | undefined {
   if (data == null) return undefined;
   const entries = Object.entries(data);
   if (entries.length < 2) return undefined;
   const [bestDay] = entries.reduce((a, b) => (b[1] > a[1] ? b : a));
   const [worstDay] = entries.reduce((a, b) => (b[1] < a[1] ? b : a));
   if (bestDay === worstDay) return undefined;
-  return `Best on ${bestDay}, lowest on ${worstDay}`;
+  return t('insightsScreen.trendDetail', {
+    bestDay: translateWeekday(bestDay, t),
+    worstDay: translateWeekday(worstDay, t),
+  });
 }
 
 /** Color-coded icon stat card. */
@@ -102,6 +112,7 @@ function StatCard({
 
 export default function InsightsScreen() {
   const { theme, moodSetId } = useSettings();
+  const { t } = useTranslation();
   const { width } = useWindowDimensions();
   const [insights, setInsights] = useState<Insights | null>(null);
   const [loading, setLoading] = useState(true);
@@ -119,9 +130,9 @@ export default function InsightsScreen() {
             notifySuccess();
           }
         })
-        .catch(() => setError('Could not load insights'))
+        .catch(() => setError(t('insightsScreen.loadError')))
         .finally(() => setLoading(false));
-    }, []),
+    }, [t]),
   );
 
   if (loading) {
@@ -142,7 +153,7 @@ export default function InsightsScreen() {
     return (
       <ThemedView safe edges={['top', 'left', 'right']} style={styles.center}>
         <Text style={[styles.errorText, { color: theme.textSecondary, fontFamily: FONTS.modern }]}>
-          {error ?? 'Something went wrong'}
+          {error ?? t('common.somethingWrong')}
         </Text>
       </ThemedView>
     );
@@ -153,10 +164,10 @@ export default function InsightsScreen() {
       <ThemedView safe edges={['top', 'left', 'right']} style={styles.center}>
         <Text style={styles.emptyIcon}>📓</Text>
         <Text style={[styles.emptyText, { color: theme.text, fontFamily: FONTS.modern }]}>
-          Your insights are waiting
+          {t('insightsScreen.emptyTitle')}
         </Text>
         <Text style={[styles.emptySubtext, { color: theme.textSecondary, fontFamily: FONTS.modern }]}>
-          Write a few entries and we&apos;ll surface your moods, streaks, and patterns here.
+          {t('insightsScreen.emptySubtitle')}
         </Text>
       </ThemedView>
     );
@@ -173,10 +184,10 @@ export default function InsightsScreen() {
 
   const monthDelta = insights.entries_this_month - insights.entries_last_month;
   const deltaLabel = monthDelta > 0
-    ? `+${monthDelta} vs last month`
+    ? t('insightsScreen.deltaPositive', { count: monthDelta })
     : monthDelta < 0
-    ? `${monthDelta} vs last month`
-    : 'Same as last month';
+    ? t('insightsScreen.deltaNegative', { count: monthDelta })
+    : t('insightsScreen.deltaSame');
   const deltaColor =
     monthDelta > 0 ? theme.success : monthDelta < 0 ? theme.destructive : theme.textSecondary;
 
@@ -200,7 +211,7 @@ export default function InsightsScreen() {
     <ThemedView safe edges={['top', 'left', 'right']}>
       <ScrollView contentContainerStyle={styles.scroll}>
         <Text style={[styles.title, { color: theme.text, fontFamily: FONTS.modern }]}>
-          Your insights
+          {t('insightsScreen.title')}
         </Text>
 
         {/* Hero stat — current streak (falls back to total entries) */}
@@ -215,7 +226,7 @@ export default function InsightsScreen() {
                 {insights.current_streak}
               </Text>
               <Text style={[styles.heroLabel, { color: theme.background, fontFamily: FONTS.modern }]}>
-                day{insights.current_streak === 1 ? '' : 's'} in a row
+                {t('insightsScreen.daysInARow', { count: insights.current_streak })}
               </Text>
             </>
           ) : (
@@ -225,7 +236,7 @@ export default function InsightsScreen() {
                 {insights.total_entries}
               </Text>
               <Text style={[styles.heroLabel, { color: theme.background, fontFamily: FONTS.modern }]}>
-                entries written
+                {t('insightsScreen.entriesWritten')}
               </Text>
             </>
           )}
@@ -238,7 +249,7 @@ export default function InsightsScreen() {
             style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}
           >
             <Text style={[styles.cardLabel, { color: theme.textSecondary, fontFamily: FONTS.modern }]}>
-              Mood across the week
+              {t('insightsScreen.moodAcrossWeek')}
             </Text>
             <MoodLineChart data={insights.avg_mood_by_day} width={chartWidth} />
           </Animated.View>
@@ -249,7 +260,7 @@ export default function InsightsScreen() {
           <StatCard
             icon="happy-outline"
             color={avgMoodColor}
-            label="Average mood (last 30 days)"
+            label={t('insightsScreen.avgMoodLabel')}
             value={`${insights.avg_mood_last_30!.toFixed(1)} / 5  ${avgMoodEmoji ?? ''}`}
             theme={theme}
             delay={nextDelay()}
@@ -263,7 +274,7 @@ export default function InsightsScreen() {
             style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}
           >
             <Text style={[styles.cardLabel, { color: theme.textSecondary, fontFamily: FONTS.modern }]}>
-              This month
+              {t('insightsScreen.thisMonth')}
             </Text>
             <MonthCalendar
               days={Object.fromEntries(
@@ -283,8 +294,8 @@ export default function InsightsScreen() {
           <StatCard
             icon="trophy-outline"
             color={theme.success}
-            label="Longest streak"
-            value={`${insights.longest_streak} day${insights.longest_streak === 1 ? '' : 's'}`}
+            label={t('insightsScreen.longestStreak')}
+            value={t('common.dayCount', { count: insights.longest_streak })}
             theme={theme}
             delay={nextDelay()}
             flex
@@ -293,7 +304,7 @@ export default function InsightsScreen() {
           <StatCard
             icon="calendar-outline"
             color={deltaColor}
-            label="This month"
+            label={t('insightsScreen.thisMonth')}
             value={insights.entries_this_month}
             sub={deltaLabel}
             subColor={deltaColor}
@@ -308,9 +319,9 @@ export default function InsightsScreen() {
           <StatCard
             icon={trendIcon}
             color={trendColor}
-            label="Mood trend"
-            value={moodTrendLabel(insights.mood_trend)}
-            sub={moodTrendDetail(insights.avg_mood_by_day)}
+            label={t('insightsScreen.moodTrend')}
+            value={moodTrendLabel(insights.mood_trend, t)}
+            sub={moodTrendDetail(insights.avg_mood_by_day, t)}
             theme={theme}
             delay={nextDelay()}
           />
@@ -320,9 +331,9 @@ export default function InsightsScreen() {
           <StatCard
             icon="time-outline"
             color={theme.accent}
-            label="Peak writing time"
-            value={peakWritingLabel(insights.peak_writing_hour)}
-            sub={`You tend to write in the ${peakWritingLabel(insights.peak_writing_hour)}`}
+            label={t('insightsScreen.peakWritingTime')}
+            value={peakWritingLabel(insights.peak_writing_hour, t)}
+            sub={t('insightsScreen.peakWritingDetail', { period: peakWritingLabel(insights.peak_writing_hour, t) })}
             theme={theme}
             delay={nextDelay()}
           />

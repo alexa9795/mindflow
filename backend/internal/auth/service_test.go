@@ -110,6 +110,14 @@ func (m *mockAuthRepo) GetAIEnabled(_ context.Context, userID string) (bool, err
 	return false, sql.ErrNoRows
 }
 
+func (m *mockAuthRepo) UpdateLocale(_ context.Context, userID, locale string) error {
+	if u, ok := m.users[userID]; ok {
+		u.Locale = locale
+		return nil
+	}
+	return sql.ErrNoRows
+}
+
 func (m *mockAuthRepo) RevokeToken(_ context.Context, _ string, _ time.Time) error { return nil }
 func (m *mockAuthRepo) IsTokenRevoked(_ context.Context, _ string) (bool, error)   { return false, nil }
 func (m *mockAuthRepo) UpdateLastActive(_ context.Context, _ string) error         { return nil }

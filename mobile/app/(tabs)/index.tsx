@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import EntryCard from '../../components/EntryCard';
 import OfflineBanner from '../../components/OfflineBanner';
 import PressableScale from '../../components/PressableScale';
@@ -25,6 +26,7 @@ import { api } from '../../services/api';
 
 export default function HomeScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const { theme } = useSettings();
   const insets = useSafeAreaInsets();
   const { entries, loading, isOffline, fetchEntries, loadMore, hasMore, removeEntry } = useEntries();
@@ -36,20 +38,20 @@ export default function HomeScreen() {
     try {
       await api.deleteEntry(id);
     } catch {
-      Alert.alert('Error', 'Could not delete entry. Please try again.');
+      Alert.alert(t('common.error'), t('journalScreen.deleteError'));
       void fetchEntries();
     }
   }
 
   useFocusEffect(
     useCallback(() => {
-      void getDailyQuote().then(setQuote);
+      void getDailyQuote(t).then(setQuote);
       void fetchEntries();
       // Reuse the insights endpoint purely for the header streak chip.
       api.getInsights()
         .then((data) => setStreak(data.current_streak))
         .catch(() => {/* header chip is non-critical */});
-    }, [fetchEntries]),
+    }, [fetchEntries, t]),
   );
 
   return (
@@ -74,7 +76,7 @@ export default function HomeScreen() {
           <View style={[styles.streakChip, { backgroundColor: theme.accent + '1A', borderColor: theme.accent + '40' }]}>
             <Text style={styles.streakEmoji}>🔥</Text>
             <Text style={[styles.streakText, { color: theme.accent, fontFamily: FONTS.modern }]}>
-              {streak} day{streak === 1 ? '' : 's'}
+              {t('common.dayCount', { count: streak })}
             </Text>
           </View>
         )}
@@ -99,10 +101,10 @@ export default function HomeScreen() {
             <View style={styles.empty}>
               <Text style={styles.emptyIcon}>✍️</Text>
               <Text style={[styles.emptyTitle, { color: theme.text, fontFamily: FONTS.modern }]}>
-                Your story starts here
+                {t('journalScreen.emptyTitle')}
               </Text>
               <Text style={[styles.emptySubtitle, { color: theme.textSecondary, fontFamily: FONTS.modern }]}>
-                Tap + to write your first entry
+                {t('journalScreen.emptySubtitle')}
               </Text>
             </View>
           }
@@ -125,7 +127,7 @@ export default function HomeScreen() {
       <PressableScale
         style={[styles.fab, { backgroundColor: theme.accent }]}
         onPress={() => router.push('/entry/new')}
-        accessibilityLabel="New entry"
+        accessibilityLabel={t('journalScreen.newEntryA11y')}
         haptic
       >
         <Ionicons name="add" size={30} color={theme.background} />

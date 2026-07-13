@@ -57,7 +57,35 @@ local Docker default), `JWT_SECRET` (**server refuses to start without it**),
 `ALLOWED_ORIGINS`, `ENV`, `PORT`. Never commit `.env` (gitignored — note
 `grep -r` here respects `.gitignore`, so use `git grep` when auditing).
 
-**Latest session (2026-07-13) — legal-entity + billing-model work (this commit):**
+**Latest session (2026-07-13) — multi-language support (this commit):**
+- **Full i18n added**: English (base) + **French, Spanish, German, Italian,
+  Portuguese**. Mobile: `i18next` + `react-i18next` + `expo-localization`
+  (`mobile/i18n/index.ts` bootstrap, `mobile/locales/{en,fr,es,de,it,pt}.json`,
+  `mobile/constants/locales.ts`). Every screen/component extracted to
+  translation keys (including `Alert.alert`, placeholders, pluralized counts,
+  the 112-quote bank, and mood/theme/font labels); hardcoded `'en-US'` date
+  formatting now follows the active locale.
+- **Language picker** in Settings → Appearance (native-name options); backed
+  by `SettingsContext`'s new `locale`/`setLocale` (same pattern as
+  theme/font/moodSet — AsyncStorage-persisted, applied via `i18n.changeLanguage`).
+- **Synced to the account**, not just the device: new `locale` column
+  (migration `027_add_locale.sql`) + `PATCH /api/auth/locale` (mirrors the
+  existing `ai_enabled`/`ai-toggle` pattern exactly — repo/service/handler/
+  audit action/route/tests). `app/_layout.tsx`'s `AuthGuard` applies
+  `currentUser.locale` on login so a fresh device picks up the account's
+  language.
+- Verified: backend Go changes reviewed manually (no Go toolchain in this
+  environment to run `go build`/`test` — **run `go build ./... && go vet ./...
+  && go test ./...` in `backend/` before merging**); mobile `tsc --noEmit`
+  clean, `jest` 20/20 passing (added an `updateLocale` API test), and a full
+  `npx expo export --platform android` bundled all 1740 modules with no
+  errors.
+- **Follow-up before store submission** (see todo.md ⚪): a native-speaker
+  review of the FR/ES/DE/IT/PT translations (same rationale as the paid legal
+  review already gating the Privacy Policy/Terms), and localizing the store
+  listing itself.
+
+**Previous session (2026-07-13) — legal-entity + billing-model work:**
 - **Legal entity RESOLVED:** publishing under the existing Spanish SL
   **Open Brain Development SL** (NIF B26910588, Plaza Music Fayos Num 4, Esc. C,
   Planta 3, Puerta 5, Valencia). Applied as data controller/provider across

@@ -11,29 +11,22 @@ import {
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
+import { APP_NAME } from '../constants/config';
 import { FONTS } from '../constants/fonts';
 import { useAuth } from '../hooks/useAuth';
 import MindFlowLogo from '../components/MindFlowLogo';
 
-const POINTS: { icon: keyof typeof Ionicons.glyphMap; title: string; body: string }[] = [
-  {
-    icon: 'lock-closed-outline',
-    title: 'A private space',
-    body: "Whatever you write stays yours — just a place to think out loud, no judgment.",
-  },
-  {
-    icon: 'sparkles-outline',
-    title: 'A companion that listens',
-    body: 'MindFlow reads between the lines and reflects back what it notices, gently.',
-  },
-  {
-    icon: 'trending-up-outline',
-    title: 'See yourself clearly',
-    body: 'Streaks, mood trends, and patterns build up the more you show up — even a minute a day adds up.',
-  },
+const POINT_ICONS: (keyof typeof Ionicons.glyphMap)[] = [
+  'lock-closed-outline',
+  'sparkles-outline',
+  'trending-up-outline',
 ];
 
+const POINT_KEYS = ['privacy', 'companion', 'clarity'] as const;
+
 export default function WelcomeScreen() {
+  const { t } = useTranslation();
   const { clearJustRegistered, currentUser } = useAuth();
   const { height } = useWindowDimensions();
   const heroHeight = height * 0.38;
@@ -66,29 +59,30 @@ export default function WelcomeScreen() {
           </View>
 
           <Text style={styles.greeting}>
-            Welcome{currentUser?.name ? `, ${currentUser.name.split(' ')[0]}` : ''}.
+            {currentUser?.name
+              ? t('welcome.greetingWithName', { name: currentUser.name.split(' ')[0] })
+              : t('welcome.greetingNoName')}
           </Text>
           <Text style={styles.subgreeting}>
-            MindFlow is your private journal with a companion that helps you notice
-            what you might miss on your own.
+            {t('welcome.subgreeting', { appName: APP_NAME })}
           </Text>
 
           <View style={styles.points}>
-            {POINTS.map((p) => (
-              <View key={p.title} style={styles.pointRow}>
+            {POINT_KEYS.map((key, i) => (
+              <View key={key} style={styles.pointRow}>
                 <View style={styles.pointIcon}>
-                  <Ionicons name={p.icon} size={20} color="#A65A3A" />
+                  <Ionicons name={POINT_ICONS[i]} size={20} color="#A65A3A" />
                 </View>
                 <View style={styles.pointTextCol}>
-                  <Text style={styles.pointTitle}>{p.title}</Text>
-                  <Text style={styles.pointBody}>{p.body}</Text>
+                  <Text style={styles.pointTitle}>{t(`welcome.points.${key}Title`)}</Text>
+                  <Text style={styles.pointBody}>{t(`welcome.points.${key}Body`, { appName: APP_NAME })}</Text>
                 </View>
               </View>
             ))}
           </View>
 
           <Pressable style={styles.btn} onPress={getStarted}>
-            <Text style={styles.btnText}>WRITE YOUR FIRST ENTRY</Text>
+            <Text style={styles.btnText}>{t('welcome.cta')}</Text>
           </Pressable>
         </View>
       </ScrollView>

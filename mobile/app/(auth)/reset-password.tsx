@@ -13,11 +13,13 @@ import {
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { FONTS } from '../../constants/fonts';
 import { api, ApiError } from '../../services/api';
 
 export default function ResetPasswordScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const [token, setToken] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -27,15 +29,15 @@ export default function ResetPasswordScreen() {
 
   async function submit() {
     if (!token.trim()) {
-      setError('Please enter your reset token');
+      setError(t('auth.resetPassword.errors.tokenRequired'));
       return;
     }
     if (password.length < 8 || password.length > 72) {
-      setError('Password must be 8–72 characters');
+      setError(t('auth.resetPassword.errors.passwordLength'));
       return;
     }
     if (password !== confirm) {
-      setError('Passwords do not match');
+      setError(t('auth.resetPassword.errors.passwordMismatch'));
       return;
     }
     setLoading(true);
@@ -45,9 +47,9 @@ export default function ResetPasswordScreen() {
       setDone(true);
     } catch (e: unknown) {
       if (e instanceof ApiError && e.status === 400) {
-        setError('Invalid or expired reset token. Please request a new one.');
+        setError(t('auth.resetPassword.errors.invalidToken'));
       } else {
-        setError(e instanceof ApiError ? e.message : 'Something went wrong. Please try again.');
+        setError(e instanceof ApiError ? e.message : t('common.somethingWrongRetry'));
       }
     } finally {
       setLoading(false);
@@ -68,21 +70,21 @@ export default function ResetPasswordScreen() {
         >
         <View style={styles.container}>
           <Pressable style={styles.backBtn} onPress={() => router.back()}>
-            <Text style={styles.backText}>← Back</Text>
+            <Text style={styles.backText}>{t('common.back')}</Text>
           </Pressable>
 
-          <Text style={styles.title}>Reset password</Text>
+          <Text style={styles.title}>{t('auth.resetPassword.title')}</Text>
           <Text style={styles.subtitle}>
-            Enter the token from your email and your new password.
+            {t('auth.resetPassword.subtitle')}
           </Text>
 
           {done ? (
             <View style={styles.successBox}>
               <Text style={styles.successText}>
-                Your password has been reset. You can now sign in with your new password.
+                {t('auth.resetPassword.successText')}
               </Text>
               <Pressable style={styles.btn} onPress={() => router.replace('/(auth)/login')}>
-                <Text style={styles.btnText}>SIGN IN</Text>
+                <Text style={styles.btnText}>{t('auth.resetPassword.signIn')}</Text>
               </Pressable>
             </View>
           ) : (
@@ -93,7 +95,7 @@ export default function ResetPasswordScreen() {
 
               <TextInput
                 style={styles.input}
-                placeholder="Reset token (from email)"
+                placeholder={t('auth.resetPassword.tokenPlaceholder')}
                 placeholderTextColor="#B0A89E"
                 value={token}
                 onChangeText={setToken}
@@ -104,7 +106,7 @@ export default function ResetPasswordScreen() {
 
               <TextInput
                 style={styles.input}
-                placeholder="New password"
+                placeholder={t('auth.resetPassword.newPasswordPlaceholder')}
                 placeholderTextColor="#B0A89E"
                 value={password}
                 onChangeText={setPassword}
@@ -114,7 +116,7 @@ export default function ResetPasswordScreen() {
 
               <TextInput
                 style={[styles.input, styles.inputLast]}
-                placeholder="Confirm new password"
+                placeholder={t('auth.resetPassword.confirmNewPasswordPlaceholder')}
                 placeholderTextColor="#B0A89E"
                 value={confirm}
                 onChangeText={setConfirm}
@@ -130,7 +132,7 @@ export default function ResetPasswordScreen() {
                 {loading ? (
                   <ActivityIndicator color="#F5F0E8" />
                 ) : (
-                  <Text style={styles.btnText}>RESET PASSWORD</Text>
+                  <Text style={styles.btnText}>{t('auth.resetPassword.resetPasswordBtn')}</Text>
                 )}
               </Pressable>
             </>

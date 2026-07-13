@@ -148,6 +148,7 @@ func main() {
 	mux.HandleFunc("PATCH /api/auth/me", authMW(middleware.MaxBodySize(authHandler.PatchMe)))
 	mux.HandleFunc("DELETE /api/auth/me", authMW(authHandler.DeleteMe))
 	mux.HandleFunc("PATCH /api/auth/ai-toggle", authMW(middleware.MaxBodySize(authHandler.AIToggle)))
+	mux.HandleFunc("PATCH /api/auth/locale", authMW(middleware.MaxBodySize(authHandler.LocaleUpdate)))
 	mux.HandleFunc("POST /api/subscription/trial", authMW(authHandler.Trial))
 	// Refresh token rotation — public (carries its own credential), rate-limited per IP.
 	mux.Handle("POST /api/auth/refresh",

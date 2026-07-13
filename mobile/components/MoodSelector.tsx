@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, {
   useAnimatedStyle,
@@ -24,6 +25,8 @@ interface MoodChipProps {
 }
 
 function MoodChip({ mood, emoji, isActive, theme, onPress }: MoodChipProps) {
+  const { t } = useTranslation();
+  const moodLabel = t(mood.labelKey);
   const moodColor = theme.mood[mood.score as 1 | 2 | 3 | 4 | 5];
   const select = useSharedValue(isActive ? 1 : 0);
   const press = useSharedValue(1);
@@ -48,7 +51,7 @@ function MoodChip({ mood, emoji, isActive, theme, onPress }: MoodChipProps) {
         tapLight();
         onPress();
       }}
-      accessibilityLabel={mood.label}
+      accessibilityLabel={moodLabel}
       style={[
         styles.btn,
         { backgroundColor: theme.surface, borderColor: theme.border },
@@ -63,7 +66,7 @@ function MoodChip({ mood, emoji, isActive, theme, onPress }: MoodChipProps) {
           { color: isActive ? moodColor : theme.textSecondary, fontFamily: FONTS.modern },
         ]}
       >
-        {mood.label}
+        {moodLabel}
       </Text>
     </AnimatedPressable>
   );

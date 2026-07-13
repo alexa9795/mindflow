@@ -152,6 +152,7 @@ export interface User {
   id: string;
   email: string;
   name: string;
+  locale?: string;
   created_at?: string;
   ai_enabled: boolean;
   ai_consent_given_at?: string | null;
@@ -347,6 +348,12 @@ export const api = {
     request<{ ai_enabled: boolean }>('/api/auth/ai-toggle', {
       method: 'PATCH',
       body: JSON.stringify({ ai_enabled: enabled }),
+    }),
+
+  updateLocale: (locale: string) =>
+    request<{ locale: string }>('/api/auth/locale', {
+      method: 'PATCH',
+      body: JSON.stringify({ locale }),
     }),
 
   deleteEntries: () =>

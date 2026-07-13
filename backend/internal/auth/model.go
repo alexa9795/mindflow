@@ -41,9 +41,10 @@ type AuthResponse struct {
 
 // UserInfo is the public user representation included in AuthResponse.
 type UserInfo struct {
-	ID    string `json:"id"`
-	Email string `json:"email"`
-	Name  string `json:"name"`
+	ID     string `json:"id"`
+	Email  string `json:"email"`
+	Name   string `json:"name"`
+	Locale string `json:"locale"`
 }
 
 // SubscriptionInfo is the subscription state embedded in the Me response.
@@ -60,6 +61,7 @@ type User struct {
 	ID                       string            `json:"id"`
 	Email                    string            `json:"email"`
 	Name                     string            `json:"name"`
+	Locale                   string            `json:"locale"`
 	CreatedAt                time.Time         `json:"created_at"`
 	AIEnabled                bool              `json:"ai_enabled"`
 	AIConsentGivenAt         *time.Time        `json:"ai_consent_given_at,omitempty"`
@@ -92,3 +94,15 @@ var (
 	// ErrInvalidResetToken is returned when the password reset token is invalid or expired.
 	ErrInvalidResetToken = errors.New("invalid or expired reset token")
 )
+
+// SupportedLocales is the allow-list of locale codes accepted by PATCH /api/auth/locale.
+// Must stay in sync with the CHECK constraint in migration 027_add_locale.sql and
+// mobile/constants/locales.ts.
+var SupportedLocales = map[string]bool{
+	"en": true,
+	"fr": true,
+	"es": true,
+	"de": true,
+	"it": true,
+	"pt": true,
+}

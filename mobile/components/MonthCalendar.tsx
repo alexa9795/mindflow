@@ -1,8 +1,7 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { StyleSheet, Text, View } from 'react-native';
 import type { Theme } from '../constants/themes';
-
-const WEEKDAY_INITIALS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 
 /** Renders a calendar grid for the current month, marking days that have an
  * entry with their mood emoji (or a plain dot when no mood was logged). */
@@ -16,6 +15,8 @@ export default function MonthCalendar({
   moodEmojis: string[];
   theme: Theme;
 }) {
+  const { t } = useTranslation();
+  const WEEKDAY_INITIALS = t('common.weekdayInitials', { returnObjects: true }) as string[];
   const now = new Date();
   const year = now.getFullYear();
   const month = now.getMonth();

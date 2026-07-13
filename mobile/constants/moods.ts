@@ -3,7 +3,8 @@ export type MoodLevel = 'very_bad' | 'bad' | 'neutral' | 'good' | 'great';
 export interface MoodOption {
   level: MoodLevel;
   score: number; // 1–5 matching backend mood_score
-  label: string;
+  /** i18next key (moods.*) — resolve with t(mood.labelKey), not shown raw. */
+  labelKey: string;
 }
 
 export interface MoodSet {
@@ -12,12 +13,12 @@ export interface MoodSet {
   moods: MoodOption[];
 }
 
-const MOOD_LABELS: Record<MoodLevel, string> = {
-  very_bad: 'Rough',
-  bad: 'Low',
-  neutral: 'Okay',
-  good: 'Good',
-  great: 'Great',
+const MOOD_LABEL_KEYS: Record<MoodLevel, string> = {
+  very_bad: 'moods.rough',
+  bad: 'moods.low',
+  neutral: 'moods.okay',
+  good: 'moods.good',
+  great: 'moods.great',
 };
 
 const MOOD_LEVELS: [MoodLevel, number][] = [
@@ -29,7 +30,7 @@ const MOOD_LEVELS: [MoodLevel, number][] = [
 ];
 
 function makeMoods(): MoodOption[] {
-  return MOOD_LEVELS.map(([level, score]) => ({ level, score, label: MOOD_LABELS[level] }));
+  return MOOD_LEVELS.map(([level, score]) => ({ level, score, labelKey: MOOD_LABEL_KEYS[level] }));
 }
 
 export const basicSet: MoodSet = {

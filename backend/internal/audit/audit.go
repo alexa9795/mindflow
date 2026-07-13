@@ -34,6 +34,7 @@ const (
 	// Account actions.
 	ActionUpdateName        Action = "account.update_name"
 	ActionUpdateAIToggle    Action = "account.update_ai_toggle"
+	ActionUpdateLocale      Action = "account.update_locale"
 	ActionJournalingConsent Action = "account.journaling_consent"
 	ActionTermsAccepted     Action = "account.terms_accepted"
 	ActionDeleteAccount     Action = "account.delete"

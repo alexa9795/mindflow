@@ -42,6 +42,7 @@ type Service interface {
 	ActivateTrial(ctx context.Context, userID string) (time.Time, error)
 	UpdateAIEnabled(ctx context.Context, userID string, enabled bool) error
 	GetAIEnabled(ctx context.Context, userID string) (bool, error)
+	UpdateLocale(ctx context.Context, userID, locale string) error
 	RevokeToken(ctx context.Context, jti string, expiresAt time.Time) error
 	SetAIConsent(ctx context.Context, userID string) error
 	// Password reset.
@@ -84,7 +85,7 @@ func (s *service) Register(ctx context.Context, req RegisterRequest) (*AuthRespo
 
 	return &AuthResponse{
 		AuthTokens: *tokens,
-		User:       UserInfo{ID: userID, Email: req.Email, Name: req.Name},
+		User:       UserInfo{ID: userID, Email: req.Email, Name: req.Name, Locale: "en"},
 	}, nil
 }
 
@@ -114,7 +115,7 @@ func (s *service) Login(ctx context.Context, req LoginRequest) (*AuthResponse, e
 
 	return &AuthResponse{
 		AuthTokens: *tokens,
-		User:       UserInfo{ID: userID, Email: req.Email, Name: name},
+		User:       UserInfo{ID: userID, Email: req.Email, Name: name, Locale: "en"},
 	}, nil
 }
 
@@ -184,6 +185,10 @@ func (s *service) GetAIEnabled(ctx context.Context, userID string) (bool, error)
 		return false, fmt.Errorf("get ai enabled: %w", err)
 	}
 	return enabled, nil
+}
+
+func (s *service) UpdateLocale(ctx context.Context, userID, locale string) error {
+	return s.repo.UpdateLocale(ctx, userID, locale)
 }
 
 func (s *service) RevokeToken(ctx context.Context, jti string, expiresAt time.Time) error {

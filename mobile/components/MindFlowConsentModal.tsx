@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { COMPANION_NAME } from '../constants/config';
 import { FONTS } from '../constants/fonts';
@@ -13,6 +14,7 @@ interface MindFlowConsentModalProps {
 
 export default function MindFlowConsentModal({ visible, enabling, onEnable, onDismiss }: MindFlowConsentModalProps) {
   const { theme } = useSettings();
+  const { t } = useTranslation();
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onDismiss}>
@@ -22,19 +24,19 @@ export default function MindFlowConsentModal({ visible, enabling, onEnable, onDi
           onPress={() => undefined}
         >
           <Text style={[styles.title, { color: theme.text, fontFamily: FONTS.modern }]}>
-            Meet {COMPANION_NAME}
+            {t('components.consentModal.title', { companion: COMPANION_NAME })}
           </Text>
           <Text style={[styles.body, { color: theme.text, fontFamily: FONTS.modern }]}>
-            {COMPANION_NAME} reflects on your journal entries with empathy and curiosity — like a thoughtful friend reading along.
+            {t('components.consentModal.body1', { companion: COMPANION_NAME })}
           </Text>
           <Text style={[styles.body, { color: theme.textSecondary, fontFamily: FONTS.modern }]}>
-            Your entries are processed by the{' '}
-            <Text style={[styles.emphasis, { color: theme.text }]}>Anthropic Claude API</Text>.
-            Nothing is stored by Anthropic after the response is returned.
+            {t('components.consentModal.processedByPrefix')}
+            <Text style={[styles.emphasis, { color: theme.text }]}>{t('components.consentModal.processedByEmphasis')}</Text>
+            {t('components.consentModal.processedBySuffix')}
           </Text>
           <Text style={[styles.body, { color: theme.textSecondary, fontFamily: FONTS.modern }]}>
-            This is entirely optional. You can turn {COMPANION_NAME} off at any time in{' '}
-            <Text style={[styles.emphasis, { color: theme.text }]}>Settings → Privacy</Text>.
+            {t('components.consentModal.optionalPrefix', { companion: COMPANION_NAME })}
+            <Text style={[styles.emphasis, { color: theme.text }]}>{t('components.consentModal.optionalEmphasis')}</Text>.
           </Text>
           <View style={styles.actions}>
             <Pressable
@@ -43,7 +45,7 @@ export default function MindFlowConsentModal({ visible, enabling, onEnable, onDi
               disabled={enabling}
             >
               <Text style={[styles.btnText, { color: theme.textSecondary, fontFamily: FONTS.modern }]}>
-                No thanks
+                {t('components.consentModal.noThanks')}
               </Text>
             </Pressable>
             <Pressable
@@ -55,7 +57,7 @@ export default function MindFlowConsentModal({ visible, enabling, onEnable, onDi
                 <ActivityIndicator color={theme.background} size="small" />
               ) : (
                 <Text style={[styles.btnText, { color: theme.background, fontFamily: FONTS.modern }]}>
-                  Enable {COMPANION_NAME}
+                  {t('components.consentModal.enable', { companion: COMPANION_NAME })}
                 </Text>
               )}
             </Pressable>

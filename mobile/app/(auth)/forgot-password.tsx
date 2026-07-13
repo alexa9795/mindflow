@@ -13,11 +13,13 @@ import {
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { FONTS } from '../../constants/fonts';
 import { api, ApiError } from '../../services/api';
 
 export default function ForgotPasswordScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
@@ -26,7 +28,7 @@ export default function ForgotPasswordScreen() {
   async function submit() {
     const trimmed = email.trim();
     if (!trimmed) {
-      setError('Please enter your email address');
+      setError(t('auth.forgotPassword.errors.emailRequired'));
       return;
     }
     setLoading(true);
@@ -35,7 +37,7 @@ export default function ForgotPasswordScreen() {
       await api.requestPasswordReset(trimmed);
       setSent(true);
     } catch (e: unknown) {
-      setError(e instanceof ApiError ? e.message : 'Something went wrong. Please try again.');
+      setError(e instanceof ApiError ? e.message : t('common.somethingWrongRetry'));
     } finally {
       setLoading(false);
     }
@@ -55,21 +57,21 @@ export default function ForgotPasswordScreen() {
         >
         <View style={styles.container}>
           <Pressable style={styles.backBtn} onPress={() => router.back()}>
-            <Text style={styles.backText}>← Back</Text>
+            <Text style={styles.backText}>{t('common.back')}</Text>
           </Pressable>
 
-          <Text style={styles.title}>Forgot password?</Text>
+          <Text style={styles.title}>{t('auth.forgotPassword.title')}</Text>
           <Text style={styles.subtitle}>
-            Enter your email and we'll send you a reset link.
+            {t('auth.forgotPassword.subtitle')}
           </Text>
 
           {sent ? (
             <View style={styles.successBox}>
               <Text style={styles.successText}>
-                If that email is registered, you'll receive reset instructions shortly.
+                {t('auth.forgotPassword.successText')}
               </Text>
               <Pressable style={styles.btn} onPress={() => router.replace('/(auth)/reset-password')}>
-                <Text style={styles.btnText}>ENTER RESET TOKEN</Text>
+                <Text style={styles.btnText}>{t('auth.forgotPassword.enterResetToken')}</Text>
               </Pressable>
             </View>
           ) : (
@@ -80,7 +82,7 @@ export default function ForgotPasswordScreen() {
 
               <TextInput
                 style={styles.input}
-                placeholder="your@email.com"
+                placeholder={t('auth.forgotPassword.emailPlaceholder')}
                 placeholderTextColor="#B0A89E"
                 value={email}
                 onChangeText={setEmail}
@@ -98,7 +100,7 @@ export default function ForgotPasswordScreen() {
                 {loading ? (
                   <ActivityIndicator color="#F5F0E8" />
                 ) : (
-                  <Text style={styles.btnText}>SEND RESET LINK</Text>
+                  <Text style={styles.btnText}>{t('auth.forgotPassword.sendResetLink')}</Text>
                 )}
               </Pressable>
             </>

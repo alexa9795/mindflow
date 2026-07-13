@@ -9,6 +9,8 @@ import {
   Text,
   View,
 } from 'react-native';
+import type { TFunction } from 'i18next';
+import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ThemedView from '../../components/ThemedView';
 import { FONTS } from '../../constants/fonts';
@@ -21,13 +23,13 @@ const TRASH_RETENTION_DAYS = 30;
 const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
 
 /** Human-friendly relative date for the deletion timestamp. */
-function formatDeletedDate(iso: string): string {
+function formatDeletedDate(iso: string, t: TFunction): string {
   const then = new Date(iso);
   const dayDiff = Math.round((startOfDay(new Date()) - startOfDay(then)) / 86_400_000);
 
-  if (dayDiff <= 0) return 'Deleted today';
-  if (dayDiff === 1) return 'Deleted yesterday';
-  return `Deleted ${dayDiff} days ago`;
+  if (dayDiff <= 0) return t('trashScreen.deletedToday');
+  if (dayDiff === 1) return t('trashScreen.deletedYesterday');
+  return t('trashScreen.deletedDaysAgo', { count: dayDiff });
 }
 
 /** Days remaining before this entry is permanently purged from the trash. */
@@ -39,6 +41,7 @@ function daysUntilPurge(iso: string): number {
 
 export default function TrashScreen() {
   const { theme } = useSettings();
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const [entries, setEntries] = useState<Entry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -50,11 +53,11 @@ export default function TrashScreen() {
       const res = await api.getTrash();
       setEntries(res.entries);
     } catch {
-      Alert.alert('Error', 'Could not load trash. Please try again.');
+      Alert.alert(t('common.error'), t('trashScreen.loadError'));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useFocusEffect(
     useCallback(() => {
@@ -68,7 +71,7 @@ export default function TrashScreen() {
       await api.restoreEntry(id);
       setEntries((prev) => prev.filter((e) => e.id !== id));
     } catch (e: unknown) {
-      Alert.alert('Error', e instanceof ApiError ? e.message : 'Could not restore entry. Please try again.');
+      Alert.alert(t('common.error'), e instanceof ApiError ? e.message : t('trashScreen.restoreError'));
     } finally {
       setRestoringId(null);
     }
@@ -83,13 +86,13 @@ export default function TrashScreen() {
         ]}
       >
         <Text style={[styles.title, { color: theme.text, fontFamily: FONTS.modern }]}>
-          Trash
+          {t('trashScreen.title')}
         </Text>
       </View>
 
       <View style={[styles.infoBanner, { backgroundColor: theme.accent + '14', borderColor: theme.accent + '30' }]}>
         <Text style={[styles.infoBannerText, { color: theme.textSecondary, fontFamily: FONTS.modern }]}>
-          Entries are permanently deleted after {TRASH_RETENTION_DAYS} days in Trash.
+          {t('trashScreen.retentionNotice', { days: TRASH_RETENTION_DAYS })}
         </Text>
       </View>
 
@@ -106,10 +109,10 @@ export default function TrashScreen() {
             <View style={styles.empty}>
               <Text style={styles.emptyIcon}>🗑️</Text>
               <Text style={[styles.emptyTitle, { color: theme.text, fontFamily: FONTS.modern }]}>
-                Trash is empty
+                {t('trashScreen.emptyTitle')}
               </Text>
               <Text style={[styles.emptySubtitle, { color: theme.textSecondary, fontFamily: FONTS.modern }]}>
-                Deleted entries will show up here.
+                {t('trashScreen.emptySubtitle')}
               </Text>
             </View>
           }
@@ -117,7 +120,7 @@ export default function TrashScreen() {
             <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
               <View style={styles.cardBody}>
                 <Text style={[styles.deletedAt, { color: theme.textSecondary, fontFamily: FONTS.modern }]}>
-                  {item.deleted_at ? formatDeletedDate(item.deleted_at) : ''}
+                  {item.deleted_at ? formatDeletedDate(item.deleted_at, t) : ''}
                 </Text>
                 <Text
                   numberOfLines={2}
@@ -128,8 +131,8 @@ export default function TrashScreen() {
                 {item.deleted_at && (
                   <Text style={[styles.purgeNotice, { color: theme.destructive, fontFamily: FONTS.modern }]}>
                     {daysUntilPurge(item.deleted_at) <= 0
-                      ? 'Deleted permanently soon'
-                      : `${daysUntilPurge(item.deleted_at)} day${daysUntilPurge(item.deleted_at) === 1 ? '' : 's'} left`}
+                      ? t('trashScreen.purgeSoon')
+                      : t('trashScreen.daysLeft', { count: daysUntilPurge(item.deleted_at) })}
                   </Text>
                 )}
               </View>
@@ -139,7 +142,7 @@ export default function TrashScreen() {
                 disabled={restoringId === item.id}
               >
                 <Text style={[styles.restoreText, { color: theme.accent, fontFamily: FONTS.modern }]}>
-                  {restoringId === item.id ? 'Restoring…' : 'Restore'}
+                  {restoringId === item.id ? t('trashScreen.restoring') : t('trashScreen.restore')}
                 </Text>
               </Pressable>
             </View>

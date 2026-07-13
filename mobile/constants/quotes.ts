@@ -1,8 +1,12 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import type { TFunction } from 'i18next';
 
 const DAILY_QUOTE_STORAGE_KEY = 'mindflow_daily_quote';
 
-export const JOURNAL_QUOTES: string[] = [
+// English source strings, kept only to derive QUOTE_COUNT — the actual
+// user-facing text is looked up via t('quotes.<index>') so it re-renders in
+// the active language immediately after a language change.
+const JOURNAL_QUOTES: string[] = [
   'Fill your paper with the breathings of your heart. — William Wordsworth',
   'Journal writing is a voyage to the interior. — Christina Baldwin',
   'What we write down, we remember. What we remember, we understand.',
@@ -111,8 +115,10 @@ export const JOURNAL_QUOTES: string[] = [
   'Your story is allowed to have plot twists.',
 ];
 
-export function randomQuote(): string {
-  return JOURNAL_QUOTES[Math.floor(Math.random() * JOURNAL_QUOTES.length)];
+const QUOTE_COUNT = JOURNAL_QUOTES.length;
+
+function randomQuoteIndex(): number {
+  return Math.floor(Math.random() * QUOTE_COUNT);
 }
 
 function todayKey(): string {
@@ -121,23 +127,28 @@ function todayKey(): string {
 }
 
 /**
- * Returns today's quote, persisted across app restarts. Picks a new random
- * quote only when the stored date no longer matches today.
+ * Returns today's quote (translated in the active language), persisted
+ * across app restarts by index — so a language change re-renders the same
+ * daily quote instead of freezing it in whatever language it was picked in.
+ * Picks a new random quote only when the stored date no longer matches today.
  */
-export async function getDailyQuote(): Promise<string> {
+export async function getDailyQuote(t: TFunction): Promise<string> {
   const today = todayKey();
+  let index: number | null = null;
   try {
     const raw = await AsyncStorage.getItem(DAILY_QUOTE_STORAGE_KEY);
     if (raw) {
-      const saved = JSON.parse(raw) as { date: string; quote: string };
-      if (saved.date === today) return saved.quote;
+      const saved = JSON.parse(raw) as { date: string; index: number };
+      if (saved.date === today && saved.index < QUOTE_COUNT) index = saved.index;
     }
   } catch (e) {
     console.error('Failed to read daily quote:', e);
   }
 
-  const quote = randomQuote();
-  await AsyncStorage.setItem(DAILY_QUOTE_STORAGE_KEY, JSON.stringify({ date: today, quote }))
-    .catch((e) => console.error('Failed to save daily quote:', e));
-  return quote;
+  if (index === null) {
+    index = randomQuoteIndex();
+    await AsyncStorage.setItem(DAILY_QUOTE_STORAGE_KEY, JSON.stringify({ date: today, index }))
+      .catch((e) => console.error('Failed to save daily quote:', e));
+  }
+  return t(`quotes.${index}`);
 }

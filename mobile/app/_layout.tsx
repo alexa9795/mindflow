@@ -24,6 +24,7 @@ import { ActivityIndicator, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SettingsProvider, useSettings } from '../context/SettingsContext';
 import { AuthProvider, useAuth } from '../hooks/useAuth';
+import '../i18n';
 
 /** Brand launch colours — match the native splash (app.json) so the JS
  *  loading state is a seamless continuation rather than a white flash. */
@@ -36,10 +37,19 @@ function ThemedStatusBar() {
 }
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, isLoading, justRegistered } = useAuth();
-  const { theme } = useSettings();
+  const { isAuthenticated, isLoading, currentUser, justRegistered } = useAuth();
+  const { theme, locale, setLocale } = useSettings();
   const segments = useSegments();
   const router = useRouter();
+
+  // The account's locale (set at login/registration, or changed from another
+  // device) follows the user here — this is what makes a fresh login on a
+  // new device pick up the language they'd already chosen.
+  useEffect(() => {
+    if (currentUser?.locale && currentUser.locale !== locale) {
+      void setLocale(currentUser.locale);
+    }
+  }, [currentUser?.locale, locale, setLocale]);
 
   useEffect(() => {
     if (isLoading) return;
