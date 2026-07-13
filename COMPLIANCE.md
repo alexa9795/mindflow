@@ -9,8 +9,11 @@
 > Purchase + Google Play Billing** only. No Stripe for in-app digital
 > subscriptions (Apple Guideline 3.1.1). We never receive card data.
 >
-> **Entity decision: OPEN.** Individual (autónomo) vs Spanish SL still to
-> be decided — this sets the data controller identity. See legal.md.
+> **Entity decision (2026-07-10): RESOLVED.** Data controller / provider is
+> **Open Brain Development SL** (NIF B26910588), Plaza Music Fayos Num 4,
+> Esc. C, Planta 3, Puerta 5, Valencia — the user's existing Spanish SL.
+> Applied across PRIVACY_POLICY.md, TERMS_OF_SERVICE.md, docs/privacy.html,
+> docs/terms.html.
 
 ## Anthropic Data Processing Agreement
 
@@ -104,16 +107,23 @@ Anthropic acts as a data processor for AI inference. The DPA includes Standard C
 - [x] Domain purchased: mindflowjournal.app (Porkbun, expires 2027-05-25)
 - [x] Resend verified sender: noreply@mindflowjournal.app (Ireland eu-west-1)
 - [x] Privacy policy published at https://mindflowjournal.app/privacy.html
-- [ ] **Legal entity decision** (autónomo vs Spanish SL) — sets data controller
+- [x] **Legal entity decision** — Open Brain Development SL (NIF B26910588),
+      Valencia; named as data controller/provider in all legal docs (2026-07-10)
 - [ ] **Paid legal review of privacy policy** (~€150)
 - [x] **Art. 9 storage consent** captured at signup (migration 024, 2026-06-20)
 - [x] **Terms of Service acceptance** captured at signup (migration 025, 2026-06-20)
 - [x] **Draft the Terms of Service document** (TERMS_OF_SERVICE.md, 2026-06-20)
 - [ ] **Finalise & publish the Terms of Service** at a live URL (entity + billing terms + legal review, then link the signup checkbox to it)
-- [ ] **Verify profiling/trigger-word behaviour** matches policy §3.4
-- [ ] **DPIA** drafted (Art. 35)
-- [ ] **UK Art. 27 representative** assessed/appointed if targeting UK
-- [ ] **Transfer Impact Assessment (TIA)** for US processors documented
+- [x] **Verify profiling/trigger-word behaviour** matches policy §3.4
+      (2026-07-10) — verified against code; policy §3.4/§3.3 corrected +
+      `logger.go` legal-basis comment aligned. ⚠️ hosted `docs/privacy.html`
+      still missing the §3.4 profiling section — regenerate before publishing.
+- [x] **DPIA** drafted (Art. 35) — `DPIA.md` (DRAFT for paid review)
+- [x] **UK Art. 27 representative** — **not required: geo-restrict decision
+      (2026-07-10).** App will not be offered in the UK (deselect UK territory
+      at submission). Re-assess only if UK sales are later enabled.
+- [x] **Transfer Impact Assessment (TIA)** for US processors documented —
+      `TIA.md` (DRAFT; open items: DPF certification status, Anthropic retention)
 - [ ] **Anthropic API retention window** confirmed and stated in policy §6.1
 - [ ] **App Store / Play age rating** set to 16+ to match policy §9
 - [ ] **App Privacy / Data Safety forms** completed and consistent with policy

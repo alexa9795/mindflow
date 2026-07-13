@@ -44,6 +44,7 @@ func TestCheckSubscription(t *testing.T) {
 		wantTier         SubscriptionTier
 		wantIsActive     bool
 		wantEntriesUsed  int
+		wantCanUseAI     bool
 		wantErr          bool
 	}{
 		{
@@ -54,6 +55,7 @@ func TestCheckSubscription(t *testing.T) {
 			wantLimit:    -1,
 			wantTier:     TierTester,
 			wantIsActive: true,
+			wantCanUseAI: true,
 		},
 		{
 			name:         "monthly subscription is unlimited",
@@ -62,6 +64,7 @@ func TestCheckSubscription(t *testing.T) {
 			wantLimit:    -1,
 			wantTier:     TierMonthly,
 			wantIsActive: true,
+			wantCanUseAI: true,
 		},
 		{
 			name:         "yearly subscription is unlimited",
@@ -70,26 +73,28 @@ func TestCheckSubscription(t *testing.T) {
 			wantLimit:    -1,
 			wantTier:     TierYearly,
 			wantIsActive: true,
+			wantCanUseAI: true,
 		},
 		{
-			name:         "active trial is unlimited",
+			name:         "active trial unlocks full app incl. AI",
 			subType:      "trial",
 			expiresAt:    future(),
 			wantCanPost:  true,
 			wantLimit:    -1,
 			wantTier:     TierTrial,
 			wantIsActive: true,
+			wantCanUseAI: true,
 		},
 		{
-			name:                "expired trial falls back to free tier logic",
-			subType:             "trial",
-			expiresAt:           past(),
-			entriesThisMonth:    5,
-			wantCanPost:         true,
-			wantLimit:           10,
-			wantTier:            TierFree,
-			wantIsActive:        true,
-			wantEntriesUsed:     5,
+			name:             "expired trial falls back to free tier logic",
+			subType:          "trial",
+			expiresAt:        past(),
+			entriesThisMonth: 5,
+			wantCanPost:      true,
+			wantLimit:        10,
+			wantTier:         TierFree,
+			wantIsActive:     true,
+			wantEntriesUsed:  5,
 		},
 		{
 			name:             "free tier 0 entries can post",
@@ -195,6 +200,9 @@ func TestCheckSubscription(t *testing.T) {
 			}
 			if status.EntriesUsed != tc.wantEntriesUsed {
 				t.Errorf("EntriesUsed = %d, want %d", status.EntriesUsed, tc.wantEntriesUsed)
+			}
+			if status.CanUseAI != tc.wantCanUseAI {
+				t.Errorf("CanUseAI = %v, want %v", status.CanUseAI, tc.wantCanUseAI)
 			}
 		})
 	}

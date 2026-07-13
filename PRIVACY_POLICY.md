@@ -19,17 +19,12 @@
 
 MindFlow is a personal AI journaling application.
 
-> **[TODO — ENTITY DECISION PENDING]** The data controller is either
-> Alexandra Tomulescu (sole trader / autónomo) **or** a Spanish Sociedad
-> Limitada (SL) to be incorporated. This section must be finalised once the
-> entity is chosen, because it determines who is legally the controller,
-> the liability position, and the contact/registration details below.
-> See legal.md for the pros/cons analysis.
-
 The data controller is:
 
-**[Alexandra Tomulescu — sole trader] / [MindFlow SL — to be confirmed]**
+**Open Brain Development SL**
+Plaza Music Fayos Num 4, Esc. C, Planta 3, Puerta 5
 Valencia, Spain (EU)
+NIF: B26910588
 Email: privacy@mindflowjournal.app
 
 As a data controller established within the European Union, we are
@@ -90,8 +85,8 @@ AI processing. See Section 5.
 
 | Data | Purpose | Legal Basis |
 |---|---|---|
-| Subscription tier (free / premium) | Enforce feature limits | Contract (Art. 6(1)(b)) |
-| Monthly usage counts (AI messages, entries) | Enforce plan quotas | Contract (Art. 6(1)(b)) |
+| Subscription tier (free / trial / premium) | Enforce feature access (AI reflections require an active trial or subscription) | Contract (Art. 6(1)(b)) |
+| Usage counts (journal entries; AI reflections) | Enforce the free-tier journaling limit and subscription/trial access | Contract (Art. 6(1)(b)) |
 | Purchase/subscription status from the app store | Activate and manage your subscription | Contract (Art. 6(1)(b)) |
 
 Subscriptions are sold and processed exclusively through **Apple In-App
@@ -107,19 +102,21 @@ analysis of your journal content:
 
 | Processing | Purpose | Legal Basis |
 |---|---|---|
-| Mood trend and pattern detection | Show you trends and recurring themes in your entries (Insights screen) | **Explicit consent (Art. 9(2)(a))** |
-| Word/theme frequency analysis | Surface common themes in your journaling | **Explicit consent (Art. 9(2)(a))** |
-| Trigger-word detection (crisis-support signals) | Detect language that may indicate distress, so we can surface crisis-support resources. Only metadata is logged — never your entry content | **Explicit consent (Art. 9(2)(a))** / vital interests where applicable |
+| Mood trend and activity pattern detection | Show you mood and activity trends in your journaling — most/least active day, peak writing time, entries per weekday, and whether your average mood is rising, falling, or stable (Insights screen) | **Explicit consent (Art. 9(2)(a))** |
+| Trigger-word detection (crisis-support signals) | Detect language that may indicate distress, for user-safety awareness. Only metadata (the matched keyword and your user ID) is logged — never your entry content | **Explicit consent (Art. 9(2)(a))**; vital interests (Art. 9(2)(c)) where applicable |
 
 This analysis is used **only to provide features to you**. It does **not**
 produce any decision that has legal or similarly significant effects on you
 within the meaning of GDPR Art. 22, and it is never used for advertising,
 credit, insurance, or sharing with third parties.
 
-> **[TODO — VERIFY]** Confirm the live behaviour of pattern detection and
-> trigger-word detection matches this description before publishing
-> (purpose, that only metadata — not content — is logged, and that no
-> Art. 22 automated decision is made). See legal.md.
+> **[VERIFIED 2026-07-10 — pending review]** Live behaviour checked against
+> the code: pattern detection computes only statistical mood/activity
+> aggregates (no free-text/theme analysis); trigger detection logs metadata
+> only (user ID + matched keyword, never entry content); neither produces a
+> GDPR Art. 22 automated decision. The earlier "word/theme frequency analysis"
+> row was removed as it described a feature that does not exist. Still to
+> confirm in the paid review.
 
 ### 3.5 Security Audit Logs
 
@@ -329,7 +326,7 @@ The current version of this policy is always available within the app and at htt
 
 For any questions about this policy or to exercise your rights:
 
-**[Data controller — see Section 1 TODO]**
+**Open Brain Development SL**
 Email: privacy@mindflowjournal.app
 
 > **[TODO]** Set up and monitor privacy@mindflowjournal.app before

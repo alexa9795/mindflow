@@ -126,6 +126,7 @@ func main() {
 	aiLimit := middleware.AIRateLimit(aiLimiters, auditLogger)
 
 	subCheck := middleware.CheckSubscription(subSvc)
+	aiSubCheck := middleware.RequireAISubscription(subSvc)
 
 	mux := http.NewServeMux()
 	mux.Handle("GET /health", middleware.RequestID(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -172,16 +173,18 @@ func main() {
 	mux.HandleFunc("GET /api/entries/{id}", authMW(entryHandler.Get))
 	mux.HandleFunc("DELETE /api/entries/{id}", authMW(entryHandler.Delete))
 	mux.HandleFunc("POST /api/entries/{id}/restore", authMW(entryHandler.Restore))
-	// AI endpoints — auth + per-user rate limit + body size.
+	// AI endpoints — auth + subscription gate (Pro/trial only) + per-user rate limit + body size.
 	mux.Handle("POST /api/entries/{id}/respond", chain(
 		http.HandlerFunc(entryHandler.Respond),
 		adapt(authMW),
+		aiSubCheck,
 		aiLimit,
 		adapt(middleware.MaxBodySize),
 	))
 	mux.Handle("POST /api/entries/{id}/messages", chain(
 		http.HandlerFunc(entryHandler.AddMessage),
 		adapt(authMW),
+		aiSubCheck,
 		aiLimit,
 		adapt(middleware.MaxBodySize),
 	))

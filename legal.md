@@ -15,7 +15,7 @@
 |---|---|
 | **Public app name** | **MindFlow** everywhere (stores + legal). Domain mindflowjournal.app already owned. Distinctive and trademarkable. The in-app AI companion is a feature of MindFlow — no separate persona name. |
 | **Billing** | **Apple In-App Purchase + Google Play Billing** only (subscription is consumed in-app → Apple Guideline 3.1.1 mandates this; Stripe not allowed for in-app digital subs). We never receive card data; we only get subscription status. Qualifies for Apple/Google 15% small-business rate (<$1M/yr). |
-| **Legal entity** | **STILL OPEN** — see §3 below. Determines who the data controller is. |
+| **Legal entity** | **RESOLVED (2026-07-10)** — **Open Brain Development SL** (NIF B26910588, Valencia), the user's existing Spanish SL. Named as data controller/provider in all legal docs. See §3. |
 
 ---
 
@@ -43,7 +43,22 @@ tracked in `COMPLIANCE.md` ("Outstanding Before EU Public Launch" + GDPR table).
 
 ---
 
-## 3. OPEN: Legal entity — individual (autónomo) vs Spanish SL
+## 3. RESOLVED: Legal entity — publishing under existing Spanish SL
+
+> **DECISION (2026-07-10):** The app will be published under the user's
+> **existing** Spanish SL, **Open Brain Development SL** (NIF B26910588,
+> Plaza Music Fayos Num 4, Esc. C, Planta 3, Puerta 5, Valencia), of which
+> the user is an associate. This SL is now named as data controller (Privacy
+> Policy §1/§12) and provider (Terms §1/§15/§16). Gets the SL liability
+> shield + clean-acquisition path discussed below without incorporating a new
+> company.
+>
+> **⚠️ Follow-up — DPA counterparties:** the Anthropic / Railway / Resend DPAs
+> are currently signed in **Alexandra Tomulescu's personal name** (see
+> COMPLIANCE.md). To match the named controller they should be re-signed or
+> assigned to **Open Brain Development SL**. Flag for the paid legal review.
+
+The analysis that led here (kept for reference):
 
 The single biggest open decision. Sets the data controller, liability, and
 how clean a future acquisition is. The user mentioned **acquisition is a

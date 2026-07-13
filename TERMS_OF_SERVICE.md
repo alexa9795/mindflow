@@ -23,14 +23,10 @@ provider of MindFlow ("MindFlow", "we", "us") governing your use of the
 MindFlow mobile application and related backend services (together, the
 "Service").
 
-> **[TODO — ENTITY DECISION PENDING]** The provider is either Alexandra
-> Tomulescu (sole trader / autónomo) **or** a Spanish Sociedad Limitada (SL)
-> to be incorporated. Finalise the provider name, address, and registration
-> details once the entity is chosen. This also determines the governing-law
-> clause in Section 15. See legal.md.
-
-**Provider:** **[Alexandra Tomulescu — sole trader] / [MindFlow SL — TBC]**
+**Provider:** **Open Brain Development SL**
+Plaza Music Fayos Num 4, Esc. C, Planta 3, Puerta 5
 Valencia, Spain (EU)
+NIF: B26910588
 Contact: support@mindflowjournal.app
 
 By creating an account, ticking the acceptance box, or using the Service, you
@@ -246,12 +242,11 @@ https://mindflowjournal.app/terms.
 
 ## 15. Governing Law and Disputes
 
-> **[TODO — DEPENDS ON ENTITY]** Confirm governing law and venue once the
-> entity is chosen. Default expectation: laws of **Spain**, with disputes
-> before the competent courts of the provider's seat. Note that as an EU
-> consumer you may also benefit from the mandatory laws and courts of your own
-> country of residence — this clause must not deprive you of those rights.
-> Consider referencing the EU Online Dispute Resolution platform.
+> **[TODO — LEGAL REVIEW]** Entity resolved: provider is Open Brain
+> Development SL, seat in Valencia, so governing law is **Spain** and venue is
+> the competent courts of Valencia. Remaining for the paid review: confirm the
+> EU-consumer mandatory-rights caveat wording below is sufficient and decide
+> whether to reference the EU Online Dispute Resolution platform.
 
 These Terms are governed by the laws of **Spain**, without prejudice to the
 mandatory consumer-protection rights you have in your country of residence in
@@ -263,7 +258,7 @@ the EU.
 
 Questions about these Terms:
 
-**[Provider — see Section 1 TODO]**
+**Open Brain Development SL**
 Email: support@mindflowjournal.app
 
 > **[TODO]** Set up and monitor support@mindflowjournal.app (and the

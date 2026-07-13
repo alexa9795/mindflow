@@ -22,8 +22,9 @@ type SubscriptionStatus struct {
 	Tier        SubscriptionTier
 	IsActive    bool
 	EntriesUsed int
-	Limit       int       // -1 = unlimited
-	CanPost     bool      // final enforcement decision
+	Limit       int  // -1 = unlimited
+	CanPost     bool // final enforcement decision (journaling)
+	CanUseAI    bool // whether AI features are unlocked (paid/trial/tester only)
 	ExpiresAt   *time.Time
 }
 
@@ -54,6 +55,7 @@ func (s *service) CheckSubscription(ctx context.Context, userID string) (*Subscr
 			IsActive: true,
 			Limit:    -1,
 			CanPost:  true,
+			CanUseAI: true,
 		}, nil
 	}
 
@@ -64,6 +66,7 @@ func (s *service) CheckSubscription(ctx context.Context, userID string) (*Subscr
 			IsActive: true,
 			Limit:    -1,
 			CanPost:  true,
+			CanUseAI: true,
 		}, nil
 	case "yearly":
 		return &SubscriptionStatus{
@@ -71,6 +74,7 @@ func (s *service) CheckSubscription(ctx context.Context, userID string) (*Subscr
 			IsActive: true,
 			Limit:    -1,
 			CanPost:  true,
+			CanUseAI: true,
 		}, nil
 	case "trial":
 		if info.SubscriptionExpiresAt == nil || info.SubscriptionExpiresAt.After(time.Now()) {
@@ -79,12 +83,15 @@ func (s *service) CheckSubscription(ctx context.Context, userID string) (*Subscr
 				IsActive:  true,
 				Limit:     -1,
 				CanPost:   true,
+				CanUseAI:  true,
 				ExpiresAt: info.SubscriptionExpiresAt,
 			}, nil
 		}
 		// trial expired — fall through to free-tier logic
 		fallthrough
 	default:
+		// Free tier: journaling is capped at 10 entries/month and AI features
+		// are locked (they require an active trial or paid subscription).
 		if info.EntriesThisMonth < 10 {
 			return &SubscriptionStatus{
 				Tier:        TierFree,
@@ -92,6 +99,7 @@ func (s *service) CheckSubscription(ctx context.Context, userID string) (*Subscr
 				Limit:       10,
 				EntriesUsed: info.EntriesThisMonth,
 				CanPost:     true,
+				CanUseAI:    false,
 			}, nil
 		}
 		return &SubscriptionStatus{
@@ -100,6 +108,7 @@ func (s *service) CheckSubscription(ctx context.Context, userID string) (*Subscr
 			Limit:       10,
 			EntriesUsed: info.EntriesThisMonth,
 			CanPost:     false,
+			CanUseAI:    false,
 		}, nil
 	}
 }

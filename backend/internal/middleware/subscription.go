@@ -35,3 +35,33 @@ func CheckSubscription(subSvc subscription.Service) func(http.Handler) http.Hand
 		})
 	}
 }
+
+// RequireAISubscription gates AI-calling endpoints behind an active trial or
+// paid subscription. Free-tier users can journal (subject to CheckSubscription)
+// but AI reflections are a Pro feature. Must be applied after the Auth
+// middleware so UserIDKey is set.
+func RequireAISubscription(subSvc subscription.Service) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			userID, ok := r.Context().Value(UserIDKey).(string)
+			if !ok || userID == "" {
+				api.WriteError(w, api.ErrUnauthorized)
+				return
+			}
+
+			status, err := subSvc.CheckSubscription(r.Context(), userID)
+			if err != nil {
+				slog.Error("AI subscription check error", "user_id", userID, "error", err)
+				api.WriteError(w, api.ErrInternalServer)
+				return
+			}
+
+			if !status.CanUseAI {
+				api.WriteError(w, api.ErrAISubscriptionRequired)
+				return
+			}
+
+			next.ServeHTTP(w, r)
+		})
+	}
+}
