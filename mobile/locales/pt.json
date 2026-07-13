@@ -232,6 +232,7 @@
     "activating": "A ativar…",
     "signOut": "Terminar sessão",
     "exportData": "Exportar os meus dados",
+    "reportIssue": "Reportar um problema",
     "deleteAllEntries": "Eliminar todas as entradas",
     "deleteAccount": "Eliminar conta",
     "editNameModal": {
@@ -241,6 +242,17 @@
       "save": "Guardar",
       "saving": "A guardar…",
       "errorEmpty": "O nome não pode estar vazio"
+    },
+    "reportIssueModal": {
+      "title": "Reportar um problema",
+      "subtitle": "Conta-nos o que não está a funcionar — isto vai diretamente para a nossa equipa de apoio.",
+      "placeholder": "O que aconteceu?",
+      "cancel": "Cancelar",
+      "send": "Enviar",
+      "sending": "A enviar…",
+      "errorEmpty": "Descreve o problema, por favor",
+      "sentTitle": "Obrigado por nos avisares",
+      "sentMessage": "Recebemos o teu relatório e vamos analisá-lo."
     },
     "alerts": {
       "signOutTitle": "Terminar sessão",

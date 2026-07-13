@@ -114,6 +114,24 @@ describe('updateLocale', () => {
   });
 });
 
+describe('reportIssue', () => {
+  it('sends a POST with the message, app version, and platform', async () => {
+    fetchMock.mockResolvedValueOnce(mockResponse(200, { success: true }));
+
+    const result = await api.reportIssue('the export button does nothing', '1.0.0', 'ios');
+
+    expect(result).toEqual({ success: true });
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe(`${API_URL}/api/support/report-issue`);
+    expect(init.method).toBe('POST');
+    expect(JSON.parse(init.body)).toEqual({
+      message: 'the export button does nothing',
+      app_version: '1.0.0',
+      platform: 'ios',
+    });
+  });
+});
+
 describe('401 refresh flow', () => {
   it('refreshes the token then retries the original request', async () => {
     setToken('stale');

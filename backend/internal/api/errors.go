@@ -31,6 +31,7 @@ var (
 	ErrAIRateLimited          = APIError{Code: "AI_RATE_LIMITED", Message: "Too many requests. Please wait before asking for another reflection.", HTTPStatus: http.StatusTooManyRequests}
 	ErrAIDisabled             = APIError{Code: "AI_DISABLED", Message: "AI responses are disabled. Enable them in settings to get reflections.", HTTPStatus: http.StatusForbidden}
 	ErrAISubscriptionRequired = APIError{Code: "AI_SUBSCRIPTION_REQUIRED", Message: "AI reflections are a MindFlow Pro feature. Start a free trial or subscribe to continue.", HTTPStatus: http.StatusForbidden}
+	ErrEmailUnavailable       = APIError{Code: "EMAIL_UNAVAILABLE", Message: "Support email is not available right now. Please try again later.", HTTPStatus: http.StatusServiceUnavailable}
 )
 
 // WriteError writes a JSON error response in the canonical shape:

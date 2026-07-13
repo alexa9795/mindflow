@@ -356,6 +356,12 @@ export const api = {
       body: JSON.stringify({ locale }),
     }),
 
+  reportIssue: (message: string, appVersion: string, platform: string) =>
+    request<{ success: boolean }>('/api/support/report-issue', {
+      method: 'POST',
+      body: JSON.stringify({ message, app_version: appVersion, platform }),
+    }),
+
   deleteEntries: () =>
     request<void>('/api/entries', { method: 'DELETE' }),
 

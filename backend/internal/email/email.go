@@ -8,6 +8,10 @@ import (
 	resend "github.com/resend/resend-go/v2"
 )
 
+// supportInbox receives user-submitted issue reports. Kept in sync with the
+// support address referenced in TERMS_OF_SERVICE.md.
+const supportInbox = "support@mindflowjournal.app"
+
 // Client wraps the Resend SDK for sending transactional emails.
 type Client struct {
 	resend    *resend.Client
@@ -77,6 +81,39 @@ Take care,
 The MindFlow team`, userName, resetToken)
 
 	return c.send(ctx, toEmail, "Reset your MindFlow password", body)
+}
+
+// SendIssueReport forwards a user-submitted "report an issue" message to the
+// support inbox, with Reply-To set to the reporter so support can respond
+// directly. appVersion/platform may be empty if the client didn't send them.
+func (c *Client) SendIssueReport(ctx context.Context, reporterEmail, reporterName, message, appVersion, platform string) error {
+	body := fmt.Sprintf(`New issue report from %s (%s)
+
+App version: %s
+Platform: %s
+
+Message:
+%s`, reporterName, reporterEmail, orDash(appVersion), orDash(platform), message)
+
+	params := &resend.SendEmailRequest{
+		From:    c.fromEmail,
+		To:      []string{supportInbox},
+		ReplyTo: reporterEmail,
+		Subject: fmt.Sprintf("MindFlow issue report from %s", reporterName),
+		Text:    body,
+	}
+	_, err := c.resend.Emails.SendWithContext(ctx, params)
+	if err != nil {
+		return fmt.Errorf("send issue report: %w", err)
+	}
+	return nil
+}
+
+func orDash(s string) string {
+	if s == "" {
+		return "—"
+	}
+	return s
 }
 
 func (c *Client) send(ctx context.Context, toEmail, subject, body string) error {

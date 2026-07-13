@@ -57,6 +57,9 @@ const (
 
 	// AI actions.
 	ActionAIRateLimitHit Action = "ai.rate_limit_hit"
+
+	// Support actions.
+	ActionIssueReported Action = "support.issue_reported"
 )
 
 type auditEvent struct {

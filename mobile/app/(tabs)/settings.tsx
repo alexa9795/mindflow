@@ -1,3 +1,4 @@
+import Constants from 'expo-constants';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as LocalAuthentication from 'expo-local-authentication';
 import * as SecureStore from 'expo-secure-store';
@@ -7,6 +8,7 @@ import React, { useEffect, useState } from 'react';
 import {
   Alert,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -46,6 +48,11 @@ export default function SettingsScreen() {
   const [nameError, setNameError] = useState<string | null>(null);
   const [aiToggleLoading, setAiToggleLoading] = useState(false);
   const [trialLoading, setTrialLoading] = useState(false);
+
+  const [issueModalVisible, setIssueModalVisible] = useState(false);
+  const [issueInput, setIssueInput] = useState('');
+  const [issueLoading, setIssueLoading] = useState(false);
+  const [issueError, setIssueError] = useState<string | null>(null);
 
   // Biometric state — only show the toggle if hardware + enrolled face/fingerprint exists.
   const [biometricAvailable, setBiometricAvailable] = useState(false);
@@ -100,6 +107,31 @@ export default function SettingsScreen() {
     setNameInput(currentUser?.name ?? '');
     setNameError(null);
     setNameModalVisible(true);
+  }
+
+  function openReportIssue() {
+    setIssueInput('');
+    setIssueError(null);
+    setIssueModalVisible(true);
+  }
+
+  async function handleSubmitIssue() {
+    const trimmed = issueInput.trim();
+    if (!trimmed) {
+      setIssueError(t('settingsScreen.reportIssueModal.errorEmpty'));
+      return;
+    }
+    setIssueLoading(true);
+    setIssueError(null);
+    try {
+      await api.reportIssue(trimmed, Constants.expoConfig?.version ?? '', Platform.OS);
+      setIssueModalVisible(false);
+      Alert.alert(t('settingsScreen.reportIssueModal.sentTitle'), t('settingsScreen.reportIssueModal.sentMessage'));
+    } catch (e: unknown) {
+      setIssueError(e instanceof ApiError ? e.message : t('common.somethingWrong'));
+    } finally {
+      setIssueLoading(false);
+    }
   }
 
   async function handleSaveName() {
@@ -486,6 +518,15 @@ export default function SettingsScreen() {
 
         <Pressable
           style={[styles.actionRow, { backgroundColor: theme.surface, borderColor: theme.border }]}
+          onPress={openReportIssue}
+        >
+          <Text style={[styles.actionText, { color: theme.text, fontFamily: FONTS.modern }]}>
+            {t('settingsScreen.reportIssue')}
+          </Text>
+        </Pressable>
+
+        <Pressable
+          style={[styles.actionRow, { backgroundColor: theme.surface, borderColor: theme.border }]}
           onPress={handleDeleteEntries}
         >
           <Text style={[styles.actionText, { color: theme.destructive, fontFamily: FONTS.modern }]}>
@@ -559,6 +600,75 @@ export default function SettingsScreen() {
               >
                 <Text style={[styles.modalBtnText, { color: theme.background, fontFamily: FONTS.modern }]}>
                   {nameLoading ? t('settingsScreen.editNameModal.saving') : t('settingsScreen.editNameModal.save')}
+                </Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Report an issue modal */}
+      <Modal
+        visible={issueModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setIssueModalVisible(false)}
+      >
+        <Pressable
+          style={styles.modalBackdrop}
+          onPress={() => setIssueModalVisible(false)}
+        >
+          <Pressable
+            style={[styles.modalCard, { backgroundColor: theme.surface, borderColor: theme.border }]}
+            onPress={() => undefined}
+          >
+            <Text style={[styles.modalTitle, { color: theme.text, fontFamily: FONTS.modern }]}>
+              {t('settingsScreen.reportIssueModal.title')}
+            </Text>
+            <Text style={[styles.modalSubtitle, { color: theme.textSecondary, fontFamily: FONTS.modern }]}>
+              {t('settingsScreen.reportIssueModal.subtitle')}
+            </Text>
+            <TextInput
+              style={[
+                styles.modalInput,
+                styles.modalInputMultiline,
+                {
+                  backgroundColor: theme.background,
+                  borderColor: issueError ? theme.destructive : theme.border,
+                  color: theme.text,
+                  fontFamily: FONTS.modern,
+                },
+              ]}
+              value={issueInput}
+              onChangeText={setIssueInput}
+              placeholder={t('settingsScreen.reportIssueModal.placeholder')}
+              placeholderTextColor={theme.textSecondary}
+              multiline
+              textAlignVertical="top"
+              autoFocus
+              maxLength={5000}
+            />
+            {issueError && (
+              <Text style={[styles.modalError, { color: theme.destructive, fontFamily: FONTS.modern }]}>
+                {issueError}
+              </Text>
+            )}
+            <View style={styles.modalActions}>
+              <Pressable
+                style={[styles.modalBtn, { borderColor: theme.border }]}
+                onPress={() => setIssueModalVisible(false)}
+              >
+                <Text style={[styles.modalBtnText, { color: theme.textSecondary, fontFamily: FONTS.modern }]}>
+                  {t('settingsScreen.reportIssueModal.cancel')}
+                </Text>
+              </Pressable>
+              <Pressable
+                style={[styles.modalBtn, styles.modalBtnPrimary, { backgroundColor: theme.accent }]}
+                onPress={() => void handleSubmitIssue()}
+                disabled={issueLoading}
+              >
+                <Text style={[styles.modalBtnText, { color: theme.background, fontFamily: FONTS.modern }]}>
+                  {issueLoading ? t('settingsScreen.reportIssueModal.sending') : t('settingsScreen.reportIssueModal.send')}
                 </Text>
               </Pressable>
             </View>
@@ -668,6 +778,7 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   modalTitle: { fontSize: 17, fontWeight: '700', marginBottom: 16 },
+  modalSubtitle: { fontSize: 13, marginTop: -10, marginBottom: 16, lineHeight: 18 },
   modalInput: {
     borderWidth: 1,
     borderRadius: 10,
@@ -676,6 +787,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     marginBottom: 8,
   },
+  modalInputMultiline: { minHeight: 120 },
   modalError: { fontSize: 13, marginBottom: 8 },
   modalActions: { flexDirection: 'row', gap: 10, marginTop: 8 },
   modalBtn: {

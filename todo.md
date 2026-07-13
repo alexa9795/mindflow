@@ -37,6 +37,18 @@ Analysis of remaining work before publishing. Grouped by priority.
 > extracted to translation keys; quotes bank (112 entries) and mood/theme/font
 > labels are translated too. Backend: migration `027_add_locale.sql`.
 
+> **"Report an issue" shipped (2026-07-13):** Settings → Account has a new
+> action that opens a modal, takes a free-text description, and POSTs to
+> `/api/support/report-issue` (new `backend/internal/support` package —
+> service/handler layered like `auth`, reuses `authSvc.GetMe` via a narrow
+> `UserLookup` interface, same style as `entry.UserFlags`). The backend emails
+> `support@mindflowjournal.app` via the existing Resend client, with
+> Reply-To set to the reporter so support can respond directly; app version +
+> platform are included for debugging context. Returns `EMAIL_UNAVAILABLE`
+> (503) if `RESEND_API_KEY`/`RESEND_FROM_EMAIL` aren't set — same
+> graceful-degradation pattern as password reset. Fully localized (all 6
+> languages) and audited (`support.issue_reported`, no message content logged).
+
 ---
 
 ## 🔴 Blockers — will fail store review

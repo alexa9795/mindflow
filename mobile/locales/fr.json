@@ -232,6 +232,7 @@
     "activating": "Activation…",
     "signOut": "Se déconnecter",
     "exportData": "Exporter mes données",
+    "reportIssue": "Signaler un problème",
     "deleteAllEntries": "Supprimer toutes les entrées",
     "deleteAccount": "Supprimer le compte",
     "editNameModal": {
@@ -241,6 +242,17 @@
       "save": "Enregistrer",
       "saving": "Enregistrement…",
       "errorEmpty": "Le nom ne peut pas être vide"
+    },
+    "reportIssueModal": {
+      "title": "Signaler un problème",
+      "subtitle": "Dites-nous ce qui ne fonctionne pas — ceci est envoyé directement à notre équipe d'assistance.",
+      "placeholder": "Que s'est-il passé ?",
+      "cancel": "Annuler",
+      "send": "Envoyer",
+      "sending": "Envoi…",
+      "errorEmpty": "Veuillez décrire le problème",
+      "sentTitle": "Merci de nous avoir prévenus",
+      "sentMessage": "Nous avons bien reçu votre signalement et allons l'examiner."
     },
     "alerts": {
       "signOutTitle": "Se déconnecter",

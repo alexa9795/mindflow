@@ -232,6 +232,7 @@
     "activating": "Activating…",
     "signOut": "Sign out",
     "exportData": "Export my data",
+    "reportIssue": "Report an issue",
     "deleteAllEntries": "Delete all entries",
     "deleteAccount": "Delete account",
     "editNameModal": {
@@ -241,6 +242,17 @@
       "save": "Save",
       "saving": "Saving…",
       "errorEmpty": "Name cannot be empty"
+    },
+    "reportIssueModal": {
+      "title": "Report an issue",
+      "subtitle": "Tell us what's not working — this goes straight to our support team.",
+      "placeholder": "What happened?",
+      "cancel": "Cancel",
+      "send": "Send",
+      "sending": "Sending…",
+      "errorEmpty": "Please describe the issue",
+      "sentTitle": "Thanks for letting us know",
+      "sentMessage": "We've received your report and will look into it."
     },
     "alerts": {
       "signOutTitle": "Sign out",

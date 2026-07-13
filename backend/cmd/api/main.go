@@ -26,6 +26,7 @@ import (
 	"github.com/alexa9795/mindflow/internal/retention"
 	"github.com/alexa9795/mindflow/internal/revenuecat"
 	"github.com/alexa9795/mindflow/internal/subscription"
+	"github.com/alexa9795/mindflow/internal/support"
 	"github.com/joho/godotenv"
 	"golang.org/x/time/rate"
 )
@@ -93,6 +94,10 @@ func main() {
 
 	rcRepo := revenuecat.NewRepository(db.DB)
 	rcHandler := revenuecat.NewHandler(rcRepo)
+
+	// authSvc satisfies support.UserLookup via GetMe.
+	supportSvc := support.NewService(emailClient, authSvc)
+	supportHandler := support.NewHandler(supportSvc, auditLogger)
 
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -192,6 +197,9 @@ func main() {
 
 	// Insights route.
 	mux.HandleFunc("GET /api/insights", authMW(insightsHandler.GetInsights))
+
+	// Support route — authenticated users can report an issue by email.
+	mux.HandleFunc("POST /api/support/report-issue", authMW(middleware.MaxBodySize(supportHandler.ReportIssue)))
 
 	// RevenueCat webhook — no auth middleware; validates its own shared secret.
 	mux.Handle("POST /api/webhooks/revenuecat", http.HandlerFunc(rcHandler.Webhook))

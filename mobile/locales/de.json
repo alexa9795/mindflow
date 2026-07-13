@@ -232,6 +232,7 @@
     "activating": "Wird aktiviert…",
     "signOut": "Abmelden",
     "exportData": "Meine Daten exportieren",
+    "reportIssue": "Problem melden",
     "deleteAllEntries": "Alle Einträge löschen",
     "deleteAccount": "Konto löschen",
     "editNameModal": {
@@ -241,6 +242,17 @@
       "save": "Speichern",
       "saving": "Wird gespeichert…",
       "errorEmpty": "Der Name darf nicht leer sein"
+    },
+    "reportIssueModal": {
+      "title": "Problem melden",
+      "subtitle": "Sag uns, was nicht funktioniert — das geht direkt an unser Support-Team.",
+      "placeholder": "Was ist passiert?",
+      "cancel": "Abbrechen",
+      "send": "Senden",
+      "sending": "Wird gesendet…",
+      "errorEmpty": "Bitte beschreibe das Problem",
+      "sentTitle": "Danke für deine Meldung",
+      "sentMessage": "Wir haben deine Meldung erhalten und werden sie uns ansehen."
     },
     "alerts": {
       "signOutTitle": "Abmelden",

@@ -232,6 +232,7 @@
     "activating": "Attivazione…",
     "signOut": "Disconnetti",
     "exportData": "Esporta i miei dati",
+    "reportIssue": "Segnala un problema",
     "deleteAllEntries": "Elimina tutte le voci",
     "deleteAccount": "Elimina account",
     "editNameModal": {
@@ -241,6 +242,17 @@
       "save": "Salva",
       "saving": "Salvataggio…",
       "errorEmpty": "Il nome non può essere vuoto"
+    },
+    "reportIssueModal": {
+      "title": "Segnala un problema",
+      "subtitle": "Raccontaci cosa non funziona — verrà inviato direttamente al nostro team di supporto.",
+      "placeholder": "Cos'è successo?",
+      "cancel": "Annulla",
+      "send": "Invia",
+      "sending": "Invio…",
+      "errorEmpty": "Descrivi il problema",
+      "sentTitle": "Grazie per la segnalazione",
+      "sentMessage": "Abbiamo ricevuto la tua segnalazione e la esamineremo."
     },
     "alerts": {
       "signOutTitle": "Disconnetti",
