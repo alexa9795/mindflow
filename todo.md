@@ -252,3 +252,11 @@ Confirmed monetisation model:
 - [ ] Expo Go loading screen shows old soundwave icon despite `--clear` — `assets/icon.png`
       is correct; likely an Expo Go client cache issue. Investigate before TestFlight/Play
       internal track (won't affect production builds via EAS).
+- [ ] **Terms versioning / re-acceptance** (TERMS_OF_SERVICE.md §14 [TODO]): only
+      `terms_accepted_at` is stored, no `terms_version`. If you later change the
+      Terms and need re-acceptance, add a `terms_version` column + re-prompt flow.
+      Nice-to-have; not a launch blocker.
+- [ ] **Reconcile the Go version in docs** — `backend/go.mod` requires
+      `go 1.25.0`, but `CLAUDE.md` Stack says "Go 1.22+ … x/crypto pinned for
+      Go 1.22 compatibility". A dev on 1.22 can't build. Decide the real minimum
+      (go.mod is authoritative) and fix CLAUDE.md + the crypto-pin note to match.

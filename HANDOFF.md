@@ -7,8 +7,8 @@ project state changes.
 
 I'm working on **MindFlow**, an AI-powered mobile journaling app, at
 `/home/adumitru/PERSONAL/mindflow` (git repo, branch `main`). Read `CLAUDE.md`
-first for project instructions, then `todo.md` (untracked, at repo root) which
-is the live pre-launch task tracker.
+first for project instructions, then `todo.md` (repo root) which is the live
+pre-launch task tracker.
 
 **Read before doing anything:** `CLAUDE.md`, `todo.md`, and `STORE_LISTING.md`.
 `store-privacy-forms.md` has ready-to-submit Apple App Privacy + Google Play
@@ -19,6 +19,43 @@ React Native Expo 54 app (`/mobile`, expo-router v6, TypeScript strict). Module
 path `github.com/alexa9795/mindflow`. AI via Claude API. Payments via RevenueCat
 (Apple IAP + Google Play Billing). Custom JWT auth (bcrypt + refresh rotation).
 Hosted on Railway; legal docs on GitHub Pages at `mindflowjournal.app` (`/docs`).
+
+**Local dev setup (toolchain versions are authoritative from these files):**
+- **Go** — `1.25.0` (from `backend/go.mod`; CI uses `go-version-file`). Module
+  `github.com/alexa9795/mindflow`. ⚠️ CLAUDE.md still says "1.22+" — go.mod wins.
+- **Node** — `20.19.4` (`.nvmrc`; CI uses node 20). Use `nvm use`.
+- **Expo** `~54.0.33`, **React** `19.1.0`, **React Native** `0.81.5`,
+  **TypeScript** `~5.9.2`, **Jest** `^29.7.0` + `jest-expo ~54` (mobile/package.json).
+- **PostgreSQL 16** via Docker (`docker-compose.yml`): container `mindflow_db`,
+  exposed on host port **5433** → 5432, db `mindflow_dev`, user/pass
+  `mindflow`/`mindflow_secret`.
+
+**First-time bring-up:**
+```bash
+# 1. Database
+docker compose up -d                      # Postgres 16 on localhost:5433
+
+# 2. Backend (migrations run automatically on startup)
+cd backend
+cp .env.example .env                       # then fill values (see below)
+go mod download
+go run ./cmd/api                           # serves on $PORT (default 8080)
+go test ./...                              # all tests
+
+# 3. Mobile
+cd ../mobile
+nvm use                                     # picks up .nvmrc (20.19.4)
+npm ci                                      # clean install (CI-parity)
+npx expo start                              # dev server; press i/a for sim
+npm run typecheck && npm test               # tsc --noEmit + jest
+```
+
+**Backend env vars** (`backend/.env.example` → `.env`): `DATABASE_URL` (or the
+local Docker default), `JWT_SECRET` (**server refuses to start without it**),
+`ANTHROPIC_API_KEY` (**AI service exits without it**), `RESEND_API_KEY` +
+`RESEND_FROM_EMAIL` (optional — email disabled if unset), `REVENUECAT_WEBHOOK_SECRET`,
+`ALLOWED_ORIGINS`, `ENV`, `PORT`. Never commit `.env` (gitignored — note
+`grep -r` here respects `.gitignore`, so use `git grep` when auditing).
 
 **Latest session (2026-07-13) — legal-entity + billing-model work (this commit):**
 - **Legal entity RESOLVED:** publishing under the existing Spanish SL
